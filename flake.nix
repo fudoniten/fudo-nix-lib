@@ -1,7 +1,7 @@
 {
   description = "Fudo Nix Helper Functions";
 
-  outputs = { self, nixpkgs, ... }: {
+  outputs = { self, ... }: {
     overlay = import ./overlay.nix;
   };
 }

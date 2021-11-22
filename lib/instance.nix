@@ -1,5 +1,6 @@
 { config, lib, pkgs, ... }:
 
+with lib;
 let
   user = import ./types/user.nix { inherit lib; };
   host = import ./types/host.nix { inherit lib; };

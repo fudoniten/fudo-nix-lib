@@ -55,7 +55,10 @@ let
     #   if (host-data == null) then [] else (
     #     (map (sshfp: "${hostname} IN SSHFP ${sshfp}") host-data.ssh-fingerprints) ++ (optional (host-data.rp != null) "${hostname} IN RP ${host-data.rp}")
     #   );
-    sshfp-records = if (hasAttr hostname config.fudo.hosts) then (map (sshfp: "${hostname} IN SSHFP ${sshfp}") config.fudo.hosts.${hostname}.ssh-fingerprints) else [];
+    sshfp-records = if (hasAttr hostname config.fudo.hosts) then
+      (map (sshfp: "${hostname} IN SSHFP ${sshfp}")
+        config.fudo.hosts.${hostname}.ssh-fingerprints)
+                    else [];
     a-record = optional (nethost-data.ipv4-address != null) "${hostname} IN A ${nethost-data.ipv4-address}";
     aaaa-record = optional (nethost-data.ipv6-address != null) "${hostname} IN AAAA ${nethost-data.ipv6-address}";
     description-record = optional (nethost-data.description != null) "${hostname} IN TXT \"${nethost-data.description}\"";

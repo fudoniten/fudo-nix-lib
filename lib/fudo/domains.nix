@@ -86,9 +86,4 @@ in {
     description = "Domain configurations for all domains known to the system.";
     default = { };
   };
-
-  imports = [
-    ./domain/kerberos.nix
-    ./domain/dns.nix
-  ];
 }

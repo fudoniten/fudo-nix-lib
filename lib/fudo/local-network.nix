@@ -115,20 +115,20 @@ in {
       interfaces = cfg.dhcp-interfaces;
 
       extraConfig = ''
-        subnet ${pkgs.lib.fudo.ip.getNetworkBase cfg.network} netmask ${
-          pkgs.lib.fudo.ip.maskFromV32Network cfg.network
+        subnet ${pkgs.lib.ip.getNetworkBase cfg.network} netmask ${
+          pkgs.lib.ip.maskFromV32Network cfg.network
         } {
           authoritative;
-          option subnet-mask ${pkgs.lib.fudo.ip.maskFromV32Network cfg.network};
-          option broadcast-address ${pkgs.lib.fudo.ip.networkMaxIp cfg.network};
+          option subnet-mask ${pkgs.lib.ip.maskFromV32Network cfg.network};
+          option broadcast-address ${pkgs.lib.ip.networkMaxIp cfg.network};
           option routers ${cfg.gateway};
           option domain-name-servers ${concatStringsSep " " cfg.dns-servers};
           option domain-name "${cfg.domain}";
           option domain-search "${
             concatStringsSep " " ([ cfg.domain ] ++ cfg.search-domains)
           }";
-          range ${pkgs.lib.fudo.ip.networkMinIp cfg.dhcp-dynamic-network} ${
-            pkgs.lib.fudo.ip.networkMaxButOneIp cfg.dhcp-dynamic-network
+          range ${pkgs.lib.ip.networkMinIp cfg.dhcp-dynamic-network} ${
+            pkgs.lib.ip.networkMaxButOneIp cfg.dhcp-dynamic-network
           };
         }
       '';
@@ -230,7 +230,7 @@ in {
           ${join-lines (mapAttrsToList hostSshFpRecords zone.hosts)}
           ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
           ${join-lines zone.verbatim-dns-records}
-          ${pkgs.lib.fudo.dns.srvRecordsToBindZone zone.srv-records}
+          ${pkgs.lib.dns.srvRecordsToBindZone zone.srv-records}
           ${join-lines cfg.extra-records}
         '';
       }] ++ blockZones;

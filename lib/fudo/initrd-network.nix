@@ -35,7 +35,7 @@ in {
         site = config.fudo.sites.${config.instance.local-site};
         site-gateway = site.gateway-v4;
         netmask =
-          pkgs.lib.fudo.ip.maskFromV32Network site.network;
+          pkgs.lib.ip.maskFromV32Network site.network;
       in [
         "ip=${initrd-cfg.ip}:${site-gateway}:${netmask}:${hostname}:${initrd-cfg.interface}"
       ];

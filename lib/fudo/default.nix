@@ -1,0 +1,49 @@
+{ config, lib, pkgs, ... }:
+
+with lib; {
+  imports = [
+    ./acme-certs.nix
+    ./acme-for-hostname.nix
+    ./authentication.nix
+    ./backplane
+    ./chat.nix
+    ./client/dns.nix
+    ./deploy.nix
+    ./distributed-builds.nix
+    ./dns.nix
+    ./domains.nix
+    ./garbage-collector.nix
+    ./git.nix
+    ./global.nix
+    ./grafana.nix
+    ./hosts.nix
+    ./host-filesystems.nix
+    ./initrd-network.nix
+    ./ipfs.nix
+    ./jabber.nix
+    ./kdc.nix
+    ./ldap.nix
+    ./local-network.nix
+    ./mail.nix
+    ./mail-container.nix
+    ./minecraft-server.nix
+    ./netinfo-email.nix
+    ./networks.nix
+    ./node-exporter.nix
+    ./nsd.nix
+    ./password.nix
+    ./postgres.nix
+    ./prometheus.nix
+    ./secrets.nix
+    ./secure-dns-proxy.nix
+    ./sites.nix
+    ./slynk.nix
+    ./ssh.nix
+    ./system.nix
+    ./system-networking.nix
+    ./users.nix
+    ./vpn.nix
+    ./webmail.nix
+    ./wireless-networks.nix
+  ];
+}

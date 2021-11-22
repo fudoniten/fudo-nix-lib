@@ -1,10 +1,10 @@
 { pkgs, ... }:
 
 {
-  ip = import ./lib/ip.nix { inherit pkgs; };
-  dns = import ./lib/dns.nix { inherit pkgs; };
-  passwd = import ./lib/passwd.nix { inherit pkgs; };
-  lisp = import ./lib/lisp.nix { inherit pkgs; };
-  network = import ./lib/network.nix { inherit pkgs; };
-  fs = import ./lib/filesystem.nix { inherit pkgs; };
+  ip = import ./lib/lib/ip.nix { inherit pkgs; };
+  dns = import ./lib/lib/dns.nix { inherit pkgs; };
+  passwd = import ./lib/lib/passwd.nix { inherit pkgs; };
+  lisp = import ./lib/lib/lisp.nix { inherit pkgs; };
+  network = import ./lib/lib/network.nix { inherit pkgs; };
+  fs = import ./lib/lib/filesystem.nix { inherit pkgs; };
 }

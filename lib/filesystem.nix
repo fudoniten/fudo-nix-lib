@@ -26,7 +26,7 @@ let
 
   import-by-basename = path:
     mapAttrs (attr: attr-file: import attr-file)
-      (basename-to-file path);
+      (basename-to-file-map path);
 in {
   inherit basename-to-file-map import-by-basename;
 }

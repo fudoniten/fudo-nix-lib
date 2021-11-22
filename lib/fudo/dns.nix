@@ -21,9 +21,9 @@ let
         default = null;
       };
 
-      network-definition = mkOption {
-        type = submodule (import ../types/network-definition.nix);
-        description = "Definition of network to be served by local server.";
+      zone-definition = mkOption {
+        type = submodule (import ../types/zone-definition.nix);
+        description = "Definition of network zone to be served by local server.";
       };
 
       default-host = mkOption {
@@ -139,7 +139,7 @@ in {
       interfaces = cfg.listen-ips;
       stateDir = cfg.state-directory;
       zones = mapAttrs' (dom: dom-cfg: let
-        net-cfg = dom-cfg.network-definition;
+        net-cfg = dom-cfg.zone-definition;
       in nameValuePair "${dom}." {
         dnssec = dom-cfg.dnssec;
 

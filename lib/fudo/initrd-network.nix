@@ -66,13 +66,11 @@ in {
             (hostname: hostOpts: hostOpts.initrd-network != null)
             config.instance.local-hosts;
       in {
-        network-definition.hosts = mapAttrs'
-          (hostname: hostOpts: nameValuePair "${hostname}-recovery"
-            {
-              ipv4-address = hostOpts.initrd-network.ip;
-              description = "${hostname} initrd host";
-            })
-          initrd-network-hosts;
+        zone-definition.hosts = mapAttrs'
+          (hostname: hostOpts: nameValuePair "${hostname}-recovery" {
+            ipv4-address = hostOpts.initrd-network.ip;
+            description = "${hostname} initrd host";
+          }) initrd-network-hosts;
 
         extra-records = let
           recs = (mapAttrsToList

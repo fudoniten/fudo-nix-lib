@@ -101,7 +101,7 @@ in {
 
     gssapi-realm = mkOption {
       type = nullOr str;
-      description = "Kerberos GSSAPI realm of the network.";
+      description = "Kerberos GSSAPI realm of the zone.";
       default = null;
     };
   };

@@ -74,11 +74,11 @@ in {
       default = [ ];
     };
 
-    network-definition = let
-      networkOpts = import ../types/network-definition.nix { inherit lib; };
+    zone-definition = let
+      zoneOpts = import ../types/zone-definition.nix { inherit lib; };
     in mkOption {
-      type = submodule networkOpts;
-      description = "Definition of network to be served by local server.";
+      type = submodule zoneOpts;
+      description = "Definition of network zone to be served by local server.";
       default = { };
     };
 
@@ -94,12 +94,13 @@ in {
     fudo.system.hostfile-entries = let 
       other-hosts = filterAttrs
         (hostname: hostOpts: hostname != config.instance.hostname)
-        cfg.network-definition.hosts;
+        cfg.zone-definition.hosts;
     in mapAttrs' (hostname: hostOpts:
       nameValuePair hostOpts.ipv4-address ["${hostname}.${cfg.domain}" hostname])
       other-hosts;
     
-    services.dhcpd4 = let network = cfg.network-definition;
+    services.dhcpd4 = let
+      zone = cfg.zone-definition;
     in {
       enable = true;
 
@@ -109,7 +110,7 @@ in {
         ipAddress = hostOpts.ipv4-address;
       }) (filterAttrs (host: hostOpts:
         hostOpts.mac-address != null && hostOpts.ipv4-address != null)
-        network.hosts);
+        zone.hosts);
 
       interfaces = cfg.dhcp-interfaces;
 
@@ -163,7 +164,7 @@ in {
       ipToBlock = ip:
         concatStringsSep "." (reverseList (take 3 (splitString "." ip)));
       compactHosts =
-        mapAttrsToList (host: data: data // { host = host; }) network.hosts;
+        mapAttrsToList (host: data: data // { host = host; }) zone.hosts;
       hostsByBlock =
         groupBy (host-data: ipToBlock host-data.ipv4-address) compactHosts;
       hostPtrRecord = host-data:
@@ -184,7 +185,7 @@ in {
         (map (sshfp: "${host} IN SSHFP ${sshfp}") ssh-fingerprints);
       cnameRecord = alias: host: "${alias} IN CNAME ${host}";
 
-      network = cfg.network-definition;
+      zone = cfg.zone-definition;
 
       known-hosts = config.fudo.hosts;
 
@@ -219,17 +220,17 @@ in {
 
           $TTL 30m
 
-          ${optionalString (network.gssapi-realm != null)
-          ''_kerberos IN TXT "${network.gssapi-realm}"''}
+          ${optionalString (zone.gssapi-realm != null)
+          ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
           ${join-lines
           (imap1 (i: server-ip: "ns${toString i} IN A ${server-ip}")
             cfg.dns-servers)}
-          ${join-lines (mapAttrsToList hostARecord network.hosts)}
-          ${join-lines (mapAttrsToList hostSshFpRecords network.hosts)}
-          ${join-lines (mapAttrsToList cnameRecord network.aliases)}
-          ${join-lines network.verbatim-dns-records}
-          ${pkgs.lib.fudo.dns.srvRecordsToBindZone network.srv-records}
+          ${join-lines (mapAttrsToList hostARecord zone.hosts)}
+          ${join-lines (mapAttrsToList hostSshFpRecords zone.hosts)}
+          ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
+          ${join-lines zone.verbatim-dns-records}
+          ${pkgs.lib.fudo.dns.srvRecordsToBindZone zone.srv-records}
           ${join-lines cfg.extra-records}
         '';
       }] ++ blockZones;

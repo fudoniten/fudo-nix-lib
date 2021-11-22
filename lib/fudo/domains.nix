@@ -77,6 +77,12 @@ let
         description = "Hostname of the primary mail server for this domain.";
         default = null;
       };
+
+      zone = mkOption {
+        type = nullOr str;
+        description = "Name of the DNS zone associated with domain.";
+        default = null;
+      };
     };
   };
 

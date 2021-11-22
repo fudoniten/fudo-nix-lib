@@ -3,7 +3,7 @@
 with lib;
 let
   zoneOpts =
-    import ../types/network-definition.nix { inherit lib; };
+    import ../types/zone-definition.nix { inherit lib; };
 in {
   options.fudo.zones = with types; mkOption {
     type = attrsOf (submodule zoneOpts);

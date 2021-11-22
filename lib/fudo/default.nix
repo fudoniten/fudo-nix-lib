@@ -28,7 +28,6 @@ with lib; {
     ./mail-container.nix
     ./minecraft-server.nix
     ./netinfo-email.nix
-    ./networks.nix
     ./node-exporter.nix
     ./nsd.nix
     ./password.nix
@@ -45,5 +44,6 @@ with lib; {
     ./vpn.nix
     ./webmail.nix
     ./wireless-networks.nix
+    ./zones.nix
   ];
 }

@@ -30,12 +30,12 @@ let
 
   host-ipv4 = config: hostname: let
     domain = config.fudo.hosts.${hostname}.domain;
-    host-network = config.fudo.networks.${domain};
+    host-network = config.fudo.zones.${domain};
   in host-network.hosts.${hostname}.ipv4-address;
 
   host-ipv6 = config: hostname: let
     domain = config.fudo.hosts.${hostname}.domain;
-    host-network = config.fudo.networks.${domain};
+    host-network = config.fudo.zones.${domain};
   in host-network.hosts.${hostname}.ipv6-address;
 
   host-ips = config: hostname: let

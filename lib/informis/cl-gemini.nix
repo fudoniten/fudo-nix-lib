@@ -161,7 +161,7 @@ in {
           GEMINI_TEXTFILES_ROOT = cfg.textfiles-archive;
           GEMINI_FEEDS = "${generate-feeds cfg.feeds}";
 
-          CL_SOURCE_REGISTRY = "${pkgs.lib.fudo.lisp.lisp-source-registry pkgs.cl-gemini}";
+          CL_SOURCE_REGISTRY = "${lib.lisp.lisp-source-registry pkgs.cl-gemini}";
         };
 
         path = with pkgs; [

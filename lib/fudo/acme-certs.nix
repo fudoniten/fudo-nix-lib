@@ -8,7 +8,7 @@ let
     domain = name;
   in {
     options = with types; {
-      email = mkOption {
+      admin-email = mkOption {
         type = str;
         description = "Domain administrator email.";
         default = "admin@${domain}";
@@ -115,7 +115,7 @@ in {
   
   config = {
     security.acme.certs = mapAttrs (domain: domainOpts: {
-      email = domainOpts.email;
+      email = domainOpts.admin-email;
       extraDomainNames = domainOpts.extra-domains;
     }) localDomains;
 

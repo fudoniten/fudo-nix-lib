@@ -196,7 +196,6 @@ in {
             ListenStream = "0.0.0.0:${toString site-cfg.dropbear-ssh-port}";
             Accept = true;
           };
-          unitConfig = { restartIfChanged = true; };
         };
       };
 

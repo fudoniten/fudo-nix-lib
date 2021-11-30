@@ -258,6 +258,12 @@ in rec {
         default = { };
       };
 
+      hardened = mkOption {
+        type = bool;
+        description = "Harden the host, applying additional security.";
+        default = false;
+      };
+
       initrd-network = let
         keypair-type = { ... }: {
           options = {

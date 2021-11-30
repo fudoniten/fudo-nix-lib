@@ -8,15 +8,6 @@ let
 
   hostname = config.instance.hostname;
 
-  generate-string-hash = name: str: let
-    string-hash-pkg = pkgs.stdenv.mkDerivation {
-      name = "${name}-string-hash";
-      phases = "installPhase";
-      buildInputs = [ pkgs.openssl ];
-      installPhase = "openssl passwd -6 ${str} > $out";
-    };
-  in string-hash-pkg;
-
 in {
   options.fudo.hosts = with types;
     mkOption {
@@ -92,10 +83,6 @@ in {
             config.environment.systemPackages;
           sorted-unique = sort lessThan (unique packages);
         in concatStringsSep "\n" sorted-unique;
-
-        build-timestamp.text = toString config.instance.build-timestamp;
-        build-seed-hash.source =
-          generate-string-hash "build-seed" config.instance.build-seed;
       };
       
       systemPackages = with pkgs;

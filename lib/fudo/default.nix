@@ -3,7 +3,6 @@
 with lib; {
   imports = [
     ./acme-certs.nix
-    ./acme-for-hostname.nix
     ./authentication.nix
     ./backplane
     ./chat.nix

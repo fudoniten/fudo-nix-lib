@@ -71,11 +71,20 @@ in {
 
   config = {
 
-    users.users = {
-      "${cfg.user}" = {
-        isSystemUser = true;
-        createHome = true;
-        home = "/var/home/${cfg.user}";
+    users = {
+      users = {
+        "${cfg.user}" = {
+          isSystemUser = true;
+          createHome = true;
+          home = "/var/home/${cfg.user}";
+          group = cfg.user;
+        };
+      };
+
+      groups = {
+        "${cfg.user}" = {
+          members = cfg.user;
+        };
       };
     };
 

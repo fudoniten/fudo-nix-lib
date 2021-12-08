@@ -362,26 +362,6 @@ let
   restrict-address-families = allowed:
     if (allowed == [ ]) then [ "~AF_INET" "~AF_INET6" ] else allowed;
 
-  dirOpts = { path, ... }: {
-    options = with types; {
-      user = mkOption {
-        type = str;
-        description = "User by whom the directory will be owned.";
-        default = "nobody";
-      };
-      group = mkOption {
-        type = str;
-        description = "Group by which the directory will be owned.";
-        default = "nogroup";
-      };
-      perms = mkOption {
-        type = str;
-        description = "Permission bits to apply to the directory.";
-        default = "0770";
-      };
-    };
-  };
-
 in {
   options.fudo.system = with types; {
     services = mkOption {
@@ -394,12 +374,6 @@ in {
       type = bool;
       description = "Put tmp filesystem on tmpfs (needs enough RAM).";
       default = true;
-    };
-
-    ensure-directories = mkOption {
-      type = attrsOf (submodule dirOpts);
-      description = "A map of required directories to directory properties.";
-      default = { };
     };
   };
 

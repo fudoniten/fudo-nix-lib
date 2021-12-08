@@ -373,15 +373,11 @@ in {
       # };
     };
 
-    fudo.system = {
-      ensure-directories = {
-        "${state-directory}" = {
-          user = cfg.user;
-          group = cfg.group;
-          perms = "0740";
-        };
-      };
+    systemd.tmpfiles.rules = [
+      "d ${state-directory} 0740 ${cfg.user} ${cfg.group} - -"
+    ];
 
+    fudo.system = {
       services = if master-server then {
 
         heimdal-kdc = let

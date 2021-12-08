@@ -19,6 +19,8 @@ let
     };
   };
 
+  config-dir = dirOf cfg.config-file;
+
   concatMapAttrs = f: attrs:
     foldr (a: b: a // b) {} (mapAttrs f attrs);
 
@@ -185,14 +187,7 @@ in {
           };
         }) cfg.sites;
 
-      system = let
-        config-dir = dirOf cfg.config-file;
-      in {
-        ensure-directories.${config-dir} = {
-          user = cfg.user;
-          perms = "0700";
-        };
-
+      system = {
         services.ejabberd-config-generator = let
           config-generator =
             enter-secrets config-file-template cfg.secret-files cfg.config-file;
@@ -212,7 +207,7 @@ in {
 
     systemd = {
       tmpfiles.rules = [
-        "D '${dirOf cfg.config-file}' 0550 ${cfg.user} ${cfg.group} - -"
+        "d '${config-dir}' 0700 ${cfg.user} ${cfg.group} - -'"
       ];
       
       services = {

@@ -387,10 +387,6 @@ in {
       timerConfig = { OnCalendar = opts.onCalendar; };
     }) (filterAttrs (name: opts: opts.onCalendar != null) cfg.services);
 
-    systemd.tmpfiles.rules = mapAttrsToList
-      (path: opts: "d ${path} ${opts.perms} ${opts.user} ${opts.group} - -")
-      cfg.ensure-directories;
-
     systemd.targets.fudo-init = { wantedBy = [ "multi-user.target" ]; };
 
     systemd.services = mapAttrs (name: opts: {

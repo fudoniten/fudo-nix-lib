@@ -83,7 +83,7 @@ in {
 
       groups = {
         "${cfg.user}" = {
-          members = cfg.user;
+          members = [ cfg.user ];
         };
       };
     };

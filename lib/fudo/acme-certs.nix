@@ -111,11 +111,18 @@ in {
       description = "Map of host to domains to domain options.";
       default = { };
     };
+
+    challenge-path = mkOption {
+      type = str;
+      description = "Web-accessible path for responding to ACME challenges.";
+      default = "/run/fudo-acme/challenge";
+    };
   };
   
   config = {
     security.acme.certs = mapAttrs (domain: domainOpts: {
       email = domainOpts.admin-email;
+      webroot = cfg.challenge-path;
       extraDomainNames = domainOpts.extra-domains;
     }) localDomains;
 
@@ -130,12 +137,14 @@ in {
       recommendedProxySettings = true;
 
       virtualHosts.${config.instance.host-fqdn} = {
-        enableACME = true;
-        forceSSL = true;
-
-        # Just...force override if you want this to point somewhere.
-        locations."/" = {
-          return = "403 Forbidden";
+        serverAliases = attrNames localDomains;
+        locations = {
+          "/.well-known/acme-challenge" = {
+            root = cfg.challenge-path;
+          };
+          "/" = {
+            return = "301 https://$host$request_uri";
+          };
         };
       };
     };
@@ -156,7 +165,9 @@ in {
             copyOpts.chain
             copyOpts.private-key
           ]) copies;
-      in unique (concatMap (i: unique i) copy-paths);
+      in (unique (concatMap (i: unique i) copy-paths)) ++ [
+        "d \"${cfg.challenge-path}\" 755 acme nginx - -"
+      ];
 
       services = concatMapAttrs (domain: domainOpts:
         concatMapAttrs (copy: copyOpts: let

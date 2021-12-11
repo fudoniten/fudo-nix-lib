@@ -86,7 +86,7 @@ in {
           partOf = [ "backplane-dns.target" ];
           requires = cfg.required-services ++ [ "postgresql.service" ];
           environment = {
-            FUDO_DNS_BACKPLANE_XMPP_HOSTNAME = backplane-cfg.backplane-host;
+            FUDO_DNS_BACKPLANE_XMPP_HOSTNAME = backplane-cfg.backplane-hostname;
             FUDO_DNS_BACKPLANE_XMPP_USERNAME = cfg.backplane-role.role;
             FUDO_DNS_BACKPLANE_XMPP_PASSWORD_FILE = cfg.backplane-role.password-file;
             FUDO_DNS_BACKPLANE_DATABASE_HOSTNAME = cfg.database.host;

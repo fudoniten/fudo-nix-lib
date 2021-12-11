@@ -364,12 +364,6 @@ in {
             attrs = {
               objectClass = [ "olcDatabaseConfig" "olcFrontendConfig" ];
               olcDatabase = "{-1}frontend";
-              olcAccess = makeAccess {
-                "*" = {
-                  "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  "*" = "none";
-                };
-              };
             };
           };
           "olcDatabase={0}config" = {
@@ -378,7 +372,6 @@ in {
               olcDatabase = "{0}config";
               olcAccess = makeAccess {
                 "*" = {
-                  "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
                   "*" = "none";
                 };
               };
@@ -392,36 +385,33 @@ in {
               # olcRootDN = "cn=admin,${cfg.base}";
               # olcRootPW = FIXME; # NOTE: this should be hashed...
               olcDbDirectory = "${cfg.state-directory}/database";
-              olcDbIndex = [ "objectClass eq" "uid eq" ];
+              olcDbIndex = [ "objectClass eq" "uid pres,eq" ];
               olcAccess = makeAccess {
                 "attrs=userPassword,shadowLastChange" = {
-                  "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
                   "dn.exact=cn=auth_reader,${cfg.base}" = "read";
-                  "dn.exact=cn=replicator,${cfg.base}" = "read";
-                  "self" = "write";
                   "*" = "auth";
                 };
                 "dn=cn=admin,ou=groups,${cfg.base}" = {
-                  "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  "users" = "read";
-                  "*" = "none";
+                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                  "anonymous" = "auth";
+                  "dn.children=dc=fudo,dc=org" = "read";
                 };
                 "dn.subtree=ou=groups,${cfg.base} attrs=memberUid" = {
-                  "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  "dn.regex=cn=[a-zA-Z][a-zA-Z0-9_]+,ou=hosts,${cfg.base}" = "write";
-                  "users" = "read";
-                  "*" = "none";
+                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                  # "dn.regex=cn=[a-zA-Z][a-zA-Z0-9_]+,ou=hosts,${cfg.base}" = "write";
+                  "anonymous" = "auth";
+                  "dn.children=dc=fudo,dc=org" = "read";
                 };
                 "dn.subtree=ou=members,${cfg.base} attrs=cn,sn,homeDirectory,loginShell,gecos,description,homeDirectory,uidNumber,gidNumber" = {
-                  "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  "dn.exact=cn=user_db_reader,${cfg.base}" = "read";
-                  "users" = "read";
-                  "*" = "none";
+                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                  "anonymous" = "auth";
+                  "dn.children=dc=fudo,dc=org" = "read";
                 };
                 "*" = {
-                  "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  "users" = "read";
-                  "*" = "none";
+                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                  "anonymous" = "auth";
+                  "dn.children=dc=fudo,dc=org" = "read";
                 };
               };
             };

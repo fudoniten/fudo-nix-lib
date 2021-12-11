@@ -1,8 +1,28 @@
 { config, lib, pkgs, ... }:
 
 with lib;
-{
+let
+  cfg = config.fudo.ssh;
+  hostname = config.instance.hostname;
+
+in {
+  options.fudo.ssh = with types; {
+    whitelistIPs = mkOption {
+      type = listOf str;
+      description =
+        "IPs to which fail2ban rules will not apply (on top of local networks).";
+      default = [];
+    };
+  };
+
   config = {
+    services.fail2ban = {
+      ignoreIP =
+        config.instance.local-networks ++ cfg.whitelistIPs;
+      maxretry = if config.fudo.hosts.${hostname}.hardened then 3
+        else 20;
+    };
+
     programs.ssh.knownHosts = let
       keyed-hosts =
         filterAttrs (h: o: o.ssh-pubkeys != [])

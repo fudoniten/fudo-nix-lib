@@ -2,13 +2,13 @@
 
 with lib;
 {
-  config = mkIf config.fudo.jabber.enable {
+  config = mkIf config.fudo.backplane.enable {
     fudo = let
       cfg = config.fudo.backplane;
 
       hostname = config.instance.hostname;
 
-      backplane-server = cfg.backplane-host;
+      backplane-server = cfg.backplane-hostname;
 
       generate-auth-file = name: files: let
         make-entry = name: passwd-file:
@@ -40,6 +40,8 @@ with lib;
       };
 
       jabber = {
+        enable = true;
+
         environment = {
           FUDO_HOST_PASSWD_FILE =
             secrets.backplane-host-auth.target-file;

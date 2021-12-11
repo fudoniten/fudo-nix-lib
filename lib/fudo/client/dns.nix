@@ -76,7 +76,7 @@ in {
         "${cfg.user}" = {
           isSystemUser = true;
           createHome = true;
-          home = "/var/home/${cfg.user}";
+          home = "/run/home/${cfg.user}";
           group = cfg.user;
         };
       };
@@ -90,8 +90,8 @@ in {
 
     systemd = {
       tmpfiles.rules = [
-        "d /var/home 755 root - - -"
-        "d /var/home/${cfg.user} 700 ${cfg.user} - - -"
+        "d /run/home 755 root - - -"
+        "d /run/home/${cfg.user} 700 ${cfg.user} - - -"
       ];
 
       timers.backplane-dns-client = {

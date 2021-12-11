@@ -55,6 +55,8 @@ let
 in {
   options.fudo.backplane = with types; {
 
+    enable = mkEnableOption "Enable backplane (jabber) server on this host.";
+
     client-hosts = mkOption {
       type = attrsOf (submodule clientHostOpts);
       description = "List of backplane client options.";
@@ -67,7 +69,7 @@ in {
       default = {};
     };
 
-    backplane-host = mkOption {
+    backplane-hostname = mkOption {
       type = types.str;
       description = "Hostname of the backplane XMPP server.";
     };

@@ -84,6 +84,12 @@ let
         description = "Arbitrary metadata associated with this secret.";
         default = {};
       };
+
+      service = mkOption {
+        type = str;
+        description = "Host-side name of the service decrypting this secret.";
+        default = "fudo-secret-${name}.service";
+      };
     };
   };
 
@@ -175,7 +181,7 @@ in {
         { };
 
       host-secret-services = mapAttrs' (secret: secretOpts:
-        (nameValuePair "fudo-secret-${hostname}-${secret}"
+        (nameValuePair secretOpts.service
           (secret-service hostname secret secretOpts))) host-secrets;
 
       trace-all = obj: builtins.trace obj obj;

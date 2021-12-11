@@ -183,6 +183,12 @@ in {
       description = "Environment variables to set for the ejabberd daemon.";
       default = {};
     };
+
+    required-services = mkOption {
+      type = listOf str;
+      description = "List of services that must start before ejabberd.";
+      default = [];
+    };
   };
   
   config = mkIf cfg.enable {

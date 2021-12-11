@@ -152,22 +152,24 @@ in {
     networking.firewall.allowedTCPPorts = [ 80 443 ];
     
     systemd = {
-      tmpfiles.rules = let
-        copies = concatMapAttrs (domain: domainOpts:
-          domainOpts.local-copies) localDomains;
-        perms = copyOpts: if (copyOpts.group != null) then "0550" else "0500";
-        copy-paths = mapAttrsToList (copy: copyOpts:
-          let
-            dir-entry = copyOpts: file: "d \"${dirOf file}\" ${perms copyOpts} ${copyOpts.user} ${optionalStringOr copyOpts.group "-"} - -";
-          in map (dir-entry copyOpts) [
-            copyOpts.certificate
-            copyOpts.full-certificate
-            copyOpts.chain
-            copyOpts.private-key
-          ]) copies;
-      in (unique (concatMap (i: unique i) copy-paths)) ++ [
-        "d \"${cfg.challenge-path}\" 755 acme nginx - -"
-      ];
+      tmpfiles = mkIf hasLocalDomains {
+        rules = let
+          copies = concatMapAttrs (domain: domainOpts:
+            domainOpts.local-copies) localDomains;
+          perms = copyOpts: if (copyOpts.group != null) then "0550" else "0500";
+          copy-paths = mapAttrsToList (copy: copyOpts:
+            let
+              dir-entry = copyOpts: file: "d \"${dirOf file}\" ${perms copyOpts} ${copyOpts.user} ${optionalStringOr copyOpts.group "-"} - -";
+            in map (dir-entry copyOpts) [
+              copyOpts.certificate
+              copyOpts.full-certificate
+              copyOpts.chain
+              copyOpts.private-key
+            ]) copies;
+        in (unique (concatMap (i: unique i) copy-paths)) ++ [
+          "d \"${cfg.challenge-path}\" 755 acme nginx - -"
+        ];
+      };
 
       services = concatMapAttrs (domain: domainOpts:
         concatMapAttrs (copy: copyOpts: let

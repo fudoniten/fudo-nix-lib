@@ -9,8 +9,10 @@ let
 
     buildInputs = with pkgs; [ openldap ];
 
-    installPhase = ''
-      slappasswd -T ${passwd-file} > $out
+    installPhase = let
+      passwd = removeSuffix "\n" (readFile passwd-file);
+    in ''
+      slappasswd -s ${passwd} > $out
     '';
   };
 

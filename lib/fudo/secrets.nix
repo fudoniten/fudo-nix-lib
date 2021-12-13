@@ -180,8 +180,13 @@ in {
       else
         { };
 
-      host-secret-services = mapAttrs' (secret: secretOpts:
-        (nameValuePair secretOpts.service
+      host-secret-services = let
+        head-or-null = lst: if (lst == []) then null else head lst;
+        strip-service = service-name:
+          head-or-null
+            (builtins.match "^(.+)[.]service$" service-name);
+      in mapAttrs' (secret: secretOpts:
+        (nameValuePair (strip-service secretOpts.service)
           (secret-service hostname secret secretOpts))) host-secrets;
 
       trace-all = obj: builtins.trace obj obj;

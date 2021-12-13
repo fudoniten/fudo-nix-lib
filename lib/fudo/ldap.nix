@@ -88,18 +88,12 @@ in {
         ldap-server = {
           enable = mkEnableOption "Fudo Authentication";
 
-          kerberos-host = mkOption {
-            type = str;
-            description = ''
-              The name of the host to use for Kerberos authentication.
-            '';
-          };
-
           kerberos-keytab = mkOption {
-            type = str;
+            type = nullOr str;
             description = ''
               The path to a keytab for the LDAP server, containing a principal for ldap/<hostname>.
             '';
+            default = null;
           };
 
           ssl-certificate = mkOption {
@@ -226,7 +220,7 @@ in {
 
     environment = {
       etc = {
-        "openldap/sasl2/slapd.conf" = {
+        "openldap/sasl2/slapd.conf" = mkIf (cfg.kerberos-keytab != null) {
           mode = "0400";
           user = config.services.openldap.user;
           group = config.services.openldap.group;
@@ -255,11 +249,14 @@ in {
       services.openldap = {
         partOf = [ cfg.systemd-target ];
         requires = cfg.required-services;
-        environment.KRB5_KTNAME = cfg.kerberos-keytab;
-        preStart = mkBefore
-          "${build-ca-script ca-path
+        environment = mkIf (cfg.kerberos-keytab != null) {
+          KRB5_KTNAME = cfg.kerberos-keytab;
+        };
+        preStart = mkAfter ''
+          ${build-ca-script ca-path
             cfg.ssl-chain
-            cfg.ssl-ca-certificate}";
+            cfg.ssl-ca-certificate}
+        '';
         serviceConfig = {
           PrivateDevices = true;
           PrivateTmp = true;
@@ -392,26 +389,26 @@ in {
                   "dn.exact=cn=auth_reader,${cfg.base}" = "read";
                   "*" = "auth";
                 };
-                "dn=cn=admin,ou=groups,${cfg.base}" = {
-                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  "anonymous" = "auth";
-                  "dn.children=dc=fudo,dc=org" = "read";
-                };
-                "dn.subtree=ou=groups,${cfg.base} attrs=memberUid" = {
-                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  # "dn.regex=cn=[a-zA-Z][a-zA-Z0-9_]+,ou=hosts,${cfg.base}" = "write";
-                  "anonymous" = "auth";
-                  "dn.children=dc=fudo,dc=org" = "read";
-                };
-                "dn.subtree=ou=members,${cfg.base} attrs=cn,sn,homeDirectory,loginShell,gecos,description,homeDirectory,uidNumber,gidNumber" = {
-                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                  "anonymous" = "auth";
-                  "dn.children=dc=fudo,dc=org" = "read";
-                };
+                # "dn=cn=admin,ou=groups,${cfg.base}" = {
+                #   # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                #   "anonymous" = "auth";
+                #   "*" = "read";
+                # };
+                # "dn.subtree=ou=groups,${cfg.base} attrs=memberUid" = {
+                #   # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                #   # "dn.regex=cn=[a-zA-Z][a-zA-Z0-9_]+,ou=hosts,${cfg.base}" = "write";
+                #   "anonymous" = "auth";
+                #   "*" = "read";
+                # };
+                # "dn.subtree=ou=members,${cfg.base} attrs=cn,sn,homeDirectory,loginShell,gecos,description,homeDirectory,uidNumber,gidNumber" = {
+                #   # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
+                #   "anonymous" = "auth";
+                #   "*" = "read";
+                # };
                 "*" = {
                   # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
                   "anonymous" = "auth";
-                  "dn.children=dc=fudo,dc=org" = "read";
+                  "*" = "read";
                 };
               };
             };
@@ -420,7 +417,7 @@ in {
       };
 
       declarativeContents = {
-        "dc=fudo,dc=org" = ''
+        "${cfg.base}" = ''
           dn: ${cfg.base}
           objectClass: top
           objectClass: dcObject

@@ -66,6 +66,12 @@ let
         default = [];
       };
 
+      ldap-servers = mkOption {
+        type = listOf str;
+        description = "List of hosts acting as LDAP authentication servers for the domain.";
+        default = [];
+      };
+
       primary-nameserver = mkOption {
         type = nullOr str;
         description = "Hostname of the primary nameserver for this domain.";

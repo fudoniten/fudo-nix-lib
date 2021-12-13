@@ -239,9 +239,8 @@ let
       };
 
       ipropd-keytab = mkOption {
-        type = str;
+        type = nullOr str;
         description = "Location at which to find keytab for ipropd slave.";
-        default = "${state-directory}/ipropd.keytab";
       };
     };
   };

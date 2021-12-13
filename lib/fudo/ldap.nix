@@ -256,6 +256,8 @@ in {
           ${build-ca-script ca-path
             cfg.ssl-chain
             cfg.ssl-ca-certificate}
+          # The script is failing to do this
+          chown "${user}:${group}" /etc/openldap
         '';
         serviceConfig = {
           PrivateDevices = true;

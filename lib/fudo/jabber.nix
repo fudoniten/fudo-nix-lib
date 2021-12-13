@@ -200,9 +200,12 @@ in {
       allowedTCPPorts = [ 5222 5223 5269 8010 ];
     };
 
-    fudo = {
+    fudo = let
+      host-fqdn = config.instance.host-fqdn;
+    in {
       acme.host-domains.${hostname} = mapAttrs (site: siteCfg:
         mkIf siteCfg.enableACME {
+          extra-domains = optional (site != host-fqdn) [ host-fqdn ];
           local-copies.ejabberd = {
             user = cfg.user;
             group = cfg.group;

@@ -237,13 +237,12 @@ in {
       allowedUDPPorts = [ 389 ];
     };
 
-    systemd = {
-      tmpfiles.rules = let
-        ca-dir = dirOf ca-path;
-        user = config.services.openldap.user;
-        group = config.services.openldap.group;
-      in [
-        "d ${ca-dir} 0700 ${user} ${group} - -"
+    systemd = let
+      user = config.services.openldap.user;
+      group = config.services.openldap.group;
+    in {
+      tmpfiles.rules = [
+        "d ${dirOf ca-path} 0700 ${user} ${group} - -"
       ];
 
       services.openldap = {

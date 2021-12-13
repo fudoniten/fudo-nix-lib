@@ -196,6 +196,10 @@ in {
       };
     };
 
+    networking.firewall = {
+      allowedTCPPorts = [ 5222 5223 5269 8010 ];
+    };
+
     fudo = {
       acme.host-domains.${hostname} = mapAttrs (site: siteCfg:
         mkIf siteCfg.enableACME {

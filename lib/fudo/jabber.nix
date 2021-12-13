@@ -205,7 +205,7 @@ in {
     in {
       acme.host-domains.${hostname} = mapAttrs (site: siteCfg:
         mkIf siteCfg.enableACME {
-          extra-domains = optional (site != host-fqdn) (trace host-fqdn host-fqdn);
+          extra-domains = optional (site != host-fqdn) host-fqdn;
           local-copies.ejabberd = {
             user = cfg.user;
             group = cfg.group;

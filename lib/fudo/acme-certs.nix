@@ -122,7 +122,8 @@ in {
   config = {
     security.acme.certs = mapAttrs (domain: domainOpts: {
       email = domainOpts.admin-email;
-      webroot = cfg.challenge-path;
+      # IF you won't do it all the time, nginx, you can't do it at all
+      webroot = mkForce cfg.challenge-path;
       extraDomainNames = domainOpts.extra-domains;
     }) localDomains;
 

@@ -115,15 +115,16 @@ in {
     challenge-path = mkOption {
       type = str;
       description = "Web-accessible path for responding to ACME challenges.";
-      default = "/run/fudo-acme/challenge";
+      # Sigh. Leave it the same as nginx default, so it works whether or not
+      # nginx feels like helping or not.
+      default = "/var/lib/acme/acme-challenge";
     };
   };
   
   config = {
     security.acme.certs = mapAttrs (domain: domainOpts: {
       email = domainOpts.admin-email;
-      # IF you won't do it all the time, nginx, you can't do it at all
-      webroot = mkForce cfg.challenge-path;
+      webroot = cfg.challenge-path;
       extraDomainNames = domainOpts.extra-domains;
     }) localDomains;
 
@@ -136,18 +137,6 @@ in {
       recommendedOptimisation = true;
       recommendedTlsSettings = true;
       recommendedProxySettings = true;
-
-      virtualHosts.${config.instance.host-fqdn} = {
-        serverAliases = attrNames localDomains;
-        locations = {
-          "/.well-known/acme-challenge" = {
-            root = cfg.challenge-path;
-          };
-          "/" = {
-            return = "301 https://$host$request_uri";
-          };
-        };
-      };
     };
 
     networking.firewall.allowedTCPPorts = [ 80 443 ];

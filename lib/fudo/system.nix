@@ -80,7 +80,7 @@ let
           description = "Environment variables supplied to this service.";
           default = { };
         };
-        environment-file = mkOption {
+        environmentFile = mkOption {
           type = nullOr str;
           description =
             "File containing environment variables supplied to this service.";
@@ -423,7 +423,7 @@ in {
         ProtectKernelLogs = opts.protectKernelLogs;
         KeyringMode = opts.keyringMode;
         EnvironmentFile =
-          mkIf (opts.environment-file != null) opts.environment-file;
+          mkIf (opts.environmentFile != null) opts.environmentFile;
 
         # This  is more complicated than it looks...
         # CapabilityBoundingSet = restrict-capabilities opts.requiredCapabilities;

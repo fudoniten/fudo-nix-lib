@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./chute.nix
     ./cl-gemini.nix
   ];
 }

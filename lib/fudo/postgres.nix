@@ -72,8 +72,8 @@ let
 
   password-setter-script = user: password-file: sql-file: ''
     unset PASSWORD
-    if [ ! -f ${password-file} ]; then
-      echo "file does not exist: ${password-file}"
+    if [ ! -r ${password-file} ]; then
+      echo "unable to read file: ${password-file}"
       exit 1
     fi
     PASSWORD=$(cat ${password-file})
@@ -82,7 +82,7 @@ let
   '';
 
   passwords-setter-script = users:
-    pkgs.writeScript "postgres-set-passwords.sh" ''
+    pkgs.writeShellScript "postgres-set-passwords.sh" ''
       if [ $# -ne 1 ]; then
         echo "usage: $0 output-file.sql"
         exit 1
@@ -311,7 +311,7 @@ in {
         postgresql-password-setter = let
           passwords-script = passwords-setter-script cfg.users;
           password-wrapper-script =
-            pkgs.writeScript "password-script-wrapper.sh" ''
+            pkgs.writeShellScript "password-script-wrapper.sh" ''
               TMPDIR=$(${pkgs.coreutils}/bin/mktemp -d -t postgres-XXXXXXXXXX)
               echo "using temp dir $TMPDIR"
               PASSWORD_SQL_FILE=$TMPDIR/user-passwords.sql
@@ -334,18 +334,20 @@ in {
             "A service to set postgresql user passwords after the server has started.";
           after = [ "postgresql.service" ] ++ cfg.required-services;
           requires = [ "postgresql.service" ] ++ cfg.required-services;
+          wantedBy = [ "postgresql.service" ];
           serviceConfig = {
             Type = "oneshot";
             User = config.services.postgresql.superUser;
+            ExecStart = "${password-wrapper-script}";
           };
           partOf = [ cfg.systemd-target ];
-          script = "${password-wrapper-script}";
         };
 
         postgresql = {
           requires = cfg.required-services;
           after = cfg.required-services;
           partOf = [ cfg.systemd-target ];
+          wants = [ "postgresql-password-setter.service" ];
 
           postStart = let
             allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";

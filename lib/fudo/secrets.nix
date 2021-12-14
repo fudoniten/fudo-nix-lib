@@ -35,7 +35,8 @@ let
   secret-service = target-host: secret-name:
     { source-file, target-file, user, group, permissions, ... }: {
       description = "decrypt secret ${secret-name} for ${target-host}.";
-      wantedBy = [ "default.target" ];
+      wantedBy = [ cfg.secret-target ];
+      before = [ cfg.secret-target ];
       serviceConfig = {
         Type = "oneshot";
         ExecStart = let
@@ -163,6 +164,12 @@ in {
         "Paths which contain (only) secrets. The contents will be reabable by the secret-group.";
       default = [ ];
     };
+
+    secret-target = mkOption {
+      type = str;
+      description = "Target indicating that all secrets are available.";
+      default = "fudo-secrets.target";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -216,6 +223,15 @@ in {
                 chmod -R u=rwX,g=rX,o= ${path}
               '') cfg.secret-paths));
           };
+        };
+      };
+
+      targets = let
+        strip-ext = filename: head (builtins.match "^(.+)[.]target$" filename);
+      in {
+        ${strip-ext cfg.secret-target} = {
+          description = "Target indicating that all Fudo secrets are available.";
+          wantedBy = [ "default.target" ];
         };
       };
 

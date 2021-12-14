@@ -2,6 +2,8 @@
 
 with lib;
 let
+  cfg = config.informis.chute;
+
   currencyOpts = { ... }: {
     options = {
       stop-percentile = mkOption {
@@ -48,7 +50,7 @@ let
     description = "Chute ${stage} job for ${currency}";
     path = [ package ];
     environmentFile = credential-file;
-    execStart = "chute --currency=${currency} --stop-at-percent=${stop-at-percent}";
+    execStart = "chute --currency=${currency} --stop-at-percent=${toString stop-at-percent}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];
   };

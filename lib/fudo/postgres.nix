@@ -305,6 +305,7 @@ in {
 
       targets.${strip-ext cfg.systemd-target} = {
         description = "Postgresql and associated systemd services.";
+        wantedBy = [ "multi-user.target" ];
       };
 
       services = {

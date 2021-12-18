@@ -137,7 +137,11 @@ in {
         };
         settings = mkIf (cfg.ssh != null) {
           server = {
+            # Displayed in the clone URL
             SSH_DOMAIN = cfg.hostname;
+            SSH_PORT = mkForce cfg.ssh.listen-port;
+
+            # Actual ip/port on which to listen
             SSH_LISTEN_PORT = cfg.ssh.listen-port;
             SSH_LISTEN_HOST = cfg.ssh.listen-ip;
           };

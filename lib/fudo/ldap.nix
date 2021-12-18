@@ -7,7 +7,7 @@ let
 
   user-type = import ../types/user.nix { inherit lib; };
 
-  stringJoin = concatStringsSep;
+  join-lines = concatStringsSep "\n";
 
   getUserGidNumber = user: group-map: group-map.${user.primary-group}.gid;
 
@@ -57,7 +57,7 @@ let
   '';
 
   toMemberList = userList:
-    stringJoin "\n" (map (username: "memberUid: ${username}") userList);
+    join-lines (map (username: "memberUid: ${username}") userList);
 
   groupLdif = base: name: opts: ''
     dn: cn=${name},ou=groups,${base}
@@ -69,15 +69,15 @@ let
   '';
 
   systemUsersLdif = base: user-map:
-    stringJoin "\n"
+    join-lines
     (mapAttrsToList (name: opts: systemUserLdif base name opts) user-map);
 
   groupsLdif = base: group-map:
-    stringJoin "\n"
+    join-lines
     (mapAttrsToList (name: opts: groupLdif base name opts) group-map);
 
   usersLdif = base: group-map: user-map:
-    stringJoin "\n"
+    join-lines
       (mapAttrsToList (name: opts: userLdif base name group-map opts) user-map);
 
 in {

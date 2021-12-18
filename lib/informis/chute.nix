@@ -5,7 +5,7 @@ let
   cfg = config.informis.chute;
 
   currencyOpts = { ... }: {
-    options = {
+    options = with types; {
       stop-percentile = mkOption {
         type = int;
         description = "Percentile of observed max at which to sell.";
@@ -50,9 +50,10 @@ let
     description = "Chute ${stage} job for ${currency}";
     path = [ package ];
     environmentFile = credential-file;
-    execStart = "chute --currency=${currency} --stop-at-percent=${toString stop-at-percent}";
+    execStart = "${package}/bin/chute --currency=${currency} --stop-at-percent=${toString stop-at-percent}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];
+    memoryDenyWriteExecute = false; # Needed becuz Clojure
   };
 
 in {
@@ -78,7 +79,7 @@ in {
   config = mkIf (cfg.enable) {
     fudo = {
       system.services = concatMapAttrs (stage: stageOpts:
-        mapAttrs (currency: currencyOpts: {
+        concatMapAttrs (currency: currencyOpts: {
           "chute-${stage}-${currency}" = chute-job-definition {
             inherit stage currency;
             credential-file = stageOpts.credential-file;
@@ -86,6 +87,11 @@ in {
             stop-at-percent = currencyOpts.stop-percentile;
           };
         }) stageOpts.currencies) cfg.stages;
+    };
+
+    systemd.targets.chute = {
+      wantedBy = [ "multi-user.target" ];
+      description = "Chute cryptocurrency safety parachute.";
     };
   };
 }

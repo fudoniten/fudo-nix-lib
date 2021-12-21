@@ -36,7 +36,7 @@ let
   in [
     cert-copy.certificate
     cert-copy.private-key
-    cert-copy.full-certificate
+    # cert-copy.full-certificate
   ];
 
   siteCertService = site:

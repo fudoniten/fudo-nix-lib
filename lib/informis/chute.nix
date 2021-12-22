@@ -63,12 +63,11 @@ let
     wantedBy = [ "chute.target" ];
     partOf = [ "chute.target" ];
     description = "Chute ${stage} job for ${currency}";
-    path = [ stageOpts.package ];
     environmentFile = stageOpts.environment-file;
     execStart = let
       jabber-string = optionalString (stageOpts.jabber-jid != null && stageOpts.jabber-target != null)
         "--jabber-jid=${stageOpts.jabber-jid} --target-jid=${stageOpts.jabber-target}";
-    in "chute --currency=${currency} --stop-at-percent=${toString currencyOpts.stop-percentile} ${jabber-string}";
+    in "${stageOpts.package}/bin/chute --currency=${currency} --stop-at-percent=${toString currencyOpts.stop-percentile} ${jabber-string}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];
     memoryDenyWriteExecute = false; # Needed becuz Clojure

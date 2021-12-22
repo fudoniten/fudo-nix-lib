@@ -58,17 +58,17 @@ let
   concatMapAttrs = f: attrs:
     foldr (a: b: a // b) {} (mapAttrsToList f attrs);
 
-  chute-job-definition = { stage, environment-file, currency, stop-at-percent, package }: {
+  chute-job-definition = { stage, currency, stageOpts, currencyOpts }: {
     after = [ "network-online.target" ];
     wantedBy = [ "chute.target" ];
     partOf = [ "chute.target" ];
     description = "Chute ${stage} job for ${currency}";
     path = [ package ];
-    environmentFile = environment-file;
+    environmentFile = stageOpts.environment-file;
     execStart = let
-      jabber-string = optionalString (cfg.jabber-jid != null && cfg.jabber-target != null)
-        "--jabber-jid=${cfg.jabber-jid} --target-jid=${cfg.jabber-target}";
-    in "${package}/bin/chute --currency=${currency} --stop-at-percent=${toString stop-at-percent} ${jabber-string}";
+      jabber-string = optionalString (stageOpts.jabber-jid != null && stageOpts.jabber-target != null)
+        "--jabber-jid=${stageOpts.jabber-jid} --target-jid=${stageOpts.jabber-target}";
+    in "${package}/bin/chute --currency=${currency} --stop-at-percent=${toString currencyOpts.stop-at-percent} ${jabber-string}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];
     memoryDenyWriteExecute = false; # Needed becuz Clojure
@@ -99,10 +99,7 @@ in {
       system.services = concatMapAttrs (stage: stageOpts:
         concatMapAttrs (currency: currencyOpts: {
           "chute-${stage}-${currency}" = chute-job-definition {
-            inherit stage currency;
-            environment-file = stageOpts.environment-file;
-            package = stageOpts.package;
-            stop-at-percent = currencyOpts.stop-percentile;
+            inherit stage currency stageOpts currencyOpts;
           };
         }) stageOpts.currencies) cfg.stages;
     };

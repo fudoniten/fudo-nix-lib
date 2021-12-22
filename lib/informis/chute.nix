@@ -68,7 +68,7 @@ let
     execStart = let
       jabber-string = optionalString (stageOpts.jabber-jid != null && stageOpts.jabber-target != null)
         "--jabber-jid=${stageOpts.jabber-jid} --target-jid=${stageOpts.jabber-target}";
-    in "${package}/bin/chute --currency=${currency} --stop-at-percent=${toString currencyOpts.stop-at-percent} ${jabber-string}";
+    in "chute --currency=${currency} --stop-at-percent=${toString currencyOpts.stop-at-percent} ${jabber-string}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];
     memoryDenyWriteExecute = false; # Needed becuz Clojure

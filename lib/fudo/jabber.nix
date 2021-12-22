@@ -13,6 +13,11 @@ let
         description = "Use ACME to get SSL certificates for this site.";
         default = true;
       };
+
+      hostname = mkOption {
+        type = str;
+        description = "Hostname of this server.";
+      };
         
       site-config = mkOption {
         type = attrs;
@@ -31,16 +36,16 @@ let
 
   host-domains = config.fudo.acme.host-domains.${hostname};
 
-  siteCerts = site: let
-    cert-copy = host-domains.${site}.local-copies.ejabberd;
+  hostCerts = host: let
+    cert-copy = host-domains.${host}.local-copies.ejabberd;
   in [
     cert-copy.certificate
     cert-copy.private-key
     # cert-copy.full-certificate
   ];
 
-  siteCertService = site:
-    host-domains.${site}.local-copies.ejabberd.service;
+  hostCertService = host:
+    host-domains.${host}.local-copies.ejabberd.service;
 
   config-file-template = let
     jabber-config = {
@@ -60,7 +65,9 @@ let
           cfg.admins;
       };
 
-      hosts = attrNames cfg.sites;
+      hosts =
+        mapAttrsToList (_: siteOpts: siteOpts.hostname)
+          cfg.sites;
 
       # By default, listen on all ips
       listen = let
@@ -79,7 +86,7 @@ let
       certfiles = concatMapAttrsToList
         (site: siteOpts:
           if (siteOpts.enableACME) then
-            (siteCerts site)
+            (siteCerts siteOpts.hostname)
           else [])
         cfg.sites;
 
@@ -203,9 +210,9 @@ in {
     fudo = let
       host-fqdn = config.instance.host-fqdn;
     in {
-      acme.host-domains.${hostname} = mapAttrs (site: siteCfg:
-        mkIf siteCfg.enableACME {
-          extra-domains = optional (site != host-fqdn) host-fqdn;
+      acme.host-domains.${hostname} = mapAttrs (site: siteOpts:
+        mkIf siteOpts.enableACME {
+          extra-domains = optional (siteOpts.hostname != host-fqdn) host-fqdn;
           local-copies.ejabberd = {
             user = cfg.user;
             group = cfg.group;
@@ -248,7 +255,9 @@ in {
       
       services = {
         ejabberd = {
-          wants = map (site: siteCertService site) (attrNames cfg.sites);
+          wants =
+            map (host: hostCertService host)
+              (mapAttrsToList (_: siteOpts: siteOpts.hostname) cfg.sites);
           requires = [ "ejabberd-config-generator.service" ];
           environment = cfg.environment;
         };

@@ -46,7 +46,7 @@ let
         default = null;
       };
 
-      jabber-user = mkOption {
+      jabber-target = mkOption {
         type = nullOr str;
         description = "User to which logs will be sent.";
         example = "target@my.server.org";
@@ -66,8 +66,8 @@ let
     path = [ package ];
     environmentFile = environment-file;
     execStart = let
-      jabber-string = optionalString (cfg.jabber-jid != null && cfg.jabber-user != null)
-        "--jabber-jid=${cfg.jabber-jid} --target-jid=${cfg.jabber-user}";
+      jabber-string = optionalString (cfg.jabber-jid != null && cfg.jabber-target != null)
+        "--jabber-jid=${cfg.jabber-jid} --target-jid=${cfg.jabber-target}";
     in "${package}/bin/chute --currency=${currency} --stop-at-percent=${toString stop-at-percent} ${jabber-string}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];

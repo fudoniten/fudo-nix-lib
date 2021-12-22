@@ -26,7 +26,7 @@ let
         default = pkgs.chute;
       };
 
-      credential-file = mkOption {
+      environment-file = mkOption {
         type = str;
         description = ''
           Path to a host-local env file containing definitions for:
@@ -35,22 +35,39 @@ let
           COINBASE_API_SECRET
           COINBASE_API_PASSPHRASE
           COINBASE_API_KEY
+          JABBER_PASSWORD (optional)
         '';
       };
-    };
+
+      jabber-jid = mkOption {
+        type = nullOr str;
+        description = "Jabber JID as which to connect.";
+        example = "chute-user@my.server.org";
+        default = null;
+      };
+
+      jabber-user = mkOption {
+        type = nullOr str;
+        description = "User to which logs will be sent.";
+        example = "target@my.server.org";
+        default = null;
+      };
   };
 
   concatMapAttrs = f: attrs:
     foldr (a: b: a // b) {} (mapAttrsToList f attrs);
 
-  chute-job-definition = { stage, credential-file, currency, stop-at-percent, package }: {
+  chute-job-definition = { stage, environment-file, currency, stop-at-percent, package }: {
     after = [ "network-online.target" ];
     wantedBy = [ "chute.target" ];
     partOf = [ "chute.target" ];
     description = "Chute ${stage} job for ${currency}";
     path = [ package ];
-    environmentFile = credential-file;
-    execStart = "${package}/bin/chute --currency=${currency} --stop-at-percent=${toString stop-at-percent}";
+    environmentFile = environment-file;
+    execStart = let
+      jabber-string = optionalString (cfg.jabber-jid != null && cfg.jabber-user != null)
+        "--jabber-jid=${cfg.jabber-jid} --target-jid=${cfg.jabber-user}";
+    in "${package}/bin/chute --currency=${currency} --stop-at-percent=${toString stop-at-percent} ${jabber-string}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];
     memoryDenyWriteExecute = false; # Needed becuz Clojure
@@ -65,7 +82,7 @@ in {
       description = "Map of stage names to stage options.";
       example = {
         staging = {
-          credential-file = "/path/to/credentials-file";
+          environment-file = "/path/to/environment-file";
           currencies = {
             btc.stop-percentile = 90;
             ada.stop-percentile = 85;
@@ -82,7 +99,7 @@ in {
         concatMapAttrs (currency: currencyOpts: {
           "chute-${stage}-${currency}" = chute-job-definition {
             inherit stage currency;
-            credential-file = stageOpts.credential-file;
+            environment-file = stageOpts.environment-file;
             package = stageOpts.package;
             stop-at-percent = currencyOpts.stop-percentile;
           };

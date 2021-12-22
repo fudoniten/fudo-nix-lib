@@ -52,6 +52,7 @@ let
         example = "target@my.server.org";
         default = null;
       };
+    };
   };
 
   concatMapAttrs = f: attrs:

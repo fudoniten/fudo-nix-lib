@@ -42,14 +42,21 @@ let
       jabber-jid = mkOption {
         type = nullOr str;
         description = "Jabber JID as which to connect.";
-        example = "chute-user@my.server.org";
+        example = "chute-user@my.domain.org";
         default = null;
       };
 
       jabber-target = mkOption {
         type = nullOr str;
         description = "User to which logs will be sent.";
-        example = "target@my.server.org";
+        example = "target@my.domain.org";
+        default = null;
+      };
+
+      jabber-server = mkOption {
+        type = nullOr str;
+        description = "Jabber server.";
+        example = "my-server.domain.org";
         default = null;
       };
     };
@@ -65,8 +72,11 @@ let
     description = "Chute ${stage} job for ${currency}";
     environmentFile = stageOpts.environment-file;
     execStart = let
-      jabber-string = optionalString (stageOpts.jabber-jid != null && stageOpts.jabber-target != null)
-        "--jabber-jid=${stageOpts.jabber-jid} --target-jid=${stageOpts.jabber-target}";
+      jabber-string =
+        optionalString (stageOpts.jabber-jid != null &&
+                        stageOpts.jabber-target != null &&
+                        stageOpts.jabber-server != null)
+          "--jabber-jid=${stageOpts.jabber-jid} --target-jid=${stageOpts.jabber-target} --jabber-server=${stageOpts.jabber-server}";
     in "${stageOpts.package}/bin/chute --currency=${currency} --stop-at-percent=${toString currencyOpts.stop-percentile} ${jabber-string}";
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];

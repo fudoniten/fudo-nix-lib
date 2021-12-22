@@ -63,7 +63,7 @@ let
     wantedBy = [ "chute.target" ];
     partOf = [ "chute.target" ];
     description = "Chute ${stage} job for ${currency}";
-    path = [ package ];
+    path = [ stageOpts.package ];
     environmentFile = stageOpts.environment-file;
     execStart = let
       jabber-string = optionalString (stageOpts.jabber-jid != null && stageOpts.jabber-target != null)

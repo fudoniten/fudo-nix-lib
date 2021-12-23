@@ -86,7 +86,7 @@ let
       certfiles = concatMapAttrsToList
         (site: siteOpts:
           if (siteOpts.enableACME) then
-            (siteCerts siteOpts.hostname)
+            (hostCerts siteOpts.hostname)
           else [])
         cfg.sites;
 

@@ -65,9 +65,7 @@ let
           cfg.admins;
       };
 
-      hosts =
-        mapAttrsToList (_: siteOpts: siteOpts.hostname)
-          cfg.sites;
+      hosts = attrNames cfg.sites;
 
       # By default, listen on all ips
       listen = let
@@ -86,12 +84,12 @@ let
       certfiles = concatMapAttrsToList
         (site: siteOpts:
           if (siteOpts.enableACME) then
-            (hostCerts siteOpts.hostname)
+            (hostCerts [siteOpts.hostname])
           else [])
         cfg.sites;
 
       host_config =
-        mapAttrs (site: siteOpts: siteOpts.site-config)
+        mapAttrs (site: siteOpts: siteOpts.hostname)
           cfg.sites;
     };
     
@@ -210,14 +208,15 @@ in {
     fudo = let
       host-fqdn = config.instance.host-fqdn;
     in {
-      acme.host-domains.${hostname} = mapAttrs (site: siteOpts:
-        mkIf siteOpts.enableACME {
-          extra-domains = optional (siteOpts.hostname != host-fqdn) host-fqdn;
+      acme.host-domains.${hostname} = mapAttrs' (_: siteOpts:
+        nameValuePair siteOpts.hostname {
+          extra-domains =
+            (optional (siteOpts.hostname != host-fqdn) host-fqdn);
           local-copies.ejabberd = {
             user = cfg.user;
             group = cfg.group;
           };
-        }) cfg.sites;
+        }) (filterAttrs (_: siteOpts: siteOpts.enableACME) cfg.sites);
 
       secrets.host-secrets.${hostname}.ejabberd-password-env = let
         env-vars = mapAttrsToList (secret: file: "${secret}=${readFile file}")
@@ -256,7 +255,7 @@ in {
       services = {
         ejabberd = {
           wants =
-            map (host: hostCertService host)
+            map hostCertService
               (mapAttrsToList (_: siteOpts: siteOpts.hostname) cfg.sites);
           requires = [ "ejabberd-config-generator.service" ];
           environment = cfg.environment;

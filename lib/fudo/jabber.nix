@@ -67,6 +67,8 @@ let
 
       hosts = attrNames cfg.sites;
 
+      acme.auto = false;
+
       # By default, listen on all ips
       listen = let
         common = {
@@ -89,7 +91,7 @@ let
         cfg.sites;
 
       host_config =
-        mapAttrs (site: siteOpts: siteOpts.hostname)
+        mapAttrs (site: siteOpts: siteOpts.site-config)
           cfg.sites;
     };
     
@@ -208,10 +210,11 @@ in {
     fudo = let
       host-fqdn = config.instance.host-fqdn;
     in {
-      acme.host-domains.${hostname} = mapAttrs' (_: siteOpts:
+      acme.host-domains.${hostname} = mapAttrs' (site: siteOpts:
         nameValuePair siteOpts.hostname {
           extra-domains =
-            (optional (siteOpts.hostname != host-fqdn) host-fqdn);
+            (optional (siteOpts.hostname != host-fqdn) host-fqdn) ++
+            [ "pubsub.${site}" ];
           local-copies.ejabberd = {
             user = cfg.user;
             group = cfg.group;

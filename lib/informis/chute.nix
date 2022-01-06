@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, ... } @ toplevel:
 
 with lib;
 let
@@ -13,7 +13,9 @@ let
     };
   };
 
-  stageOpts = { ... }: {
+  stageOpts = { name, ... }: let
+    stage-name = name;
+  in {
     options = with types; {
       currencies = mkOption {
         type = attrsOf (submodule currencyOpts);
@@ -39,25 +41,26 @@ let
         '';
       };
 
-      jabber-jid = mkOption {
-        type = nullOr str;
-        description = "Jabber JID as which to connect.";
-        example = "chute-user@my.domain.org";
-        default = null;
-      };
+      jabber = {
+        jid = mkOption {
+          type = str;
+          description = "Jabber JID as which to connect.";
+          example = "chute-user@my.domain.org";
+          default = null;
+        };
 
-      jabber-target = mkOption {
-        type = nullOr str;
-        description = "User to which logs will be sent.";
-        example = "target@my.domain.org";
-        default = null;
-      };
+        resource = mkOption {
+          type = str;
+          description = "Jabber resource string.";
+          default = "${toplevel.config.instance.hostname}-${stage-name}";
+        };
 
-      jabber-server = mkOption {
-        type = nullOr str;
-        description = "Jabber server.";
-        example = "my-server.domain.org";
-        default = null;
+        target-jid = mkOption {
+          type = str;
+          description = "User to which logs will be sent.";
+          example = "target@my.domain.org";
+          default = null;
+        };
       };
     };
   };
@@ -65,7 +68,9 @@ let
   concatMapAttrs = f: attrs:
     foldr (a: b: a // b) {} (mapAttrsToList f attrs);
 
-  chute-job-definition = { stage, currency, stageOpts, currencyOpts }: {
+  chute-job-definition = { stage, currency, stageOpts, currencyOpts }: let
+    join-args = concatStringsSep " ";
+  in {
     after = [ "network-online.target" ];
     wantedBy = [ "chute.target" ];
     partOf = [ "chute.target" ];
@@ -73,11 +78,15 @@ let
     environmentFile = stageOpts.environment-file;
     execStart = let
       jabber-string =
-        optionalString (stageOpts.jabber-jid != null &&
-                        stageOpts.jabber-target != null &&
-                        stageOpts.jabber-server != null)
-          "--jabber-jid=${stageOpts.jabber-jid} --target-jid=${stageOpts.jabber-target} --jabber-server=${stageOpts.jabber-server}";
-    in "${stageOpts.package}/bin/chute --currency=${currency} --stop-at-percent=${toString currencyOpts.stop-percentile} ${jabber-string}";
+        optionalString (stageOpts.jabber != null)
+          (join-args  ["--jabber-jid=${stageOpts.jabber.jid}"
+                       "--target-jid=${stageOpts.jabber.target-jid}"
+                       "--jabber-resource=${stageOpts.jabber.resource}-${currency}"]);
+
+    in join-args ["${stageOpts.package}/bin/chute"
+                  "--currency=${currency}"
+                  "--stop-at-percent=${toString currencyOpts.stop-percentile}"
+                  jabber-string];
     privateNetwork = false;
     addressFamilies = [ "AF_INET" ];
     memoryDenyWriteExecute = false; # Needed becuz Clojure

@@ -33,76 +33,115 @@ let
 
   networkHostOpts = import ./network-host.nix { inherit lib; };
 
-in {
-  options = with types; {
-    hosts = mkOption {
-      type = attrsOf (submodule networkHostOpts);
-      description = "Hosts on the local network, with relevant settings.";
-      example = {
-        my-host = {
-          ipv4-address = "192.168.0.1";
-          mac-address = "aa:aa:aa:aa:aa";
-        };
-      };
-      default = { };
-    };
-
-    srv-records = mkOption {
-      type = attrsOf (attrsOf (listOf (submodule srvRecordOpts)));
-      description = "SRV records for the network.";
-      example = {
-        tcp = {
-          kerberos = {
-            port = 88;
-            host = "krb-host.my-domain.com";
+  zoneOpts = { ... }: with types; {
+    options = {
+      hosts = mkOption {
+        type = attrsOf (submodule networkHostOpts);
+        description = "Hosts on the local network, with relevant settings.";
+        example = {
+          my-host = {
+            ipv4-address = "192.168.0.1";
+            mac-address = "aa:aa:aa:aa:aa";
           };
         };
+        default = { };
       };
-      default = { };
-    };
 
-    aliases = mkOption {
-      type = attrsOf str;
-      default = { };
-      description =
-        "A mapping of host-alias -> hostnames to add to the domain record.";
-      example = {
-        mail = "my-mail-host";
-        music = "musicall-host.other-domain.com.";
+      nameservers = mkOption {
+        type = attrsOf (submodule networkHostOpts);
+        description = "Map of domain nameservers to host data.";
+        example = {
+          "ns1" = {
+            ipv4-address = "1.1.1.1";
+            ipv6-address = "1::1";
+          };
+        };
+        default = {};
       };
-    };
 
-    verbatim-dns-records = mkOption {
-      type = listOf str;
-      description = "Records to be inserted verbatim into the DNS zone.";
-      example = [ "some-host IN CNAME base-host" ];
-      default = [ ];
-    };
+      srv-records = mkOption {
+        type = attrsOf (attrsOf (listOf (submodule srvRecordOpts)));
+        description = "SRV records for the network.";
+        example = {
+          tcp = {
+            kerberos = {
+              port = 88;
+              host = "krb-host.my-domain.com";
+            };
+          };
+        };
+        default = { };
+      };
 
-    dmarc-report-address = mkOption {
-      type = nullOr str;
-      description = "The email to use to recieve DMARC reports, if any.";
-      example = "admin-user@domain.com";
-      default = null;
-    };
+      aliases = mkOption {
+        type = attrsOf str;
+        default = { };
+        description =
+          "A mapping of host-alias -> hostnames to add to the domain record.";
+        example = {
+          mail = "my-mail-host";
+          music = "musicall-host.other-domain.com.";
+        };
+      };
 
-    default-host = mkOption {
-      type = nullOr str;
-      description =
-        "IP of the host which will act as the default server for this domain, if any.";
-      default = null;
-    };
+      verbatim-dns-records = mkOption {
+        type = listOf str;
+        description = "Records to be inserted verbatim into the DNS zone.";
+        example = [ "some-host IN CNAME base-host" ];
+        default = [ ];
+      };
 
-    mx = mkOption {
-      type = listOf str;
-      description = "A list of mail servers serving this domain.";
-      default = [ ];
-    };
+      dmarc-report-address = mkOption {
+        type = nullOr str;
+        description = "The email to use to recieve DMARC reports, if any.";
+        example = "admin-user@domain.com";
+        default = null;
+      };
 
-    gssapi-realm = mkOption {
-      type = nullOr str;
-      description = "Kerberos GSSAPI realm of the zone.";
-      default = null;
+      default-host = mkOption {
+        type = nullOr str;
+        description =
+          "IP of the host which will act as the default server for this domain, if any.";
+        default = null;
+      };
+
+      mx = mkOption {
+        type = listOf str;
+        description = "A list of mail servers serving this domain.";
+        default = [ ];
+      };
+
+      gssapi-realm = mkOption {
+        type = nullOr str;
+        description = "Kerberos GSSAPI realm of the zone.";
+        default = null;
+      };
+
+      default-ttl = mkOption {
+        type = str;
+        description = "Default time-to-live for this zone.";
+        default = "3h";
+      };
+
+      host-record-ttl = mkOption {
+        type = str;
+        description = "Default time-to-live for records in this zone";
+        default = "1h";
+      };
+
+      description = mkOption {
+        type = str;
+        description = "Description of this zone.";
+      };
+
+      subdomains = mkOption {
+        type = attrsOf (submodule zoneOpts);
+        description = "Subdomains of the current zone.";
+        default = {};
+      };
     };
   };
+
+in {
+  options = zoneOpts;
 }

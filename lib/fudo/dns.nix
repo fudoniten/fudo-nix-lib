@@ -8,6 +8,12 @@ let
 
   domainOpts = { name, ... }: {
     options = with types; {
+      domain = mkOption {
+        type = str;
+        description = "Domain name.";
+        default = name;
+      };
+
       dnssec = mkOption {
         type = bool;
         description = "Enable DNSSEC security for this zone.";

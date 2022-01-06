@@ -33,8 +33,8 @@ let
 
   networkHostOpts = import ./network-host.nix { inherit lib; };
 
-  zoneOpts = { ... }: with types; {
-    options = {
+  zoneOpts = {
+    options = with types; {
       hosts = mkOption {
         type = attrsOf (submodule networkHostOpts);
         description = "Hosts on the local network, with relevant settings.";

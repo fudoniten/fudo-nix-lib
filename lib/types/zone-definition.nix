@@ -142,6 +142,4 @@ let
     };
   };
 
-in {
-  options = zoneOpts;
-}
+in zoneOpts

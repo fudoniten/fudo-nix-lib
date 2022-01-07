@@ -75,7 +75,7 @@ let
     a-record = host: hostOpts: optional (hostOpts.ipv4-address != null)
       "${host} IN A ${hostOpts.ipv4-address}";
     aaaa-record = host: hostOpts: optional (hostOpts.ipv6-address != null)
-      "${host} IN A ${hostOpts.ipv6-address}";
+      "${host} IN AAAA ${hostOpts.ipv6-address}";
     description-record = host: hostOpts: optional (hostOpts.description != null)
       ''${host} IN TXT "${hostOpts.description}"'';
   in flatmapAttrsToList
@@ -97,27 +97,61 @@ let
     $ORIGIN ${dom}.
     $TTL ${zone.default-ttl}
 
+    ###
+    # Default Host
+    ###
     ${optionalString (zone.default-host != null)
       "@ IN A ${zone.default-host}"}
 
+    ###
+    # MX Records
+    ###
     ${join-lines (mxRecords zone.mx)}
 
+    # dmarc
+    ${dmarcRecord zone.dmarc-report-address}
+
+    ###
+    # Kerberos Realm
+    ###
     ${optionalString (zone.gssapi-realm != null)
       ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
-    $TTL ${zone.host-record-ttl}
-
+    ###
+    # Nameservers
+    ###
     ${join-lines (nsRecords dom zone.nameservers)}
 
     ${join-lines (nsARecords dom zone.nameservers)}
 
-    ${dmarcRecord zone.dmarc-report-address}
+    ###
+    # General Records
+    ###
+    $TTL ${zone.host-record-ttl}
 
+    ###
+    # SRV Records
+    ###
     ${join-lines (mapAttrsToList makeSrvProtocolRecords zone.srv-records)}
+
+    ###
+    # Host Records
+    ###
     ${join-lines (mapAttrsToList hostRecords zone.hosts)}
+
+    ###
+    # CNAMEs
+    ###
     ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
+
+    ###
+    # Verbatim Records
+    ###
     ${join-lines zone.verbatim-dns-records}
 
+    ###
+    # Subdomains of ${dom}
+    ###
     ${join-lines (mapAttrsToList
       (subdom: subdomCfg: subdomain-record "${subdom}.${dom}" subdomCfg)
       zone.subdomains)}

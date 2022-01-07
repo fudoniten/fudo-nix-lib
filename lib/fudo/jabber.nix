@@ -213,8 +213,7 @@ in {
       acme.host-domains.${hostname} = mapAttrs' (site: siteOpts:
         nameValuePair siteOpts.hostname {
           extra-domains =
-            (optional (siteOpts.hostname != host-fqdn) host-fqdn) ++
-            [ "pubsub.${site}" ];
+            (optional (siteOpts.hostname != host-fqdn) host-fqdn);
           local-copies.ejabberd = {
             user = cfg.user;
             group = cfg.group;

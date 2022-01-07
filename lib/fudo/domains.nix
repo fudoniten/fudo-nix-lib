@@ -78,10 +78,22 @@ let
         default = null;
       };
 
+      secondary-nameservers = mkOption {
+        type = listOf str;
+        description = "List of hostnames of slave nameservers for this domain.";
+        default = [];
+      };
+
       primary-mailserver = mkOption {
         type = nullOr str;
         description = "Hostname of the primary mail server for this domain.";
         default = null;
+      };
+
+      xmpp-servers = mkOption {
+        type = listOf str;
+        description = "Hostnames of the domain XMPP servers.";
+        default = [];
       };
 
       zone = mkOption {

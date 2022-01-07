@@ -230,23 +230,6 @@ in {
         target-file = "/run/ejabberd/environment/config-passwords.env";
         user = cfg.user;
       };
-
-      # system = {
-      #   services.ejabberd-config-generator = let
-      #     config-generator =
-      #       enter-secrets config-file-template cfg.secret-files cfg.config-file;
-      #   in {
-      #     script = "${config-generator}";
-      #     readWritePaths = [ config-dir ];
-      #     workingDirectory = config-dir;
-      #     user = cfg.user;
-      #     description = "Generate ejabberd config file with necessary passwords.";
-      #     postStart = ''
-      #       chown ${cfg.user}:${cfg.group} ${cfg.config-file}
-      #       chmod 0400 ${cfg.config-file}
-      #     '';
-      #   };
-      # };
     };
 
     systemd = {

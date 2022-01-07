@@ -28,5 +28,11 @@ with lib;
       description = "Description of the host.";
       default = null;
     };
+
+    sshfp-records = mkOption {
+      type = listOf str;
+      description = "List of SSHFP records for this host.";
+      default = [];
+    };
   };
 }

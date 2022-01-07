@@ -46,9 +46,8 @@ let
   };
 
   hostRecords = hostname: nethost-data: let
-    sshfp-records = optionals (hasAttr hosttname config.fudo.hosts)
-      (map (sshfp: "${hostname} IN SSHFP ${sshfp}")
-        config.fudo.hosts.${hostname}.ssh-fingerprints);
+    sshfp-records = map (sshfp: "${hostname} IN SSHFP ${sshfp}")
+      nethost-data.sshfp-records;
     a-record = optional (nethost-data.ipv4-address != null)
       "${hostname} IN A ${nethost-data.ipv4-address}";
     aaaa-record = optional (nethost-data.ipv6-address != null)
@@ -77,7 +76,7 @@ let
       "${host} IN A ${hostOpts.ipv4-address}";
     aaaa-record = host: hostOpts: optional (hostOpts.ipv6-address != null)
       "${host} IN A ${hostOpts.ipv6-address}";
-    description-record = host: hostOpts: (hostOpts.description != null)
+    description-record = host: hostOpts: optional (hostOpts.description != null)
       ''${host} IN TXT "${hostOpts.description}"'';
   in flatmapAttrsToList
     (host: hostOpts:
@@ -94,34 +93,34 @@ let
       } ${record.host}.";
   };
 
-  domain-record = dom: domCfg: ''
+  domain-record = dom: zone: ''
     $ORIGIN ${dom}.
-    $TTL ${domCfg.default-ttl}
+    $TTL ${zone.default-ttl}
 
-    ${optionalString (domCfg.default-host != null)
-      "@ IN A ${domCfg.default-host}"}
+    ${optionalString (zone.default-host != null)
+      "@ IN A ${zone.default-host}"}
 
-    ${mxRecords domCfg.mx}
+    ${join-lines (mxRecords zone.mx)}
 
-    ${optionalString (domCfg.gssapi-realm != null)
-      ''_kerberos IN TXT "${domCfg.gssapi-realm}"''}
+    ${optionalString (zone.gssapi-realm != null)
+      ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
-    $TTL ${domCfg.host-record-ttl}
+    $TTL ${zone.host-record-ttl}
 
-    ${nsRecords dom domCfg.nameservers}
+    ${join-lines (nsRecords dom zone.nameservers)}
 
-    ${nsARecords dom domCfg.nameservers}
+    ${join-lines (nsARecords dom zone.nameservers)}
 
-    ${dmarcRecord domCfg.dmarc-report-address}
+    ${dmarcRecord zone.dmarc-report-address}
 
-    ${join-lines (mapAttrsToList makeSrvProtocolRecords domCfg.srv-records)}
-    ${join-lines (mapAttrsToList hostRecords domCfg.hosts)}
-    ${join-lines (mapAttrsToList cnameRecord domCfg.aliases)}
-    ${join-lines domCfg.verbatim-dns-records}
+    ${join-lines (mapAttrsToList makeSrvProtocolRecords zone.srv-records)}
+    ${join-lines (mapAttrsToList hostRecords zone.hosts)}
+    ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
+    ${join-lines zone.verbatim-dns-records}
 
     ${join-lines (mapAttrsToList
       (subdom: subdomCfg: subdomain-record "${subdom}.${dom}" subdomCfg)
-      domCfg.subdomains)}
+      zone.subdomains)}
   '';
 
 in rec {
@@ -140,17 +139,17 @@ in rec {
       (service: records: map (srvRecordPair domain protocol service) records) services)
       srvRecords);
 
-  networkToZone = dom: domCfg: pkgs.writeText "zone-${dom}" ''
-    $ORIGIN ${dom}
-    $TTL ${domCfg.default-ttl}
+  zoneToZonefile = timestamp: dom: zone: ''
+    $ORIGIN ${dom}.
+    $TTL ${zone.default-ttl}
 
     @ IN SOA ns1.${dom}. hostmaster.${dom}. (
-      ${toString config.instance.build-timestamp}
+      ${toString timestamp}
       30m
       2m
       3w
       5m)
 
-    ${domain-record dom domCfg}
+    ${domain-record dom zone}
   '';
 }

@@ -125,7 +125,11 @@ in {
       in nameValuePair "${dom}." {
         dnssec = dom-cfg.dnssec;
 
-        data = pkgs.lib.dns.networkToZone dom dom-cfg;
+        data =
+          pkgs.lib.dns.zoneToZonefile
+            config.instance.build-timestamp
+            dom
+            dom-cfg.zone-definition;
 
         # data = ''
         #   $ORIGIN ${dom}.

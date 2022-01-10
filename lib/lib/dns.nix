@@ -4,16 +4,60 @@ with pkgs.lib;
 let
   join-lines = concatStringsSep "\n";
 
-  dump = obj: builtins.trace obj obj;
+  pthru = obj: builtins.trace obj obj;
+
+  remove-blank-lines = str:
+    concatStringsSep "\n\n"
+      (filter builtins.isString
+        (builtins.split "\n\n\n+" str));
+
+  n-spaces = n:
+    concatStringsSep "" (builtins.genList (_: " ") n);
+
+  pad-to-length = strlen: str: let
+    spaces = n-spaces (strlen - (stringLength str));
+  in str + spaces;
+
+  record-matcher = builtins.match "^([^;].*) IN ([A-Z][A-Z0-9]*) (.+)$";
+
+  is-record = str: (record-matcher str) != null;
+
+  max-int = foldr (a: b: if (a < b) then b else a) 0;
+
+  make-zone-formatter = zonedata: let
+    lines = splitString "\n" zonedata;
+    records = filter is-record lines;
+    split-records = map record-matcher records;
+    index-strlen = i: record: stringLength (elemAt record i);
+    record-index-maxlen = i: max-int (map (index-strlen i) split-records);
+  in record-formatter (record-index-maxlen 0) (record-index-maxlen 1);
+
+  record-formatter = name-max: type-max: let
+    name-padder = pad-to-length name-max;
+    type-padder = pad-to-length type-max;
+  in record-line: let
+    record-parts = record-matcher record-line;
+  in
+    if (record-parts == null) then
+      record-line
+    else (let
+      name = elemAt record-parts 0;
+      type = elemAt record-parts 1;
+      data = elemAt record-parts 2;
+    in "${name-padder name} IN ${type-padder type} ${data}");
+
+  format-zone = zonedata: let
+    formatter = make-zone-formatter zonedata;
+    lines = splitString "\n" zonedata;
+  in concatStringsSep "\n" (map formatter lines);
 
   makeSrvRecords = protocol: service: records: let
-    service-blah = (dump service);
-    record-blah = (dump records);
-    in
-    join-lines (map (record:
-      "_${service}._${protocol} IN SRV ${toString record.priority} ${
-        toString record.weight
-      } ${toString record.port} ${record.host}.") records);
+    service-blah = service;
+    record-blah = records;
+  in join-lines (map (record:
+    "_${service}._${protocol} IN SRV ${toString record.priority} ${
+      toString record.weight
+    } ${toString record.port} ${record.host}.") records);
 
   makeSrvProtocolRecords = protocol: services:
     join-lines (mapAttrsToList (makeSrvRecords protocol) services);
@@ -52,10 +96,15 @@ let
       "${hostname} IN A ${nethost-data.ipv4-address}";
     aaaa-record = optional (nethost-data.ipv6-address != null)
       "${hostname} IN AAAA ${nethost-data.ipv6-address}";
+    cname-record = optional (nethost-data.authoritative-hostname != null)
+      "${hostname} IN CNAME ${nethost-data.authoritative-hostname}";
     description-record = optional (nethost-data.description != null)
       ''${hostname} IN TXT "${nethost-data.description}"'';
-  in
-    join-lines (a-record ++ aaaa-record ++ description-record ++ sshfp-records);
+  in join-lines (a-record ++
+                 aaaa-record ++
+                 cname-record ++
+                 sshfp-records ++
+                 description-record);
 
   cnameRecord = alias: host: "${alias} IN CNAME ${host}";
 
@@ -71,19 +120,19 @@ let
   flatmapAttrsToList = f: attrs:
     foldr (a: b: a ++ b) [] (mapAttrsToList f attrs);
 
-  nsARecords = _: ns-hosts: let
-    a-record = host: hostOpts: optional (hostOpts.ipv4-address != null)
-      "${host} IN A ${hostOpts.ipv4-address}";
-    aaaa-record = host: hostOpts: optional (hostOpts.ipv6-address != null)
-      "${host} IN AAAA ${hostOpts.ipv6-address}";
-    description-record = host: hostOpts: optional (hostOpts.description != null)
-      ''${host} IN TXT "${hostOpts.description}"'';
-  in flatmapAttrsToList
-    (host: hostOpts:
-      (a-record host hostOpts) ++
-      (aaaa-record host hostOpts) ++
-      (description-record host hostOpts))
-    ns-hosts;
+  # nsARecords = _: ns-hosts: let
+  #   a-record = host: hostOpts: optional (hostOpts.ipv4-address != null)
+  #     "${host} IN A ${hostOpts.ipv4-address}";
+  #   aaaa-record = host: hostOpts: optional (hostOpts.ipv6-address != null)
+  #     "${host} IN AAAA ${hostOpts.ipv6-address}";
+  #   description-record = host: hostOpts: optional (hostOpts.description != null)
+  #     ''${host} IN TXT "${hostOpts.description}"'';
+  # in flatmapAttrsToList
+  #   (host: hostOpts:
+  #     (a-record host hostOpts) ++
+  #     (aaaa-record host hostOpts) ++
+  #     (description-record host hostOpts))
+  #   ns-hosts;
 
 
   srvRecordPair = domain: protocol: service: record: {
@@ -97,63 +146,32 @@ let
     $ORIGIN ${dom}.
     $TTL ${zone.default-ttl}
 
-    ###
-    # Default Host
-    ###
     ${optionalString (zone.default-host != null)
       "@ IN A ${zone.default-host}"}
 
-    ###
-    # MX Records
-    ###
     ${join-lines (mxRecords zone.mx)}
 
-    # dmarc
     ${dmarcRecord zone.dmarc-report-address}
 
-    ###
-    # Kerberos Realm
-    ###
     ${optionalString (zone.gssapi-realm != null)
       ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
-    ###
-    # Nameservers
-    ###
     ${join-lines (nsRecords dom zone.nameservers)}
 
-    ${join-lines (nsARecords dom zone.nameservers)}
+    ${join-lines (mapAttrsToList hostRecords zone.nameservers)}
 
-    ###
-    # General Records
-    ###
-    $TTL ${zone.host-record-ttl}
-
-    ###
-    # SRV Records
-    ###
     ${join-lines (mapAttrsToList makeSrvProtocolRecords zone.srv-records)}
 
-    ###
-    # Host Records
-    ###
+    $TTL ${zone.host-record-ttl}
+
     ${join-lines (mapAttrsToList hostRecords zone.hosts)}
 
-    ###
-    # CNAMEs
-    ###
     ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
 
-    ###
-    # Verbatim Records
-    ###
     ${join-lines zone.verbatim-dns-records}
 
-    ###
-    # Subdomains of ${dom}
-    ###
     ${join-lines (mapAttrsToList
-      (subdom: subdomCfg: subdomain-record "${subdom}.${dom}" subdomCfg)
+      (subdom: subdomCfg: domain-record "${subdom}.${dom}" subdomCfg)
       zone.subdomains)}
   '';
 
@@ -173,17 +191,18 @@ in rec {
       (service: records: map (srvRecordPair domain protocol service) records) services)
       srvRecords);
 
-  zoneToZonefile = timestamp: dom: zone: ''
-    $ORIGIN ${dom}.
-    $TTL ${zone.default-ttl}
+  zoneToZonefile = timestamp: dom: zone:
+    remove-blank-lines (format-zone ''
+        $ORIGIN ${dom}.
+        $TTL ${zone.default-ttl}
 
-    @ IN SOA ns1.${dom}. hostmaster.${dom}. (
-      ${toString timestamp}
-      30m
-      2m
-      3w
-      5m)
+        @ IN SOA ns1.${dom}. hostmaster.${dom}. (
+            ${toString timestamp}
+            30m
+            2m
+            3w
+            5m)
 
-    ${domain-record dom zone}
-  '';
+            ${domain-record dom zone}
+      '');
 }

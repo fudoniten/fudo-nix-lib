@@ -1,6 +1,5 @@
 { lib, ... }:
 
-{ hostname, ... }:
 with lib;
 {
   options = with types; {
@@ -20,6 +19,13 @@ with lib;
       type = nullOr types.str;
       description =
         "The MAC address of a given host, if desired for IP reservation.";
+      default = null;
+    };
+
+    authoritative-hostname = mkOption {
+      type = nullOr str;
+      description =
+        "The 'real' hostname of this host, i.e. CNAME. Prefer aliases!";
       default = null;
     };
 

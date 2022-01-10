@@ -27,6 +27,8 @@ let
   import-by-basename = path:
     mapAttrs (attr: attr-file: import attr-file)
       (basename-to-file-map path);
+
+  list-nix-files = nix-files;
 in {
-  inherit basename-to-file-map import-by-basename;
+  inherit basename-to-file-map import-by-basename list-nix-files;
 }

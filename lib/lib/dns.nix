@@ -51,13 +51,11 @@ let
     lines = splitString "\n" zonedata;
   in concatStringsSep "\n" (map formatter lines);
 
-  makeSrvRecords = protocol: service: records: let
-    service-blah = service;
-    record-blah = records;
-  in join-lines (map (record:
-    "_${service}._${protocol} IN SRV ${toString record.priority} ${
-      toString record.weight
-    } ${toString record.port} ${record.host}.") records);
+  makeSrvRecords = protocol: service: records:
+    join-lines (map (record:
+      "_${service}._${protocol} IN SRV ${toString record.priority} ${
+        toString record.weight
+      } ${toString record.port} ${record.host}.") records);
 
   makeSrvProtocolRecords = protocol: services:
     join-lines (mapAttrsToList (makeSrvRecords protocol) services);
@@ -96,13 +94,10 @@ let
       "${hostname} IN A ${nethost-data.ipv4-address}";
     aaaa-record = optional (nethost-data.ipv6-address != null)
       "${hostname} IN AAAA ${nethost-data.ipv6-address}";
-    cname-record = optional (nethost-data.authoritative-hostname != null)
-      "${hostname} IN CNAME ${nethost-data.authoritative-hostname}";
     description-record = optional (nethost-data.description != null)
       ''${hostname} IN TXT "${nethost-data.description}"'';
   in join-lines (a-record ++
                  aaaa-record ++
-                 cname-record ++
                  sshfp-records ++
                  description-record);
 
@@ -114,25 +109,10 @@ let
 
   mxRecords = mxs: map (mx: "@ IN MX 10 ${mx}.") mxs;
 
-  nsRecords = domain: ns-hosts:
-    mapAttrsToList (host: _: "@ IN NS ${host}.${domain}.") ns-hosts;
+  nsRecords = map (ns-host: "@ IN NS ${ns-host}");
 
   flatmapAttrsToList = f: attrs:
     foldr (a: b: a ++ b) [] (mapAttrsToList f attrs);
-
-  # nsARecords = _: ns-hosts: let
-  #   a-record = host: hostOpts: optional (hostOpts.ipv4-address != null)
-  #     "${host} IN A ${hostOpts.ipv4-address}";
-  #   aaaa-record = host: hostOpts: optional (hostOpts.ipv6-address != null)
-  #     "${host} IN AAAA ${hostOpts.ipv6-address}";
-  #   description-record = host: hostOpts: optional (hostOpts.description != null)
-  #     ''${host} IN TXT "${hostOpts.description}"'';
-  # in flatmapAttrsToList
-  #   (host: hostOpts:
-  #     (a-record host hostOpts) ++
-  #     (aaaa-record host hostOpts) ++
-  #     (description-record host hostOpts))
-  #   ns-hosts;
 
 
   srvRecordPair = domain: protocol: service: record: {
@@ -142,7 +122,7 @@ let
       } ${record.host}.";
   };
 
-  domain-record = dom: zone: ''
+  domain-records = dom: zone: ''
     $ORIGIN ${dom}.
     $TTL ${zone.default-ttl}
 
@@ -156,9 +136,7 @@ let
     ${optionalString (zone.gssapi-realm != null)
       ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
-    ${join-lines (nsRecords dom zone.nameservers)}
-
-    ${join-lines (mapAttrsToList hostRecords zone.nameservers)}
+    ${join-lines (nsRecords zone.nameservers)}
 
     ${join-lines (mapAttrsToList makeSrvProtocolRecords zone.srv-records)}
 
@@ -171,7 +149,7 @@ let
     ${join-lines zone.verbatim-dns-records}
 
     ${join-lines (mapAttrsToList
-      (subdom: subdomCfg: domain-record "${subdom}.${dom}" subdomCfg)
+      (subdom: subdomCfg: domain-records "${subdom}.${dom}" subdomCfg)
       zone.subdomains)}
   '';
 
@@ -203,6 +181,6 @@ in rec {
             3w
             5m)
 
-            ${domain-record dom zone}
+        ${domain-records dom zone}
       '');
 }

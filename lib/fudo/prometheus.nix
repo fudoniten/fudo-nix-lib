@@ -7,11 +7,11 @@ let
 
 in {
 
-  options.fudo.prometheus = {
+  options.fudo.prometheus = with types; {
     enable = mkEnableOption "Fudo Prometheus Data-Gathering Server";
 
     service-discovery-dns = mkOption {
-      type = with types; attrsOf (listOf str);
+      type = attrsOf (listOf str);
       description = ''
         A map of exporter type to a list of domains to use for service discovery.
       '';
@@ -28,7 +28,7 @@ in {
     };
 
     static-targets = mkOption {
-      type = with types; attrsOf (listOf str);
+      type = attrsOf (listOf str);
       description = ''
           A map of exporter type to a list of host:ports from which to collect metrics.
         '';
@@ -44,7 +44,7 @@ in {
     };
 
     docker-hosts = mkOption {
-      type = with types; listOf str;
+      type = listOf str;
       description = ''
         A list of explicit <host:port> docker targets from which to gather node data.
       '';
@@ -52,7 +52,7 @@ in {
     };
 
     push-url = mkOption {
-      type = with types; nullOr str;
+      type = nullOr str;
       description = ''
         The <host:port> that services can use to manually push data.
       '';
@@ -60,7 +60,7 @@ in {
     };
 
     push-address = mkOption {
-      type = with types; nullOr str;
+      type = nullOr str;
       description = ''
         The <host:port> address on which to listen for incoming data.
       '';
@@ -68,9 +68,15 @@ in {
     };
 
     hostname = mkOption {
-      type = with types; str;
+      type = str;
       description = "The hostname upon which Prometheus will serve.";
       example = "my-metrics-server.fudo.org";
+    };
+
+    state-directory = mkOption {
+      type = str;
+      description = "Directory at which to store Prometheus state.";
+      default = "/var/lib/prometheus";
     };
   };
 

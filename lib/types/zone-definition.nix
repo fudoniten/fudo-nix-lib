@@ -48,15 +48,13 @@ let
       };
 
       nameservers = mkOption {
-        type = attrsOf (submodule networkHostOpts);
-        description = "Map of domain nameservers to host data.";
-        example = {
-          "ns1" = {
-            ipv4-address = "1.1.1.1";
-            ipv6-address = "1::1";
-          };
-        };
-        default = {};
+        type = listOf str;
+        description = "List of zone nameservers.";
+        example = [
+          "ns1.fudo.org."
+          "10.0.0.1"
+        ];
+        default = [];
       };
 
       srv-records = mkOption {

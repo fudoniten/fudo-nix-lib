@@ -49,9 +49,9 @@ let
       };
 
       gssapi-realm = mkOption {
-        type = str;
+        type = nullOr str;
         description = "GSSAPI (i.e. Kerberos) realm of this domain.";
-        default = toUpper domain;
+        default = null;
       };
 
       kerberos-master = mkOption {

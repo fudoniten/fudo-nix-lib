@@ -62,11 +62,41 @@ let
         description = "SRV records for the network.";
         example = {
           tcp = {
-            kerberos = {
-              port = 88;
-              host = "krb-host.my-domain.com";
-            };
+            kerberos = [
+              {
+                port = 88;
+                host = "krb-host.my-domain.com";
+              }
+              {
+                port = 88;
+                host = "krb-host2.my-domain.com";
+              }
+            ];
           };
+        };
+        default = { };
+      };
+
+      metric-records = mkOption {
+        type = attrsOf (listOf (submodule srvRecordOpts));
+        description = "Map of metric type to list of SRV host records.";
+        example = {
+          node = [
+            {
+              host = "my-host.my-domain.com";
+              port = 443;
+            }
+            {
+              host = "my-host2.my-domain.com";
+              port = 443;
+            }
+          ];
+          rspamd = [
+            {
+              host = "mail-host.my-domain.com";
+              port = 443;
+            }
+          ];
         };
         default = { };
       };

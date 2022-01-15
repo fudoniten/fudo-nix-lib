@@ -60,6 +60,15 @@ let
   makeSrvProtocolRecords = protocol: services:
     join-lines (mapAttrsToList (makeSrvRecords protocol) services);
 
+  makeMetricRecords = metric-type: records:
+    join-lines
+      (map (record:
+        "${metric-type}._metrics._tcp IN SRV ${
+          toString record.priority
+        } ${
+          toString record.weight
+        } ${record.host}.") records);
+
   srvRecordOpts = with types; {
     options = {
       weight = mkOption {
@@ -139,6 +148,8 @@ let
     ${join-lines (nsRecords zone.nameservers)}
 
     ${join-lines (mapAttrsToList makeSrvProtocolRecords zone.srv-records)}
+
+    ${join-lines (mapAttrsToList makeMetricRecords zone.metric-records)}
 
     $TTL ${zone.host-record-ttl}
 

@@ -1,35 +1,13 @@
 # NOTE: this assumes that postgres is running locally.
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, ... } @ toplevel:
 
 with lib;
 let
   cfg = config.fudo.grafana;
-  fudo-cfg = config.fudo.common;
 
-  database-name = "grafana";
-  database-user = "grafana";
-
-  databaseOpts = { ... }: {
-    options = {
-      name = mkOption {
-        type = types.str;
-        description = "Database name.";
-      };
-      hostname = mkOption {
-        type = types.str;
-        description = "Hostname of the database server.";
-      };
-      user = mkOption {
-        type = types.str;
-        description = "Database username.";
-      };
-      password-file = mkOption {
-        type = types.path;
-        description = "File containing the database user's password.";
-      };
-    };
-  };
+  hostname = config.instance.hostname;
+  domain-name = config.fudo.hosts.${hostname}.domain;
 
 in {
 
@@ -37,45 +15,82 @@ in {
     enable = mkEnableOption "Fudo Metrics Display Service";
 
     hostname = mkOption {
-      type = types.str;
+      type = str;
       description = "Grafana site hostname.";
       example = "fancy-graphs.fudo.org";
     };
 
-    smtp-username = mkOption {
-      type = types.str;
-      description = "Username with which to send email.";
+    smtp = {
+      username = mkOption {
+        type = str;
+        description = "Username with which to send email.";
+        default = "metrics";
+      };
+
+      password-file = mkOption {
+        type = str;
+        description = "Path to a file containing the email user's password.";
+      };
+
+      hostname = mkOption {
+        type = str;
+        description = "Mail server hostname.";
+        default = "mail.${domain-name}";
+      };
+
+      email = mkOption {
+        type = str;
+        description = "Address from which mail will be sent (i.e. 'from' address).";
+        default = "${toplevel.config.fudo.grafana.smtp.username}@${domain-name}";
+      };
     };
 
-    smtp-password-file = mkOption {
-      type = types.path;
-      description = "Path to a file containing the email user's password.";
-    };
-
-    database = mkOption {
-      type = (types.submodule databaseOpts);
-      description = "Grafana database configuration.";
+    database = {
+      name = mkOption {
+        type = str;
+        description = "Database name.";
+        default = "grafana";
+      };
+      hostname = mkOption {
+        type = str;
+        description = "Hostname of the database server.";
+        default = "localhost";
+      };
+      user = mkOption {
+        type = str;
+        description = "Database username.";
+        default = "grafana";
+      };
+      password-file = mkOption {
+        type = str;
+        description = "File containing the database user's password.";
+      };
     };
 
     admin-password-file = mkOption {
-      type = types.path;
+      type = str;
       description = "Path to a file containing the admin user's password.";
     };
 
     secret-key-file = mkOption {
-      type = types.path;
+      type = str;
       description = "Path to a file containing the server's secret key, used for signatures.";
     };
 
-    prometheus-host = mkOption {
-      type = types.str;
-      description = "The URL of the prometheus data source.";
+    prometheus-hosts = mkOption {
+      type = listOf str;
+      description = "A list of URLs to prometheus data sources.";
+      default = [];
+    };
+
+    state-directory = mkOption {
+      type = str;
+      description = "Directory at which to store Grafana state data.";
+      default = "/var/lib/grafana";
     };
   };
 
   config = mkIf cfg.enable {
-    security.acme.certs.${cfg.hostname}.email = fudo-cfg.admin-email;
-
     services.nginx = {
       enable = true;
 
@@ -105,8 +120,9 @@ in {
       addr = "127.0.0.1";
       protocol = "http";
       port = 3000;
-      domain = "${cfg.hostname}";
+      domain = cfg.hostname;
       rootUrl = "https://${cfg.hostname}/";
+      dataDir = cfg.state-directory;
 
       security = {
         adminPasswordFile = cfg.admin-password-file;

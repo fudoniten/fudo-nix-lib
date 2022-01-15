@@ -11,7 +11,7 @@ let
 
 in {
 
-  options.fudo.grafana = {
+  options.fudo.grafana = with types; {
     enable = mkEnableOption "Fudo Metrics Display Service";
 
     hostname = mkOption {

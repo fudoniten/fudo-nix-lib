@@ -118,25 +118,48 @@ in {
       # Sigh. Leave it the same as nginx default, so it works whether or not
       # nginx feels like helping or not.
       default = "/var/lib/acme/acme-challenge";
+      # default = "/run/acme-challenge";
     };
   };
   
   config = {
     security.acme.certs = mapAttrs (domain: domainOpts: {
-      email = domainOpts.admin-email;
-      webroot = cfg.challenge-path;
-      extraDomainNames = domainOpts.extra-domains;
+    #   email = domainOpts.admin-email;
+    #   webroot = cfg.challenge-path;
+    #   group = "nginx";
+    #   extraDomainNames = domainOpts.extra-domains;
     }) localDomains;
 
     # Assume that if we're acquiring SSL certs, we have a real IP for the
     # host. nginx must have an acme dir for security.acme to work.
     services.nginx = mkIf hasLocalDomains {
       enable = true;
-
-      recommendedGzipSettings = true;
-      recommendedOptimisation = true;
       recommendedTlsSettings = true;
-      recommendedProxySettings = true;
+      virtualHosts = let
+        server-path = "/.well-known/acme-challenge";
+      in (mapAttrs (domain: domainOpts: {
+        # THIS IS A HACK. Getting redundant paths. So if {domain} is configured
+        # somewhere else, assume ACME is already set.
+        # locations.${server-path} = mkIf (! (hasAttr domain config.services.nginx.virtualHosts)) {
+        #   root = cfg.challenge-path;
+        #   extraConfig = "auth_basic off;";
+        # };
+        enableACME = true;
+        forceSSL = true;
+        serverAliases = domainOpts.extra-domains;
+      }) localDomains) // {
+        "default" = {
+          serverName = "_";
+          default = true;
+          locations = {
+            ${server-path} = {
+              root = cfg.challenge-path;
+              extraConfig = "auth_basic off;";
+            };
+            "/".return = "403 Forbidden";
+          };
+        };
+      };
     };
 
     networking.firewall.allowedTCPPorts = [ 80 443 ];
@@ -170,7 +193,17 @@ in {
             if (copyOpts.group != null) then
               "${copyOpts.user}:${copyOpts.group}"
             else copyOpts.user;
+          dirs = unique [
+            (dirOf copyOpts.certificate)
+            (dirOf copyOpts.full-certificate)
+            (dirOf copyOpts.chain)
+            (dirOf copyOpts.private-key)
+          ];
           install-certs = pkgs.writeShellScript "fudo-install-${domain}-${copy}-certs.sh" ''
+            ${concatStringsSep "\n" (map (dir: ''
+              mkdir -p ${dir}
+              chown ${owners} ${dir}
+            '') dirs)}
             cp ${source}/cert.pem ${copyOpts.certificate}
             chmod 0444 ${copyOpts.certificate}
             chown ${owners} ${copyOpts.certificate}

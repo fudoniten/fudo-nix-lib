@@ -4,14 +4,14 @@ with lib;
 let
   inherit (lib.strings) concatStringsSep;
 
-  cfg = config.fudo.node-exporter;
+  cfg = config.fudo.metrics.node-exporter;
 
   allow-network = network: "allow ${network};";
 
   local-networks = config.instance.local-networks;
 
 in {
-  options.fudo.node-exporter = with types; {
+  options.fudo.metrics.node-exporter = with types; {
     enable = mkEnableOption "Enable a Prometheus node exporter with some reasonable settings.";
 
     hostname = mkOption {
@@ -24,6 +24,8 @@ in {
       description = "User as which to run the node exporter job.";
       default = "node-exporter";
     };
+
+    private-network = mkEnableOption "Network is private.";
   };
 
   config = mkIf cfg.enable {
@@ -45,10 +47,12 @@ in {
       # list of trusted networks, with SSL protection.
       nginx = {
         enable = true;
+        recommendedOptimisation = true;
+        recommendedProxySettings = true;
 
         virtualHosts."${cfg.hostname}" = {
-          enableACME = true;
-          forceSSL = true;
+          enableACME = ! cfg.private-network;
+          forceSSL = ! cfg.private-network;
 
           locations."/metrics/node" = {
             extraConfig = ''
@@ -57,7 +61,6 @@ in {
               deny all;
 
               proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header Host $host;
             '';
 
             proxyPass = "http://127.0.0.1:9100/metrics";

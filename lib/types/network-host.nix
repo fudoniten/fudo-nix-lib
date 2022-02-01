@@ -1,8 +1,13 @@
 { lib, ... }:
 
 with lib;
-{
+{ name, ... }: {
   options = with types; {
+    hostname = mkOption {
+      type = str;
+      description = "Hostname.";
+      default = name;
+    };
     ipv4-address = mkOption {
       type = nullOr str;
       description = "The V4 IP of a given host, if any.";

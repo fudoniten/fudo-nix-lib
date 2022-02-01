@@ -218,6 +218,15 @@ in {
 
   config = mkIf cfg.enable {
 
+    users = {
+      users.openldap = {
+        uid = 389;
+      };
+      groups.openldap = {
+        gid = 389;
+      };
+    };
+
     environment = {
       etc = {
         "openldap/sasl2/slapd.conf" = mkIf (cfg.kerberos-keytab != null) {

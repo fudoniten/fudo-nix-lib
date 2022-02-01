@@ -337,11 +337,15 @@ in {
     users = {
       users.${cfg.user} = {
         isSystemUser = true;
+        uid = 88;
         home = state-directory;
         group = cfg.group;
       };
 
-      groups.${cfg.group} = { members = [ cfg.user ]; };
+      groups.${cfg.group} = {
+        gid = 88;
+        members = [ cfg.user ];
+      };
     };
 
     krb5 = {

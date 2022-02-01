@@ -48,10 +48,52 @@ let
         default = "admin@${domain}";
       };
 
-      gssapi-realm = mkOption {
+      grafana-hosts = mkOption {
+        type = listOf str;
+        description = "List of hosts acting as Grafana metric analyzers. Requires prometheus hosts as well.";
+        default = [];
+      };
+
+      log-aggregator = mkOption {
         type = nullOr str;
-        description = "GSSAPI (i.e. Kerberos) realm of this domain.";
+        description = "Host which will accept incoming log pushes.";
         default = null;
+      };
+
+      postgresql-server = mkOption {
+        type = nullOr str;
+        description = "Hostname acting as the local PostgreSQL server.";
+        default = null;
+      };
+
+      backplane = mkOption {
+        type = nullOr (submodule {
+          options = {
+            nameserver = mkOption {
+              type = nullOr str;
+              description = "Host acting as backplane dynamic DNS server.";
+              default = null;
+            };
+
+            dns-service = mkOption {
+              type = nullOr str;
+              description = "DNS backplane service host.";
+              default = null;
+            };
+
+            domain = mkOption {
+              type = str;
+              description = "Domain name of the dynamic zone served by this server.";
+            };
+          };
+        });
+        description = "Backplane configuration.";
+        default = null;
+      };
+
+      gssapi-realm = mkOption {
+        type = str;
+        description = "GSSAPI (i.e. Kerberos) realm of this domain.";
       };
 
       kerberos-master = mkOption {
@@ -69,6 +111,12 @@ let
       ldap-servers = mkOption {
         type = listOf str;
         description = "List of hosts acting as LDAP authentication servers for the domain.";
+        default = [];
+      };
+
+      prometheus-hosts = mkOption {
+        type = listOf str;
+        description = "List of hosts acting aas prometheus metric scrapers for hosts in this network.";
         default = [];
       };
 

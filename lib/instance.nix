@@ -62,9 +62,21 @@ in {
       description = "Networks which are considered local to this host, site, or domain.";
     };
 
+    service-home = mkOption {
+      type = str;
+      description = "Path to runtime home directories for services.";
+      default = "/run/service";
+    };
+
     build-seed = mkOption {
       type = str;
       description = "Seed used to generate configuration.";
     };
+  };
+
+  config = {
+    systemd.tmpfiles.rules = [
+      "d ${config.instance.service-home} 755 root root - -"
+    ];
   };
 }

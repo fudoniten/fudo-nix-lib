@@ -82,7 +82,7 @@ in {
           packages = map (p: "${p.name}")
             config.environment.systemPackages;
           sorted-unique = sort lessThan (unique packages);
-        in concatStringsSep "\n" sorted-unique;
+        in "${concatStringsSep "\n" sorted-unique}\n";
       };
       
       systemPackages = with pkgs;

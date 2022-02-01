@@ -133,6 +133,12 @@ let
         type = str;
         description = "Hostname of the mail server to use for this site.";
       };
+
+      local-gateway = mkOption {
+        type = nullOr str;
+        description = "If this is a NAT site, this should point to the host acting as network gateway.";
+        default = null;
+      };
     };
   };
 

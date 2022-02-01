@@ -166,7 +166,7 @@ let
             "Level of protection to apply to the system for this service.";
         };
         addressFamilies = mkOption {
-          type = listOf (enum address-families);
+          type = nullOr (listOf (enum address-families));
           default = [ ];
           description = "List of address families which the service can use.";
         };
@@ -435,7 +435,8 @@ in {
         WorkingDirectory =
           mkIf (opts.workingDirectory != null) opts.workingDirectory;
         RestrictAddressFamilies =
-          restrict-address-families opts.addressFamilies;
+          optionals (opts.addressFamilies != null)
+            (restrict-address-families opts.addressFamilies);
         RestrictNamespaces = opts.restrictNamespaces;
         User = mkIf (opts.user != null) opts.user;
         Group = mkIf (opts.group != null) opts.group;

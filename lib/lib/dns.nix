@@ -67,7 +67,7 @@ let
           toString record.priority
         } ${
           toString record.weight
-        } ${record.host}.") records);
+        } ${toString record.port} ${record.host}.") records);
 
   srvRecordOpts = with types; {
     options = {

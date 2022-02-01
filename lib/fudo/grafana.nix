@@ -4,14 +4,14 @@
 
 with lib;
 let
-  cfg = config.fudo.grafana;
+  cfg = config.fudo.metrics.grafana;
 
   hostname = config.instance.hostname;
   domain-name = config.fudo.hosts.${hostname}.domain;
 
 in {
 
-  options.fudo.grafana = with types; {
+  options.fudo.metrics.grafana = with types; {
     enable = mkEnableOption "Fudo Metrics Display Service";
 
     hostname = mkOption {
@@ -88,72 +88,75 @@ in {
       description = "Directory at which to store Grafana state data.";
       default = "/var/lib/grafana";
     };
+
+    private-network = mkEnableOption "Network is private, no SSL.";
   };
 
   config = mkIf cfg.enable {
-    services.nginx = {
-      enable = true;
+    systemd.tmpfiles.rules = let
+      grafana-user = config.systemd.services.grafana.serviceConfig.User;
+    in [
+      "d ${cfg.state-directory} 0700 ${grafana-user} - - -"
+    ];
 
-      virtualHosts = {
-        "${cfg.hostname}" = {
-          enableACME = true;
-          forceSSL = true;
+    services = {
+      nginx = {
+        enable = true;
+        recommendedOptimisation = true;
+        recommendedProxySettings = true;
 
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:3000";
-
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-By $server_addr:$server_port;
-              proxy_set_header X-Forwarded-For $remote_addr;
-              proxy_set_header X-Forwarded-Proto $scheme;
-            '';
+        virtualHosts = {
+          "${cfg.hostname}" = {
+            enableACME = ! cfg.private-network;
+            forceSSL = ! cfg.private-network;
+            locations."/".proxyPass = "http://127.0.0.1:3000";
           };
         };
       };
-    };
 
-    services.grafana = {
-      enable = true;
-
-      addr = "127.0.0.1";
-      protocol = "http";
-      port = 3000;
-      domain = cfg.hostname;
-      rootUrl = "https://${cfg.hostname}/";
-      dataDir = cfg.state-directory;
-
-      security = {
-        adminPasswordFile = cfg.admin-password-file;
-        secretKeyFile = cfg.secret-key-file;
-      };
-
-      smtp = {
+      grafana = {
         enable = true;
-        fromAddress = "metrics@fudo.org";
-        host = "mail.fudo.org:25";
-        user = cfg.smtp-username;
-        passwordFile = cfg.smtp-password-file;
-      };
 
-      database = {
-        host = cfg.database.hostname;
-        name = cfg.database.name;
-        user = cfg.database.user;
-        passwordFile = cfg.database.password-file;
-        type = "postgres";
-      };
+        addr = "127.0.0.1";
+        protocol = "http";
+        port = 3000;
+        domain = cfg.hostname;
+        rootUrl = let
+          scheme = if cfg.private-network then "http" else "https";
+        in "${scheme}://${cfg.hostname}/";
+        dataDir = cfg.state-directory;
 
-      provision.datasources = [
-        {
+        security = {
+          adminPasswordFile = cfg.admin-password-file;
+          secretKeyFile = cfg.secret-key-file;
+        };
+
+        smtp = {
+          enable = true;
+          fromAddress = "metrics@fudo.org";
+          host = "${cfg.smtp.hostname}:25";
+          user = cfg.smtp.username;
+          passwordFile = cfg.smtp.password-file;
+        };
+
+        database = {
+          host = cfg.database.hostname;
+          name = cfg.database.name;
+          user = cfg.database.user;
+          passwordFile = cfg.database.password-file;
+          type = "postgres";
+        };
+
+        provision.datasources = imap0 (i: host: {
           editable = false;
-          isDefault = true;
-          name = cfg.prometheus-host;
+          isDefault = (i == 0);
+          name = builtins.trace "PROMETHEUS-HOST: ${host}" host;
           type = "prometheus";
-          url = "https://${cfg.prometheus-host}/";
-        }
-      ];
+          url = let
+            scheme = if private-network then "http" else "https";
+          in "${scheme}://${host}/";
+        }) cfg.prometheus-hosts;
+      };
     };
   };
 }

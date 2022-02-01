@@ -32,8 +32,9 @@ in {
   config = {
     boot = mkIf (initrd-cfg != null) {
       kernelParams = let
-        site = config.fudo.sites.${config.instance.local-site};
-        site-gateway = site.gateway-v4;
+        site-name = config.instance.local-site;
+        site = config.fudo.sites.${site-name};
+        site-gateway = pkgs.lib.network.site-gateway config site-name;
         netmask =
           pkgs.lib.ip.maskFromV32Network site.network;
       in [

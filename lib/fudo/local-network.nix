@@ -31,7 +31,13 @@ in {
 
     dns-listen-ips = mkOption {
       type = listOf str;
-      description = "A list of IPs on which to server DNS queries.";
+      description = "A list of IPv4 addresses on which to server DNS queries.";
+    };
+
+    dns-listen-ipv6s = mkOption {
+      type = listOf str;
+      description = "A list of IPv6 addresses on which to server DNS queries.";
+      default = [ ];
     };
 
     gateway = mkOption {
@@ -61,10 +67,22 @@ in {
       default = false;
     };
 
-    recursive-resolver = mkOption {
-      type = str;
-      description = "DNS nameserver to use for recursive resolution.";
-      default = "1.1.1.1 port 53";
+    # recursive-resolver = mkOption {
+    #   type = str;
+    #   description = "DNS nameserver to use for recursive resolution.";
+    #   default = "1.1.1.1 port 53";
+    # };
+
+    recursive-resolver = {
+      host = mkOption {
+        type = str;
+        description = "DNS server host or (preferably) IP.";
+      };
+      port = mkOption {
+        type = port;
+        description = "Remote host port for DNS queries.";
+        default = 53;
+      };
     };
 
     search-domains = mkOption {
@@ -161,18 +179,22 @@ in {
         '';
       };
 
-      ipToBlock = ip:
+      filterRedundantIps = official-hosts: hosts: let
+        host-by-ip = groupBy (hostOpts: hostOpts.ipv4-address) hosts;
+      in filter (hostOpts:
+        if (length (getAttr hostOpts.ipv4-address host-by-ip) == 1) then
+          true
+        else elem hostOpts.hostname official-hosts) hosts;
+      ipTo24Block = ip:
         concatStringsSep "." (reverseList (take 3 (splitString "." ip)));
-      compactHosts =
-        mapAttrsToList (host: data: data // { host = host; }) zone.hosts;
-      hostsByBlock =
-        groupBy (host-data: ipToBlock host-data.ipv4-address) compactHosts;
+      hostsByBlock = official-hosts:
+        groupBy (host-data: ipTo24Block host-data.ipv4-address)
+          (filterRedundantIps official-hosts (attrValues zone.hosts));
       hostPtrRecord = host-data:
-        "${
-          last (splitString "." host-data.ipv4-address)
-        } IN PTR ${host-data.host}.${cfg.domain}.";
+        "${last (splitString "." host-data.ipv4-address)} IN PTR ${host-data.hostname}.${cfg.domain}.";
 
-      blockZones = mapAttrsToList blockHostsToZone hostsByBlock;
+      blockZones = official-hosts:
+        mapAttrsToList blockHostsToZone (hostsByBlock official-hosts);
 
       hostARecord = host: data: "${host} IN A ${data.ipv4-address}";
       hostSshFpRecords = host: data:
@@ -189,13 +211,21 @@ in {
 
       known-hosts = config.fudo.hosts;
 
+      domain-name = config.instance.local-domain;
+
+      domain-hosts =
+        attrNames
+          (filterAttrs (_: hostOpts:
+            hostOpts.domain == domain-name)
+            config.fudo.hosts);
+
     in {
       enable = true;
       cacheNetworks = [ cfg.network "localhost" "localnets" ];
-      forwarders = [ cfg.recursive-resolver ];
+      forwarders = [ "${cfg.recursive-resolver.host} port ${toString cfg.recursive-resolver.port}" ];
       listenOn = cfg.dns-listen-ips;
+      listenOnIpv6 = cfg.dns-listen-ipv6s;
       extraOptions = concatStringsSep "\n" [
-        "dnssec-enable yes;"
         "dnssec-validation yes;"
         "auth-nxdomain no;"
         "recursion yes;"
@@ -204,36 +234,44 @@ in {
       zones = [{
         master = true;
         name = cfg.domain;
-        file = pkgs.writeText "${cfg.domain}-zone" ''
-          @ IN SOA ns1.${cfg.domain}. hostmaster.${cfg.domain}. (
-            ${toString config.instance.build-timestamp}
-            5m
-            2m
-            6w
-            5m)
+        file = let
+          zone-data = pkgs.lib.dns.zoneToZonefile
+            config.instance.build-timestamp
+            cfg.domain
+            zone;
+        in pkgs.writeText "zone-${cfg.domain}" zone-data;
+        # file = pkgs.writeText "${cfg.domain}-zone" ''
+        #   @ IN SOA ns1.${cfg.domain}. hostmaster.${cfg.domain}. (
+        #     ${toString config.instance.build-timestamp}
+        #     5m
+        #     2m
+        #     6w
+        #     5m)
 
-          $TTL 1h
+        #   $TTL 1h
 
-          @ IN NS ns1.${cfg.domain}.
+        #   @ IN NS ns1.${cfg.domain}.
 
-          $ORIGIN ${cfg.domain}.
+        #   $ORIGIN ${cfg.domain}.
 
-          $TTL 30m
+        #   $TTL 30m
 
-          ${optionalString (zone.gssapi-realm != null)
-          ''_kerberos IN TXT "${zone.gssapi-realm}"''}
+        #   ${optionalString (zone.gssapi-realm != null)
+        #   ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
-          ${join-lines
-          (imap1 (i: server-ip: "ns${toString i} IN A ${server-ip}")
-            cfg.dns-servers)}
-          ${join-lines (mapAttrsToList hostARecord zone.hosts)}
-          ${join-lines (mapAttrsToList hostSshFpRecords zone.hosts)}
-          ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
-          ${join-lines zone.verbatim-dns-records}
-          ${pkgs.lib.dns.srvRecordsToBindZone zone.srv-records}
-          ${join-lines cfg.extra-records}
-        '';
-      }] ++ blockZones;
+        #   ${join-lines
+        #   (imap1 (i: server-ip: "ns${toString i} IN A ${server-ip}")
+        #     cfg.dns-servers)}
+        #   ${join-lines (mapAttrsToList hostARecord zone.hosts)}
+        #   ${join-lines (mapAttrsToList hostSshFpRecords zone.hosts)}
+        #   ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
+        #   ${join-lines zone.verbatim-dns-records}
+        #   ${pkgs.lib.dns.srvRecordsToBindZone zone.srv-records}
+        #   ${join-lines cfg.extra-records}
+        # '';
+      }] ++ (optionals
+        cfg.enable-reverse-mappings
+        (blockZones domain-hosts));
     };
   };
 }

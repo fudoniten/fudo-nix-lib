@@ -105,17 +105,22 @@ let
       nameValuePair "DATABASE ${database}" databaseOpts.access) databases;
 
   makeEntry = nw:
-    "host     all             all             ${nw} gss include_realm=0 krb_realm=${gssapi-realm}";
+    "hostssl  all  all  ${nw} gss include_realm=0 krb_realm=${gssapi-realm}";
 
   makeNetworksEntry = networks: join-lines (map makeEntry networks);
 
-  makeLocalUserPasswordEntries = users:
-    join-lines (mapAttrsToList (user: opts:
-      join-lines (map (db: ''
-        local  ${db}  ${user}   md5
-        host   ${db}  ${user}   127.0.0.1/16   md5
-        host   ${db}  ${user}   ::1/128        md5
-      '') (attrNames opts.databases))) (filterPasswordedUsers users));
+  makeLocalUserPasswordEntries = users: networks: let
+    network-entries = user: db:
+      join-lines
+        (map (network: "hostssl  ${db}  ${user}  ${network} md5")
+          networks);
+  in join-lines (mapAttrsToList (user: opts:
+    join-lines (map (db: ''
+      local  ${db}  ${user}   md5
+      host   ${db}  ${user}   127.0.0.1/16   md5
+      host   ${db}  ${user}   ::1/128        md5
+      ${network-entries user db}
+    '') (attrNames opts.databases))) (filterPasswordedUsers users));
 
   userTableAccessSql = user: entity: access:
     "GRANT ${access} ON ${entity} TO ${user};";
@@ -134,18 +139,21 @@ in {
     enable = mkEnableOption "Fudo PostgreSQL Server";
 
     ssl-private-key = mkOption {
-      type = str;
+      type = nullOr str;
       description = "Location of the server SSL private key.";
+      default = null;
     };
 
     ssl-certificate = mkOption {
-      type = str;
+      type = nullOr str;
       description = "Location of the server SSL certificate.";
+      default = null;
     };
 
     keytab = mkOption {
-      type = str;
+      type = nullOr str;
       description = "Location of the server Kerberos keytab.";
+      default = null;
     };
 
     local-networks = mkOption {
@@ -224,32 +232,9 @@ in {
 
   config = mkIf cfg.enable {
 
-    environment = {
-      systemPackages = with pkgs; [ postgresql_11_gssapi ];
+    networking.firewall.allowedTCPPorts = [ 5432 ];
 
-      # etc = {
-      #   "postgresql/private/privkey.pem" = {
-      #     mode = "0400";
-      #     user = "postgres";
-      #     group = "postgres";
-      #     source = cfg.ssl-private-key;
-      #   };
-
-      #   "postgresql/cert.pem" = {
-      #     mode = "0444";
-      #     user = "postgres";
-      #     group = "postgres";
-      #     source = cfg.ssl-certificate;
-      #   };
-
-      #   "postgresql/private/postgres.keytab" = {
-      #     mode = "0400";
-      #     user = "postgres";
-      #     group = "postgres";
-      #     source = cfg.keytab;
-      #   };
-      # };
-    };
+    environment.systemPackages = with pkgs; [ postgresql_11_gssapi ];
 
     users.groups = {
       ${cfg.socket-group} = { members = [ "postgres" ] ++ cfg.local-users; };
@@ -269,12 +254,14 @@ in {
           ensurePermissions = { "DATABASE ${database}" = "ALL PRIVILEGES"; };
         }) opts.users)) cfg.databases)));
 
-      settings = {
-        krb_server_keyfile = cfg.keytab;
+      settings = let
+        ssl-enabled = cfg.ssl-certificate != null;
+      in {
+        krb_server_keyfile = mkIf (cfg.keytab != null) cfg.keytab;
 
-        ssl = true;
-        ssl_cert_file = cfg.ssl-certificate;
-        ssl_key_file = cfg.ssl-private-key;
+        ssl = ssl-enabled;
+        ssl_cert_file = mkIf ssl-enabled cfg.ssl-certificate;
+        ssl_key_file = mkIf ssl-enabled cfg.ssl-private-key;
 
         unix_socket_directories = cfg.socket-directory;
         unix_socket_group = cfg.socket-group;
@@ -282,12 +269,12 @@ in {
       };
 
       authentication = lib.mkForce ''
-        ${makeLocalUserPasswordEntries cfg.users}
+        ${makeLocalUserPasswordEntries cfg.users cfg.local-networks}
 
         local   all              all             ident
 
         # host-local
-        host    all              all             127.0.0.1/32            gss include_realm=0 krb_realm=${gssapi-realm}
+        host    all              all             127.0.0.1/16            gss include_realm=0 krb_realm=${gssapi-realm}
         host    all              all             ::1/128                 gss include_realm=0 krb_realm=${gssapi-realm}
 
         # local networks
@@ -306,6 +293,22 @@ in {
       targets.${strip-ext cfg.systemd-target} = {
         description = "Postgresql and associated systemd services.";
         wantedBy = [ "multi-user.target" ];
+      };
+
+      paths = let
+        user-password-files = mapAttrsToList
+          (user: userOpts: userOpts.password-file)
+          cfg.users;
+      in {
+        postgresql-password-watcher = mkIf (length user-password-files > 0) {
+          wantedBy = [ "default.target" ];
+          description =
+            "Reset all user passwords if any changes occur.";
+          pathConfig = {
+            PathChanged = user-password-files;
+            Unit = "postgresql-password-setter.service";
+          };
+        };
       };
 
       services = {
@@ -350,22 +353,42 @@ in {
           partOf = [ cfg.systemd-target ];
           wants = [ "postgresql-password-setter.service" ];
 
-          postStart = let
+          # postStart = let
+          #   allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
+
+          #   extra-settings-sql = pkgs.writeText "settings.sql" ''
+          #   ${concatStringsSep "\n"
+          #     (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
+          #   ${usersAccessSql cfg.users}
+          # '';
+          #   in ''
+          #   ${pkgs.postgresql}/bin/psql --port ${
+          #     toString config.services.postgresql.port
+          #   } -d postgres -f ${extra-settings-sql}
+          #   ${pkgs.coreutils}/bin/chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
+          # '';
+
+          postStop = concatStringsSep "\n" cfg.cleanup-tasks;
+        };
+
+        postgresql-finalizer = {
+          requires = [ "postgresql.target" ];
+          after = [ "postgresql.target" "postgresql-password-setter.target" ];
+          partOf = [ cfg.systemd-target ];
+          script = let
             allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
 
             extra-settings-sql = pkgs.writeText "settings.sql" ''
-            ${concatStringsSep "\n"
-              (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
-            ${usersAccessSql cfg.users}
-          '';
-            in ''
+              ${concatStringsSep "\n"
+                (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
+              ${usersAccessSql cfg.users}
+            '';
+          in ''
             ${pkgs.postgresql}/bin/psql --port ${
               toString config.services.postgresql.port
             } -d postgres -f ${extra-settings-sql}
             ${pkgs.coreutils}/bin/chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
           '';
-
-          postStop = concatStringsSep "\n" cfg.cleanup-tasks;
         };
       };
     };

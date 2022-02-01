@@ -66,6 +66,7 @@ let
       user = mkOption {
         type = str;
         description = "User (on target host) to which the file will belong.";
+        default = "root";
       };
 
       group = mkOption {

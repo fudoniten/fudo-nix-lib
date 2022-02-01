@@ -32,7 +32,6 @@ in {
     domain = mkOption {
       type = types.str;
       description = "Domain under which this host is registered.";
-      default = "fudo.link";
     };
 
     server = mkOption {

@@ -44,8 +44,14 @@ let
     not-null = o: o != null;
   in filter not-null [ ipv4 ipv6 ];
 
+  site-gateway = config: site-name: let
+    site = config.fudo.sites.${site-name};
+  in if (site.local-gateway != null)
+     then host-ipv4 config site.local-gateway
+     else site.gateway-v4;
+
 in {
-  inherit host-ipv4 host-ipv6 host-ips;
+  inherit host-ipv4 host-ipv6 host-ips site-gateway;
 
   generate-mac-address = hostname: interface: let
     pkg = generate-mac-address hostname interface;

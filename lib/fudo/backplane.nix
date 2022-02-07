@@ -89,6 +89,7 @@ in {
             host-secrets.backplane-host-auth.target-file;
           FUDO_SERVICE_PASSWD_FILE =
             host-secrets.backplane-service-auth.target-file;
+          # GUILE_AUTO_COMPILE = "0";
         };
 
         sites.${cfg.backplane-hostname} = {
@@ -97,31 +98,32 @@ in {
           site-config = {
             auth_method = "external";
             extauth_program =
+              # "${pkgs.guile}/bin/guile -s /run/backplane-auth.scm";
               "${pkgs.guile}/bin/guile -s ${pkgs.backplane-auth}/backplane-auth.scm";
             extauth_pool_size = 3;
-            auth_use_cache = true;
+            auth_use_cache = false;
 
             modules = {
               mod_adhoc = {};
-              mod_caps = {};
-              mod_carboncopy = {};
-              mod_client_state = {};
+              # mod_caps = {};
+              # mod_carboncopy = {};
+              # mod_client_state = {};
               mod_configure = {};
-              mod_disco = {};
+              # mod_disco = {};
               mod_fail2ban = {};
-              mod_last = {};
+              # mod_last = {};
               mod_offline.access_max_user_messages = 5000;
               mod_ping = {};
-              mod_pubsub = {
-                access_createnode = "pubsub_createnode";
-                ignore_pep_from_offline = true;
-                last_item_cache = false;
-                plugins = [
-                  "flat"
-                  "pep"
-                ];
-              };
-              mod_roster = {};
+              # mod_pubsub = {
+              #   access_createnode = "pubsub_createnode";
+              #   ignore_pep_from_offline = true;
+              #   last_item_cache = false;
+              #   plugins = [
+              #     "flat"
+              #     "pep"
+              #   ];
+              # };
+              # mod_roster = {};
               mod_stream_mgmt = {};
               mod_time = {};
               mod_version = {};

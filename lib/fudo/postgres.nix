@@ -127,7 +127,7 @@ let
   userDatabaseAccessSql = user: database: dbOpts: ''
     \c ${database}
     ${join-lines
-    (mapAttrsToList (userTableAccessSql user) dbOpts.entity-access)}
+      (mapAttrsToList (userTableAccessSql user) dbOpts.entity-access)}
   '';
   userAccessSql = user: userOpts:
     join-lines (mapAttrsToList (userDatabaseAccessSql user) userOpts.databases);
@@ -375,20 +375,24 @@ in {
           requires = [ "postgresql.target" ];
           after = [ "postgresql.target" "postgresql-password-setter.target" ];
           partOf = [ cfg.systemd-target ];
-          script = let
-            allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
+          wantedBy = [ "postgresql.target" ];
+          serviceConfig = {
+            User = config.services.postgresql.superUser;
+            ExecStart = let
+              allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
 
-            extra-settings-sql = pkgs.writeText "settings.sql" ''
-              ${concatStringsSep "\n"
-                (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
-              ${usersAccessSql cfg.users}
+              extra-settings-sql = pkgs.writeText "settings.sql" ''
+                ${concatStringsSep "\n"
+                  (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
+                ${usersAccessSql cfg.users}
+              '';
+            in pkgs.writeShellScript "postgresql-finalizer.sh" ''
+              ${pkgs.postgresql}/bin/psql --port ${
+                toString config.services.postgresql.port
+              } -d postgres -f ${extra-settings-sql}
+              chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
             '';
-          in ''
-            ${pkgs.postgresql}/bin/psql --port ${
-              toString config.services.postgresql.port
-            } -d postgres -f ${extra-settings-sql}
-            ${pkgs.coreutils}/bin/chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
-          '';
+          };
         };
       };
     };

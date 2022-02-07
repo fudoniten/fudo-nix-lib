@@ -37,6 +37,12 @@ in {
       description = "Site name of the current local host.";
     };
 
+    local-zone = mkOption {
+      type = nullOr str;
+      description = "Zone name of the current local host.";
+      default = null;
+    };
+
     local-admins = mkOption {
       type = listOf str;
       description = "List of users who should have admin access to the local host.";

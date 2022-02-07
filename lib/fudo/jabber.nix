@@ -96,7 +96,8 @@ let
     };
     
     config-file = builtins.toJSON jabber-config;
-  in pkgs.writeText "ejabberd.config.yml.template" config-file;
+  in pkgs.lib.text.format-json-file
+    (pkgs.writeText "ejabberd.config.yml.template" config-file);
 
   enter-secrets = template: secrets: target: let
     secret-swappers = map
@@ -170,13 +171,13 @@ in {
     };
 
     log-level = mkOption {
-      type = int;
+      type = str;
       description = ''
         Log level at which to run the server.
 
         See: https://docs.ejabberd.im/admin/guide/troubleshooting/
       '';
-      default = 3;
+      default = "info";
     };
 
     state-directory = mkOption {
@@ -212,8 +213,6 @@ in {
     in {
       acme.host-domains.${hostname} = mapAttrs' (site: siteOpts:
         nameValuePair siteOpts.hostname {
-          extra-domains =
-            (optional (siteOpts.hostname != host-fqdn) host-fqdn);
           local-copies.ejabberd = {
             user = cfg.user;
             group = cfg.group;

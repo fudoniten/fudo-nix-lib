@@ -21,6 +21,13 @@ let
     gpgsql-password=__PASSWORD__
     gpgsql-dnssec=${if cfg.enable-dnssec then "yes" else "no"}
     gpgsql-extra-connection-parameters=sslmode=require
+    ${optionalString cfg.debug ''
+      log-dns-details
+      log-dns-queries
+      log-timestamp
+      loglevel=6
+      query-logging
+    ''}
   '';
 
   pdns-config-dir = pkgs.writeTextDir "pdns.conf" ''
@@ -61,6 +68,7 @@ let
         networks-string = concatStringsSep " " (v4-nets ++ v6-nets);
       in ''"v=spf1 mx ${networks-string} -all"''))
       (mkRecord "ns1.${domain-name}" "A" host-ip)
+      (mkRecord domain-name "A" host-ip)
     ] ++
     (optional (domain.gssapi-realm != null)
       (mkRecord "_kerberos.${domain-name}" "TXT" ''"domain.gssapi-realm"'')) ++
@@ -158,6 +166,12 @@ in {
       default = true;
     };
 
+    debug = mkOption {
+      type = bool;
+      description = "Enable verbose debugging.";
+      default = false;
+    };
+
     database = {
       host = mkOption {
         type = str;
@@ -190,7 +204,10 @@ in {
   };
 
   config = mkIf cfg.enable {
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall = {
+      allowedTCPPorts = [ cfg.port ];
+      allowedUDPPorts = [ cfg.port ];
+    };
 
     users = {
       users.${cfg.user} = {
@@ -308,7 +325,6 @@ in {
               "--chroot=${runtime-dir}"
               "--daemon=no"
               "--guardian=no"
-              "--disable-syslog"
               "--write-pid=no"
               "--config-dir=${pdns-config-dir}"
             ]);

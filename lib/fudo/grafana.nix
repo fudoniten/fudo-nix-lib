@@ -9,6 +9,58 @@ let
   hostname = config.instance.hostname;
   domain-name = config.fudo.hosts.${hostname}.domain;
 
+  host-secrets = config.fudo.secrets.host-secrets.${hostname};
+
+  datasourceOpts = { name, ... }: {
+    options = with types; {
+      url = mkOption {
+        type = str;
+        description = "Datasource URL.";
+      };
+
+      type = mkOption {
+        type = enum [ "prometheus" "loki" ];
+        description = "Type of the datasource.";
+      };
+
+      name = mkOption {
+        type = str;
+        description = "Name of the datasource.";
+        default = name;
+      };
+
+      default = mkOption {
+        type = bool;
+        description = "Use this datasource as the default while querying.";
+        default = false;
+      };
+    };
+  };
+
+  ldapOpts = {
+    options = with types; {
+      hosts = mkOption {
+        type = listOf str;
+        description = "LDAP server hostnames.";
+      };
+
+      bind-dn = mkOption {
+        type = str;
+        description = "DN as which to bind with the LDAP server.";
+      };
+
+      bind-passwd = mkOption {
+        type = str;
+        description = "Password with which to bind to the LDAP server.";
+      };
+
+      base-dn = mkOption {
+        type = str;
+        description = "DN under which to search for users.";
+      };
+    };
+  };
+
 in {
 
   options.fudo.metrics.grafana = with types; {
@@ -43,6 +95,12 @@ in {
         description = "Address from which mail will be sent (i.e. 'from' address).";
         default = "${toplevel.config.fudo.grafana.smtp.username}@${domain-name}";
       };
+
+      domain = mkOption {
+        type = str;
+        description = "Domain of the SMTP server.";
+        default = toplevel.config.instance.local-domain;
+      };
     };
 
     database = {
@@ -67,6 +125,12 @@ in {
       };
     };
 
+    ldap = mkOption {
+      type = nullOr (submodule ldapOpts);
+      description = "";
+      default = null;
+    };
+
     admin-password-file = mkOption {
       type = str;
       description = "Path to a file containing the admin user's password.";
@@ -77,10 +141,10 @@ in {
       description = "Path to a file containing the server's secret key, used for signatures.";
     };
 
-    prometheus-hosts = mkOption {
-      type = listOf str;
-      description = "A list of URLs to prometheus data sources.";
-      default = [];
+    datasources = mkOption {
+      type = attrsOf (submodule datasourceOpts);
+      description = "A list of datasources supplied to Grafana.";
+      default = {};
     };
 
     state-directory = mkOption {
@@ -93,11 +157,26 @@ in {
   };
 
   config = mkIf cfg.enable {
-    systemd.tmpfiles.rules = let
-      grafana-user = config.systemd.services.grafana.serviceConfig.User;
-    in [
-      "d ${cfg.state-directory} 0700 ${grafana-user} - - -"
-    ];
+    systemd = {
+      tmpfiles.rules = let
+        grafana-user = config.systemd.services.grafana.serviceConfig.User;
+      in [
+        "d ${cfg.state-directory} 0700 ${grafana-user} - - -"
+      ];
+
+      services.grafana.serviceConfig = {
+        EnvironmentFile = host-secrets.grafana-environment-file.target-file;
+      };
+    };
+
+    fudo.secrets.host-secrets.${hostname}.grafana-environment-file = {
+      source-file = pkgs.writeText "grafana.env" ''
+        ${optionalString (cfg.ldap != null)
+          ''GRAFANA_LDAP_BIND_PASSWD="${cfg.ldap.bind-passwd}"''}
+      '';
+      target-file = "/run/metrics/grafana/auth-bind.passwd";
+      user = config.systemd.services.grafana.serviceConfig.User;
+    };
 
     services = {
       nginx = {
@@ -133,11 +212,29 @@ in {
 
         smtp = {
           enable = true;
-          fromAddress = "metrics@fudo.org";
+          # TODO: create system user as necessary
+          fromAddress = "${cfg.smtp.username}@${cfg.smtp.domain}";
           host = "${cfg.smtp.hostname}:25";
           user = cfg.smtp.username;
           passwordFile = cfg.smtp.password-file;
         };
+
+        extraOptions = mkIf (cfg.ldap != null) (let
+          config-file = pkgs.writeText "grafana-ldap.toml" ''
+            [[servers]]
+            host = "${concatStringsSep " " cfg.ldap.hosts}"
+            port = 389
+            start_tls = true
+            bind_dn = "${cfg.ldap.bind-dn}"
+            bind_password = "''${GRAFANA_LDAP_BIND_PASSWD}"
+            search_filter = "(uid=%s)"
+            search_base_dns = [ "${cfg.ldap.base-dn}" ]
+          '';
+        in {
+          AUTH_LDAP_ENABLED = "true";
+          AUTH_LDAP_ALLOW_SIGN_UP = "false";
+          AUTH_LDAP_CONFIG_FILE = config-file;
+        });
 
         database = {
           host = cfg.database.hostname;
@@ -147,15 +244,16 @@ in {
           type = "postgres";
         };
 
-        provision.datasources = imap0 (i: host: {
-          editable = false;
-          isDefault = (i == 0);
-          name = builtins.trace "PROMETHEUS-HOST: ${host}" host;
-          type = "prometheus";
-          url = let
-            scheme = if private-network then "http" else "https";
-          in "${scheme}://${host}/";
-        }) cfg.prometheus-hosts;
+        provision = {
+          enable = true;
+          datasources = let
+            make-datasource = datasource: {
+              editable = false;
+              isDefault = datasource.default;
+              inherit (datasource) name type url;
+            };
+          in map make-datasource (attrValues cfg.datasources);
+        };
       };
     };
   };

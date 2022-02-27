@@ -32,7 +32,27 @@ in {
       example = "ldaps://auth.fudo.org/";
     };
 
-    monitoring = mkEnableOption "Enable monitoring for the mail server.";
+    monitoring = {
+      enable = mkEnableOption "Enable monitoring for the mail server.";
+
+      dovecot-listen-port = mkOption {
+        type = port;
+        description = "Port on which to serve Postfix metrics.";
+        default = 9166;
+      };
+
+      postfix-listen-port = mkOption {
+        type = port;
+        description = "Port on which to serve Postfix metrics.";
+        default = 9154;
+      };
+
+      rspamd-listen-port = mkOption {
+        type = port;
+        description = "Port on which to serve Postfix metrics.";
+        default = 7980;
+      };
+    };
 
     mail-user = mkOption {
       type = str;
@@ -50,6 +70,7 @@ in {
     mail-user-id = mkOption {
       type = int;
       description = "UID of mail-user.";
+      default = 525;
     };
 
     local-domains = mkOption {

@@ -150,6 +150,8 @@ in {
 
       nginx = {
         enable = true;
+        recommendedOptimisation = true;
+        recommendedProxySettings = true;
 
         virtualHosts = {
           "${cfg.hostname}" = {
@@ -158,14 +160,6 @@ in {
 
             locations."/" = {
               proxyPass = "http://127.0.0.1:${toString cfg.local-port}";
-
-              extraConfig = ''
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-By $server_addr:$server_port;
-                proxy_set_header X-Forwarded-For $remote_addr;
-                proxy_set_header X-Forwarded-Proto $scheme;
-              '';
             };
           };
         };

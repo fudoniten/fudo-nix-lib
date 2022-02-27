@@ -135,9 +135,8 @@ in {
         enable = if (cfg.push-url != null) then true else false;
         web = {
           external-url = if cfg.push-url == null then
-            cfg.push-address
-                         else
-                           cfg.push-url;
+            cfg.push-address else
+              cfg.push-url;
           listen-address = cfg.push-address;
         };
       };

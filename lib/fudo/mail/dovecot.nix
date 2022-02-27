@@ -130,11 +130,11 @@ in {
 
   config = mkIf cfg.enable {
 
-    services.prometheus.exporters.dovecot = mkIf cfg.monitoring {
+    services.prometheus.exporters.dovecot = mkIf cfg.monitoring.enable {
       enable = true;
       scopes = ["user" "global"];
       listenAddress = "127.0.0.1";
-      port = 9166;
+      port = cfg.monitoring.dovecot-listen-port;
       socketPath = "/var/run/dovecot2/old-stats";
     };
 
@@ -159,13 +159,13 @@ in {
 
       sieveScripts = {
         after = builtins.toFile "spam.sieve" ''
-              require "fileinto";
+          require "fileinto";
 
-              if header :is "X-Spam" "Yes" {
-                fileinto "Junk";
-                stop;
-              }
-            '';
+          if header :is "X-Spam" "Yes" {
+            fileinto "Junk";
+            stop;
+          }
+        '';
       };
 
       mailboxes = cfg.mailboxes;
@@ -173,7 +173,7 @@ in {
       extraConfig = ''
         #Extra Config
 
-        ${optionalString cfg.monitoring ''
+        ${optionalString cfg.monitoring.enable ''
           # The prometheus exporter still expects an older style of metrics
           mail_plugins = $mail_plugins old_stats
           service old-stats {

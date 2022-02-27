@@ -23,7 +23,7 @@ in rec {
     # Disable postfix on this host--it'll be run in the container instead
     services.postfix.enable = false;
 
-    services.nginx = mkIf cfg.monitoring {
+    services.nginx = mkIf cfg.monitoring.enable {
       enable = true;
 
       virtualHosts = let
@@ -45,7 +45,7 @@ in rec {
           forceSSL = true;
 
           locations."/metrics/postfix" = {
-            proxyPass = "http://127.0.0.1:9154/metrics";
+            proxyPass = "http://127.0.0.1:${cfg.monitoring.postfix-listen-port}/metrics";
 
             extraConfig = ''
               ${proxy-headers}
@@ -55,7 +55,7 @@ in rec {
           };
 
           locations."/metrics/dovecot" = {
-            proxyPass = "http://127.0.0.1:9166/metrics";
+            proxyPass = "http://127.0.0.1:${cfg.monitoring.dovecot-listen-port}/metrics";
 
             extraConfig = ''
               ${proxy-headers}
@@ -65,7 +65,7 @@ in rec {
           };
 
           locations."/metrics/rspamd" = {
-            proxyPass = "http://127.0.0.1:7980/metrics";
+            proxyPass = "http://127.0.0.1:${cfg.monitoring.rspamd-listen-port}/metrics";
 
             extraConfig = ''
               ${proxy-headers}
@@ -178,7 +178,7 @@ in rec {
             domain = cfg.domain;
 
             debug = cfg.debug;
-            monitoring = cfg.monitoring;
+            monitoring = cfg.monitoring.enable;
 
             state-directory = container-statedir;
             mail-directory = container-maildir;

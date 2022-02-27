@@ -6,7 +6,11 @@ let
 
 in {
   config = mkIf cfg.enable {
-    services.prometheus.exporters.rspamd.enable = true;
+    services.prometheus.exporters.rspamd = mkIf cfg.monitoring.enable {
+      enable = true;
+      listenAddress = "127.0.0.1";
+      port = cfg.monitoring.rspamd-listen-port;
+    };
 
     services.rspamd = {
 

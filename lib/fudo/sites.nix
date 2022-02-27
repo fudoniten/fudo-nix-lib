@@ -22,6 +22,12 @@ let
         description = "Network to be treated as local.";
       };
 
+      private-network = mkOption {
+        type = nullOr str;
+        description = "Network of the local site.";
+        default = null;
+      };
+
       dynamic-network = mkOption {
         type = nullOr str;
         description = "Network to be allocated by DHCP.";
@@ -59,9 +65,6 @@ let
           "List of admin users which should exist on all hosts at this site.";
         default = [ ];
       };
-
-      enable-monitoring =
-        mkEnableOption "Enable site-wide monitoring with prometheus.";
 
       nameservers = mkOption {
         type = listOf str;

@@ -264,6 +264,45 @@ in rec {
         default = false;
       };
 
+      wireguard = let
+        clientOpts = {
+          options = {
+            ip = mkOption {
+              type = nullOr str;
+              description = "IP address assigned to this host in the WireGuard network.";
+            };
+
+            bound = mkOption {
+              type = bool;
+              description = "Whether to route all traffic from this host.";
+              default = false;
+            };
+          };
+        };
+
+        wireguardOpts = {
+          options = {
+            private-key-file = mkOption {
+              type = str;
+              description = "WireGuard private key file of the host.";
+            };
+
+            public-key = mkOption {
+              type = str;
+              description = "WireGuard public key.";
+            };
+
+            client = mkOption {
+              type = nullOr (submodule clientOpts);
+              default = null;
+            };
+          };
+        };
+      in mkOption {
+        type = nullOr (submodule wireguardOpts);
+        default = null;
+      };
+
       initrd-network = let
         keypair-type = { ... }: {
           options = {

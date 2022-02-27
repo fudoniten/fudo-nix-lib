@@ -97,12 +97,14 @@ in {
 
   config = mkIf cfg.enable {
 
-    services.prometheus.exporters.postfix = mkIf cfg.monitoring {
+    services.prometheus.exporters.postfix = mkIf cfg.monitoring.enable {
       enable = true;
       systemd.enable = true;
       showqPath = "/var/lib/postfix/queue/public/showq";
       user = config.services.postfix.user;
       group = config.services.postfix.group;
+      port = cfg.monitoring.postfix-listen-port;
+      listenAddress = "127.0.0.1";
     };
 
     services.postfix = {

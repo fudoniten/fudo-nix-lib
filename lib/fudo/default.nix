@@ -46,6 +46,8 @@ with lib; {
                 ./users.nix
                 ./vpn.nix
                 ./webmail.nix
+                # ./wireguard.nix
+                # ./wireguard-client.nix
                 ./wireless-networks.nix
                 ./zones.nix
         ];

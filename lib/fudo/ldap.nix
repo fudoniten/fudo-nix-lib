@@ -392,31 +392,13 @@ in {
               # olcRootDN = "cn=admin,${cfg.base}";
               # olcRootPW = FIXME; # NOTE: this should be hashed...
               olcDbDirectory = "${cfg.state-directory}/database";
-              olcDbIndex = [ "objectClass eq" "uid pres,eq" ];
+              olcDbIndex = [ "objectClass eq" "uid pres,eq" "memberUid eq"];
               olcAccess = makeAccess {
                 "attrs=userPassword,shadowLastChange" = {
-                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
                   "dn.exact=cn=auth_reader,${cfg.base}" = "read";
                   "*" = "auth";
                 };
-                # "dn=cn=admin,ou=groups,${cfg.base}" = {
-                #   # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                #   "anonymous" = "auth";
-                #   "*" = "read";
-                # };
-                # "dn.subtree=ou=groups,${cfg.base} attrs=memberUid" = {
-                #   # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                #   # "dn.regex=cn=[a-zA-Z][a-zA-Z0-9_]+,ou=hosts,${cfg.base}" = "write";
-                #   "anonymous" = "auth";
-                #   "*" = "read";
-                # };
-                # "dn.subtree=ou=members,${cfg.base} attrs=cn,sn,homeDirectory,loginShell,gecos,description,homeDirectory,uidNumber,gidNumber" = {
-                #   # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
-                #   "anonymous" = "auth";
-                #   "*" = "read";
-                # };
                 "*" = {
-                  # "dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" = "manage";
                   "anonymous" = "auth";
                   "*" = "read";
                 };

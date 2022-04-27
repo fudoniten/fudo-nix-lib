@@ -1,8 +1,7 @@
 { config, lib, pkgs, ... }:
 
 with lib;
-let
-  cfg = config.fudo.metrics.prometheus;
+let cfg = config.fudo.metrics.prometheus;
 
 in {
 
@@ -19,26 +18,24 @@ in {
         postfix = [ "postfix._metrics._tcp.my-domain.com" ];
       };
       default = {
-        dovecot = [];
-        node = [];
-        postfix = [];
-        rspamd = [];
+        dovecot = [ ];
+        node = [ ];
+        postfix = [ ];
+        rspamd = [ ];
       };
     };
 
     static-targets = mkOption {
       type = attrsOf (listOf str);
       description = ''
-          A map of exporter type to a list of host:ports from which to collect metrics.
-        '';
-      example = {
-        node = [ "my-host.my-domain:1111" ];
-      };
+        A map of exporter type to a list of host:ports from which to collect metrics.
+      '';
+      example = { node = [ "my-host.my-domain:1111" ]; };
       default = {
-        dovecot = [];
-        node = [];
-        postfix = [];
-        rspamd = [];
+        dovecot = [ ];
+        node = [ ];
+        postfix = [ ];
+        rspamd = [ ];
       };
     };
 
@@ -47,7 +44,7 @@ in {
       description = ''
         A list of explicit <host:port> docker targets from which to gather node data.
       '';
-      default = [];
+      default = [ ];
     };
 
     push-url = mkOption {
@@ -86,6 +83,15 @@ in {
       "d ${cfg.state-directory} 0700 ${config.systemd.services.prometheus.serviceConfig.User} - - -"
     ];
 
+    fileSystems =
+      let state-dir = "/var/lib/${config.services.prometheus.stateDir}";
+      in mkIf (cfg.state-directory != state-dir) {
+        ${state-dir} = {
+          device = cfg.state-directory;
+          options = [ "bind" ];
+        };
+      };
+
     services.nginx = {
       enable = true;
       recommendedOptimisation = true;
@@ -93,17 +99,18 @@ in {
 
       virtualHosts = {
         "${cfg.hostname}" = {
-          enableACME = ! cfg.private-network;
-          forceSSL = ! cfg.private-network;
+          enableACME = !cfg.private-network;
+          forceSSL = !cfg.private-network;
 
           locations."/" = {
             proxyPass = "http://127.0.0.1:9090";
 
-            extraConfig = let
-              local-networks = config.instance.local-networks;
+            extraConfig = let local-networks = config.instance.local-networks;
             in "${optionalString ((length local-networks) > 0)
-              (concatStringsSep "\n"
-                (map (network: "allow ${network};") local-networks)) + "\ndeny all;"}";
+            (concatStringsSep "\n"
+              (map (network: "allow ${network};") local-networks)) + ''
+
+                deny all;''}";
           };
         };
       };
@@ -124,19 +131,22 @@ in {
           honor_labels = false;
           scheme = if cfg.private-network then "http" else "https";
           metrics_path = "/metrics/${type}";
-          dns_sd_configs = if (hasAttr type cfg.service-discovery-dns) then
-            [ { names = cfg.service-discovery-dns.${type}; } ] else [];
-          static_configs = if (hasAttr type cfg.static-targets) then
-            [ { targets = cfg.static-targets.${type}; } ] else [];
+          dns_sd_configs = if (hasAttr type cfg.service-discovery-dns) then [{
+            names = cfg.service-discovery-dns.${type};
+          }] else
+            [ ];
+          static_configs = if (hasAttr type cfg.static-targets) then [{
+            targets = cfg.static-targets.${type};
+          }] else
+            [ ];
         };
-      in map make-job ["docker" "node" "dovecot" "postfix" "rspamd"];
+      in map make-job [ "docker" "node" "dovecot" "postfix" "rspamd" ];
 
       pushgateway = {
         enable = if (cfg.push-url != null) then true else false;
         web = {
-          external-url = if cfg.push-url == null then
-            cfg.push-address else
-              cfg.push-url;
+          external-url =
+            if cfg.push-url == null then cfg.push-address else cfg.push-url;
           listen-address = cfg.push-address;
         };
       };

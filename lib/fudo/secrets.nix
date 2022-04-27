@@ -16,7 +16,8 @@ let
 
   decrypt-script = { secret-name, source-file, target-host, target-file
     , host-master-key, user, group, permissions }:
-    pkgs.writeShellScript "decrypt-fudo-secret-${target-host}-${secret-name}.sh" ''
+    pkgs.writeShellScript
+    "decrypt-fudo-secret-${target-host}-${secret-name}.sh" ''
       rm -f ${target-file}
       touch ${target-file}
       chown ${user}:${group} ${target-file}
@@ -24,27 +25,33 @@ let
       # NOTE: silly hack because sometimes age leaves a blank line
       # Only include lines with at least one non-space character
       SRC=$(mktemp fudo-secret-${target-host}-${secret-name}.XXXXXXXX)
-      cat ${encrypt-on-disk {
+      cat ${
+        encrypt-on-disk {
           inherit secret-name source-file target-host;
           target-pubkey = host-master-key.public-key;
-        }} | grep "[^ ]" > $SRC
+        }
+      } | grep "[^ ]" > $SRC
       age -d -i ${host-master-key.key-path} -o ${target-file} $SRC
       rm -f $SRC
     '';
 
   secret-service = target-host: secret-name:
     { source-file, target-file, user, group, permissions, ... }: {
-      description = "decrypt secret ${secret-name} for ${target-host}.";
+      description =
+        "decrypt secret ${secret-name} at ${target-host}:${target-file}.";
       wantedBy = [ cfg.secret-target ];
       before = [ cfg.secret-target ];
       serviceConfig = {
-        Type = "oneshot";
-        ExecStart = let
-          host-master-key = config.fudo.hosts.${target-host}.master-key;
-        in decrypt-script {
-          inherit secret-name source-file target-host target-file host-master-key
-            user group permissions;
-        };
+        Type = "simple";
+        RemainAfterExit = true;
+        ExecStart =
+          let host-master-key = config.fudo.hosts.${target-host}.master-key;
+          in decrypt-script {
+            inherit secret-name source-file target-host target-file
+              host-master-key user group permissions;
+          };
+        ExecStop = pkgs.writeShellScript "fudo-remove-${secret-name}-secret.sh"
+          "rm -f ${target-file}";
       };
       path = [ pkgs.age ];
     };
@@ -52,8 +59,10 @@ let
   secretOpts = { name, ... }: {
     options = with types; {
       source-file = mkOption {
-        type = path; # CAREFUL: this will copy the file to nixstore...keep on deploy host
-        description = "File from which to load the secret. If unspecified, a random new password will be generated.";
+        type =
+          path; # CAREFUL: this will copy the file to nixstore...keep on deploy host
+        description =
+          "File from which to load the secret. If unspecified, a random new password will be generated.";
         default = "${generate-secret name}/passwd";
       };
 
@@ -72,7 +81,7 @@ let
       group = mkOption {
         type = str;
         description = "Group (on target host) to which the file will belong.";
-        default = "nogroup";
+        default = "root";
       };
 
       permissions = mkOption {
@@ -84,7 +93,7 @@ let
       metadata = mkOption {
         type = attrsOf anything;
         description = "Arbitrary metadata associated with this secret.";
-        default = {};
+        default = { };
       };
 
       service = mkOption {
@@ -97,32 +106,34 @@ let
 
   nix-build-users = let usernames = attrNames config.users.users;
   in filter (user: (builtins.match "^nixbld[0-9]{1,2}$" user) != null)
-    usernames;
+  usernames;
 
-  generate-secret = name: pkgs.stdenv.mkDerivation {
-    name = "${name}-generated-passwd";
+  generate-secret = name:
+    pkgs.stdenv.mkDerivation {
+      name = "${name}-generated-passwd";
 
-    phases = [ "installPhase" ];
+      phases = [ "installPhase" ];
 
-    buildInputs = with pkgs; [ pwgen ];
+      buildInputs = with pkgs; [ pwgen ];
 
-    buildPhase = ''
-      echo "${name}-${config.instance.build-timestamp}" >> file.txt
-      pwgen --secure --symbols --num-passwords=1 --sha1=file.txt 40 > passwd
-      rm -f file.txt
-    '';
+      buildPhase = ''
+        echo "${name}-${config.instance.build-timestamp}" >> file.txt
+        pwgen --secure --symbols --num-passwords=1 --sha1=file.txt 40 > passwd
+        rm -f file.txt
+      '';
 
-    installPhase = ''
-      mkdir $out
-      mv passwd $out/passwd
-    '';
-  };
+      installPhase = ''
+        mkdir $out
+        mv passwd $out/passwd
+      '';
+    };
 
 in {
   options.fudo.secrets = with types; {
     enable = mkOption {
       type = bool;
-      description = "Include secrets in the build (disable when secrets are unavailable)";
+      description =
+        "Include secrets in the build (disable when secrets are unavailable)";
       default = true;
     };
 
@@ -175,9 +186,7 @@ in {
 
   config = mkIf cfg.enable {
     users.groups = {
-      ${cfg.secret-group} = {
-        members = cfg.secret-users ++ nix-build-users;
-      };
+      ${cfg.secret-group} = { members = cfg.secret-users ++ nix-build-users; };
     };
 
     systemd = let
@@ -189,25 +198,24 @@ in {
         { };
 
       host-secret-services = let
-        head-or-null = lst: if (lst == []) then null else head lst;
+        head-or-null = lst: if (lst == [ ]) then null else head lst;
         strip-service = service-name:
-          head-or-null
-            (builtins.match "^(.+)[.]service$" service-name);
+          head-or-null (builtins.match "^(.+)[.]service$" service-name);
       in mapAttrs' (secret: secretOpts:
         (nameValuePair (strip-service secretOpts.service)
           (secret-service hostname secret secretOpts))) host-secrets;
 
       trace-all = obj: builtins.trace obj obj;
 
-      host-secret-paths = mapAttrsToList
-        (secret: secretOpts:
-          let perms = if secretOpts.group != "nobody" then "550" else "500";
-          in "d ${dirOf secretOpts.target-file} ${perms} ${secretOpts.user} ${secretOpts.group} - -")
-        host-secrets;
+      host-secret-paths = mapAttrsToList (secret: secretOpts:
+        let perms = if secretOpts.group != "nobody" then "550" else "500";
+        in "d ${
+          dirOf secretOpts.target-file
+        } ${perms} ${secretOpts.user} ${secretOpts.group} - -") host-secrets;
 
       build-secret-paths =
         map (path: "d '${path}' - root ${cfg.secret-group} - -")
-          cfg.secret-paths;
+        cfg.secret-paths;
 
     in {
       tmpfiles.rules = host-secret-paths ++ build-secret-paths;
@@ -231,7 +239,8 @@ in {
         strip-ext = filename: head (builtins.match "^(.+)[.]target$" filename);
       in {
         ${strip-ext cfg.secret-target} = {
-          description = "Target indicating that all Fudo secrets are available.";
+          description =
+            "Target indicating that all Fudo secrets are available.";
           wantedBy = [ "default.target" ];
         };
       };

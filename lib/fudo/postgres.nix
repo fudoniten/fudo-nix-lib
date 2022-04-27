@@ -11,8 +11,7 @@ let
 
   join-lines = lib.concatStringsSep "\n";
 
-  strip-ext = filename:
-    head (builtins.match "^(.+)[.][^.]+$" filename);
+  strip-ext = filename: head (builtins.match "^(.+)[.][^.]+$" filename);
 
   userDatabaseOpts = { database, ... }: {
     options = {
@@ -109,25 +108,25 @@ let
 
   makeNetworksEntry = networks: join-lines (map makeEntry networks);
 
-  makeLocalUserPasswordEntries = users: networks: let
-    network-entries = user: db:
-      join-lines
-        (map (network: "hostssl  ${db}  ${user}  ${network} md5")
-          networks);
-  in join-lines (mapAttrsToList (user: opts:
-    join-lines (map (db: ''
-      local  ${db}  ${user}   md5
-      host   ${db}  ${user}   127.0.0.1/16   md5
-      host   ${db}  ${user}   ::1/128        md5
-      ${network-entries user db}
-    '') (attrNames opts.databases))) (filterPasswordedUsers users));
+  makeLocalUserPasswordEntries = users: networks:
+    let
+      network-entries = user: db:
+        join-lines
+        (map (network: "hostssl  ${db}  ${user}  ${network} md5") networks);
+    in join-lines (mapAttrsToList (user: opts:
+      join-lines (map (db: ''
+        local  ${db}  ${user}   md5
+        host   ${db}  ${user}   127.0.0.1/16   md5
+        host   ${db}  ${user}   ::1/128        md5
+        ${network-entries user db}
+      '') (attrNames opts.databases))) (filterPasswordedUsers users));
 
   userTableAccessSql = user: entity: access:
     "GRANT ${access} ON ${entity} TO ${user};";
   userDatabaseAccessSql = user: database: dbOpts: ''
     \c ${database}
     ${join-lines
-      (mapAttrsToList (userTableAccessSql user) dbOpts.entity-access)}
+    (mapAttrsToList (userTableAccessSql user) dbOpts.entity-access)}
   '';
   userAccessSql = user: userOpts:
     join-lines (mapAttrsToList (userDatabaseAccessSql user) userOpts.databases);
@@ -220,7 +219,7 @@ in {
     cleanup-tasks = mkOption {
       type = listOf str;
       description = "List of actions to take during shutdown of the service.";
-      default = [];
+      default = [ ];
     };
 
     systemd-target = mkOption {
@@ -254,8 +253,7 @@ in {
           ensurePermissions = { "DATABASE ${database}" = "ALL PRIVILEGES"; };
         }) opts.users)) cfg.databases)));
 
-      settings = let
-        ssl-enabled = cfg.ssl-certificate != null;
+      settings = let ssl-enabled = cfg.ssl-certificate != null;
       in {
         krb_server_keyfile = mkIf (cfg.keytab != null) cfg.keytab;
 
@@ -286,9 +284,9 @@ in {
 
     systemd = {
 
-      tmpfiles.rules = optional (cfg.state-directory != null) (let
-        user = config.systemd.services.postgresql.serviceConfig.User;
-      in "d ${cfg.state-directory} 0700 ${user} - - -");
+      tmpfiles.rules = optional (cfg.state-directory != null)
+        (let user = config.systemd.services.postgresql.serviceConfig.User;
+        in "d ${cfg.state-directory} 0700 ${user} - - -");
 
       targets.${strip-ext cfg.systemd-target} = {
         description = "Postgresql and associated systemd services.";
@@ -296,14 +294,12 @@ in {
       };
 
       paths = let
-        user-password-files = mapAttrsToList
-          (user: userOpts: userOpts.password-file)
-          cfg.users;
+        user-password-files =
+          mapAttrsToList (user: userOpts: userOpts.password-file) cfg.users;
       in {
         postgresql-password-watcher = mkIf (length user-password-files > 0) {
           wantedBy = [ "default.target" ];
-          description =
-            "Reset all user passwords if any changes occur.";
+          description = "Reset all user passwords if any changes occur.";
           pathConfig = {
             PathChanged = user-password-files;
             Unit = "postgresql-password-setter.service";
@@ -368,6 +364,10 @@ in {
           #   ${pkgs.coreutils}/bin/chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
           # '';
 
+          # Wait a bit before starting dependent services, to let postgres finish initializing
+          serviceConfig.ExecStartPost =
+            mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
+
           postStop = concatStringsSep "\n" cfg.cleanup-tasks;
         };
 
@@ -382,8 +382,8 @@ in {
               allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
 
               extra-settings-sql = pkgs.writeText "settings.sql" ''
-                ${concatStringsSep "\n"
-                  (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
+                ${concatStringsSep "\n" (map allow-user-login
+                  (mapAttrsToList (key: val: key) cfg.users))}
                 ${usersAccessSql cfg.users}
               '';
             in pkgs.writeShellScript "postgresql-finalizer.sh" ''

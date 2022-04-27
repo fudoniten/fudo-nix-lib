@@ -103,14 +103,13 @@ in {
     networking.firewall.allowedTCPPorts =
       mkIf (cfg.ssh != null) [ cfg.ssh.listen-port ];
 
-    environment.systemPackages = with pkgs; let
-      gitea-admin = writeShellScriptBin "gitea-admin" ''
-        TMP=$(mktemp -d /tmp/gitea-XXXXXXXX)
-        ${gitea}/bin/gitea --custom-path ${cfg.state-dir}/custom --config ${cfg.state-dir}/custom/conf/app.ini --work-path $TMP $@
-      '';
-    in [
-      gitea-admin
-    ];
+    environment.systemPackages = with pkgs;
+      let
+        gitea-admin = writeShellScriptBin "gitea-admin" ''
+          TMP=$(mktemp -d /tmp/gitea-XXXXXXXX)
+          ${gitea}/bin/gitea --custom-path ${cfg.state-dir}/custom --config ${cfg.state-dir}/custom/conf/app.ini --work-path $TMP $@
+        '';
+      in [ gitea-admin ];
 
     services = {
       gitea = {

@@ -102,7 +102,7 @@ in {
       EmailSettings = {
         RequireEmailVerification = true;
         SMTPServer = cfg.smtp.server;
-        SMTPPort = 587;
+        SMTPPort = "587";
         EnableSMTPAuth = true;
         SMTPUsername = cfg.smtp.user;
         SMTPPassword = "__SMTP_PASSWD__";
@@ -113,22 +113,20 @@ in {
       };
       EnableEmailInvitations = true;
       SqlSettings.DriverName = "postgres";
-      SqlSettings.DataSource = "postgres://${
-        cfg.database.user
-      }:__DATABASE_PASSWORD__@${
-        cfg.database.hostname
-      }:5432/${
-        cfg.database.name
-      }";
+      SqlSettings.DataSource =
+        "postgres://${cfg.database.user}:__DATABASE_PASSWORD__@${cfg.database.hostname}:5432/${cfg.database.name}";
     };
     mattermost-config-file-template =
-      pkgs.writeText "mattermost-config.json.template" (builtins.toJSON modified-config);
+      pkgs.writeText "mattermost-config.json.template"
+      (builtins.toJSON modified-config);
 
-    generate-mattermost-config = target: template: smtp-passwd-file: db-passwd-file:
+    generate-mattermost-config =
+      target: template: smtp-passwd-file: db-passwd-file:
       pkgs.writeScript "mattermost-config-generator.sh" ''
+        rm ${target}
         SMTP_PASSWD=$( cat ${smtp-passwd-file} )
         DATABASE_PASSWORD=$( cat ${db-passwd-file} )
-        sed -e 's/__SMTP_PASSWD__/"$SMTP_PASSWD"/' -e 's/__DATABASE_PASSWORD__/"$DATABASE_PASSWORD"/' ${template} > ${target}
+        sed -e "s/__SMTP_PASSWD__/$SMTP_PASSWD/" -e "s/__DATABASE_PASSWORD__/$DATABASE_PASSWORD/" ${template} > ${target}
       '';
 
   in {
@@ -136,10 +134,10 @@ in {
       users = {
         ${cfg.user} = {
           isSystemUser = true;
-          group = mattermost-group;
+          group = cfg.group;
         };
       };
-      groups.${cfg.group}.members = [ cfg.user ];
+      groups = { ${cfg.group} = { members = [ cfg.user ]; }; };
     };
 
     fudo.system.services.mattermost = {
@@ -147,17 +145,25 @@ in {
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
 
-      preStart = ''
-        ${generate-mattermost-config
-          mattermost-config-target
-          mattermost-config-file-template
-          cfg.smtp.password-file
-          cfg.database.password-file}
-        cp ${cfg.smtp.password-file} ${cfg.state-directory}/config/config.json
-        cp -uRL ${pkg}/client ${cfg.state-directory}
-        chown ${cfg.user}:${cfg.group} ${cfg.state-directory}/client
-        chmod 0750 ${cfg.state-directory}/client
-      '';
+      preStart =
+        let config-target = "${cfg.state-directory}/config/config.json";
+        in ''
+          if [ ! -f ${config-target} ]; then
+            ${
+              generate-mattermost-config mattermost-config-target
+              mattermost-config-file-template cfg.smtp.password-file
+              cfg.database.password-file
+            }
+            cp ${mattermost-config-target} ${config-target}
+            chown ${cfg.user}:${cfg.group} ${config-target}
+            chmod 640 ${config-target}
+          fi
+          if [ ! -e ${cfg.state-directory} ]; then
+            cp -uRL ${pkg}/client ${cfg.state-directory}
+            chown ${cfg.user}:${cfg.group} ${cfg.state-directory}/client
+            chmod 0750 ${cfg.state-directory}/client
+          fi
+        '';
       execStart = "${pkg}/bin/mattermost";
       workingDirectory = cfg.state-directory;
       user = cfg.user;
@@ -167,8 +173,9 @@ in {
     systemd = {
 
       tmpfiles.rules = [
-        "d ${cfg.state-directory} 0750 ${cfg.user} ${cfg.group} - -"
-        "d ${cfg.state-directory}/config 0750 ${cfg.user} ${cfg.group} - -"
+        "d ${cfg.state-directory} 0750 ${cfg.user} - - -"
+        "d ${cfg.state-directory}/config 0750 ${cfg.user} - - -"
+        "d ${dirOf mattermost-config-target} 0750 ${cfg.user} - - -"
         "L ${cfg.state-directory}/bin - - - - ${pkg}/bin"
         "L ${cfg.state-directory}/fonts - - - - ${pkg}/fonts"
         "L ${cfg.state-directory}/i18n - - - - ${pkg}/i18n"
@@ -183,6 +190,8 @@ in {
         proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=mattermost_cache:10m max_size=3g inactive=120m use_temp_path=off;
       '';
 
+      recommendedProxySettings = true;
+
       virtualHosts = {
         "${cfg.hostname}" = {
           enableACME = true;
@@ -190,51 +199,52 @@ in {
 
           locations."/" = {
             proxyPass = "http://127.0.0.1:8065";
+            proxyWebsockets = true;
 
-            extraConfig = ''
-              client_max_body_size 50M;
-              proxy_set_header Connection "";
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-By $server_addr:$server_port;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-              proxy_set_header X-Frame-Options SAMEORIGIN;
-              proxy_buffers 256 16k;
-              proxy_buffer_size 16k;
-              proxy_read_timeout 600s;
-              proxy_cache mattermost_cache;
-              proxy_cache_revalidate on;
-              proxy_cache_min_uses 2;
-              proxy_cache_use_stale timeout;
-              proxy_cache_lock on;
-              proxy_http_version 1.1;
-            '';
+            # extraConfig = ''
+            #   client_max_body_size 50M;
+            #   proxy_set_header Connection "";
+            #   proxy_set_header Host $host;
+            #   proxy_set_header X-Real-IP $remote_addr;
+            #   proxy_set_header X-Forwarded-By $server_addr:$server_port;
+            #   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            #   proxy_set_header X-Forwarded-Proto $scheme;
+            #   proxy_set_header X-Frame-Options SAMEORIGIN;
+            #   proxy_buffers 256 16k;
+            #   proxy_buffer_size 16k;
+            #   proxy_read_timeout 600s;
+            #   proxy_cache mattermost_cache;
+            #   proxy_cache_revalidate on;
+            #   proxy_cache_min_uses 2;
+            #   proxy_cache_use_stale timeout;
+            #   proxy_cache_lock on;
+            #   proxy_http_version 1.1;
+            # '';
           };
 
-          locations."~ /api/v[0-9]+/(users/)?websocket$" = {
-            proxyPass = "http://127.0.0.1:8065";
+          # locations."~ /api/v[0-9]+/(users/)?websocket$" = {
+          #   proxyPass = "http://127.0.0.1:8065";
 
-            extraConfig = ''
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-              client_max_body_size 50M;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-By $server_addr:$server_port;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-              proxy_set_header X-Frame-Options SAMEORIGIN;
-              proxy_buffers 256 16k;
-              proxy_buffer_size 16k;
-              client_body_timeout 60;
-              send_timeout 300;
-              lingering_timeout 5;
-              proxy_connect_timeout 90;
-              proxy_send_timeout 300;
-              proxy_read_timeout 90s;
-            '';
-          };
+          #   extraConfig = ''
+          #     proxy_set_header Upgrade $http_upgrade;
+          #     proxy_set_header Connection "upgrade";
+          #     client_max_body_size 50M;
+          #     proxy_set_header Host $host;
+          #     proxy_set_header X-Real-IP $remote_addr;
+          #     proxy_set_header X-Forwarded-By $server_addr:$server_port;
+          #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          #     proxy_set_header X-Forwarded-Proto $scheme;
+          #     proxy_set_header X-Frame-Options SAMEORIGIN;
+          #     proxy_buffers 256 16k;
+          #     proxy_buffer_size 16k;
+          #     client_body_timeout 60;
+          #     send_timeout 300;
+          #     lingering_timeout 5;
+          #     proxy_connect_timeout 90;
+          #     proxy_send_timeout 300;
+          #     proxy_read_timeout 90s;
+          #   '';
+          # };
         };
       };
     };

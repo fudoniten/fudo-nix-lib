@@ -64,6 +64,13 @@ let
           "A list of users who should have full access to this database.";
         default = [ ];
       };
+
+      extensions = mkOption {
+        type = listOf str;
+        description =
+          "A list of extensions which should be created for this database.";
+        default = [ ];
+      };
     };
   };
 
@@ -120,6 +127,13 @@ let
         host   ${db}  ${user}   ::1/128        md5
         ${network-entries user db}
       '') (attrNames opts.databases))) (filterPasswordedUsers users));
+
+  enableExtensionSql = ext: ''CREATE EXTENSION IF NOT EXISTS "${ext}";'';
+
+  enableDatabaseExtensionsSql = database: databaseOpts: ''
+    \c ${database}
+    ${join-lines (map enableExtensionSql databaseOpts.extensions)}
+  '';
 
   userTableAccessSql = user: entity: access:
     "GRANT ${access} ON ${entity} TO ${user};";
@@ -382,8 +396,12 @@ in {
               allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
 
               extra-settings-sql = pkgs.writeText "settings.sql" ''
+                ${join-lines
+                (mapAttrsToList enableDatabaseExtensionsSql cfg.databases)}
+
                 ${concatStringsSep "\n" (map allow-user-login
                   (mapAttrsToList (key: val: key) cfg.users))}
+
                 ${usersAccessSql cfg.users}
               '';
             in pkgs.writeShellScript "postgresql-finalizer.sh" ''

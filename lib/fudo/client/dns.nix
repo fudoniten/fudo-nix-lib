@@ -80,11 +80,7 @@ in {
         };
       };
 
-      groups = {
-        "${cfg.user}" = {
-          members = [ cfg.user ];
-        };
-      };
+      groups = { "${cfg.user}" = { members = [ cfg.user ]; }; };
     };
 
     systemd = {
@@ -104,7 +100,7 @@ in {
 
       services.backplane-dns-client-pw-file = {
         enable = true;
-        requiredBy = [ "backplane-dns-client.services" ];
+        requiredBy = [ "backplane-dns-client.service" ];
         reloadIfChanged = true;
         serviceConfig = { Type = "oneshot"; };
         script = ''

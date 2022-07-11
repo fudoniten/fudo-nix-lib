@@ -431,12 +431,12 @@ in {
         SecureBits = mkIf ((length opts.requiredCapabilities) > 0) "keep-caps";
 
         DynamicUser = mkIf (opts.user == null) opts.dynamicUser;
+
         Restart = opts.restartWhen;
         WorkingDirectory =
           mkIf (opts.workingDirectory != null) opts.workingDirectory;
-        RestrictAddressFamilies =
-          optionals (opts.addressFamilies != null)
-            (restrict-address-families opts.addressFamilies);
+        RestrictAddressFamilies = optionals (opts.addressFamilies != null)
+          (restrict-address-families opts.addressFamilies);
         RestrictNamespaces = opts.restrictNamespaces;
         User = mkIf (opts.user != null) opts.user;
         Group = mkIf (opts.group != null) opts.group;

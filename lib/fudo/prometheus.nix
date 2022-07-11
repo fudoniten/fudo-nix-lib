@@ -8,6 +8,13 @@ in {
   options.fudo.metrics.prometheus = with types; {
     enable = mkEnableOption "Fudo Prometheus Data-Gathering Server";
 
+    package = mkOption {
+      type = package;
+      default = pkgs.prometheus;
+      defaultText = literalExpression "pkgs.prometheus";
+      description = "The prometheus package that should be used.";
+    };
+
     service-discovery-dns = mkOption {
       type = attrsOf (listOf str);
       description = ''
@@ -119,8 +126,9 @@ in {
     services.prometheus = {
 
       enable = true;
-
       webExternalUrl = "https://${cfg.hostname}";
+
+      package = cfg.package;
 
       listenAddress = "127.0.0.1";
       port = 9090;
@@ -131,12 +139,12 @@ in {
           honor_labels = false;
           scheme = if cfg.private-network then "http" else "https";
           metrics_path = "/metrics/${type}";
-          dns_sd_configs = if (hasAttr type cfg.service-discovery-dns) then [{
-            names = cfg.service-discovery-dns.${type};
-          }] else
-            [ ];
           static_configs = if (hasAttr type cfg.static-targets) then [{
             targets = cfg.static-targets.${type};
+          }] else
+            [ ];
+          dns_sd_configs = if (hasAttr type cfg.service-discovery-dns) then [{
+            names = cfg.service-discovery-dns.${type};
           }] else
             [ ];
         };

@@ -32,7 +32,6 @@ let
 
   pdns-config-dir = pkgs.writeTextDir "pdns.conf" ''
     local-address=${concatStringsSep ", " cfg.listen-v4-addresses}
-    local-ipv6=${concatStringsSep ", " cfg.listen-v6-addresses}
     local-port=${toString cfg.port}
     launch=
     include-dir=${runtime-dir}
@@ -305,13 +304,14 @@ in {
                 psql -f ${pkgs.powerdns}/share/doc/pdns/schema.pgsql.sql
               fi
             '';
-            # Wait until posgresql is available before starting
-            ExecStartPre =
-              pkgs.writeShellScript "ensure-postgresql-running.sh" ''
-                while [ ! "$( psql -tAc "SELECT 1" )" ]; do
-                  ${pkgs.coreutils}/bin/sleep 3
-                done
-              '';
+            ## Doesn't seem to use env vars, and so fails if remote
+            ## Wait until posgresql is available before starting
+            # ExecStartPre =
+            #   pkgs.writeShellScript "ensure-postgresql-running.sh" ''
+            #     while [ ! "$( psql -tAc "SELECT 1" )" ]; do
+            #       ${pkgs.coreutils}/bin/sleep 3
+            #     done
+            #   '';
           };
         };
 

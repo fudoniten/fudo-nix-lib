@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... } @ toplevel:
+{ config, lib, pkgs, ... }@toplevel:
 
 with lib;
 let
@@ -9,12 +9,10 @@ let
   localhost-ips = let
     addr-only = addrinfo: addrinfo.address;
     interface = config.networking.interfaces.lo;
-  in
-    (map addr-only interface.ipv4.addresses) ++
-    (map addr-only interface.ipv6.addresses);
+  in (map addr-only interface.ipv4.addresses)
+  ++ (map addr-only interface.ipv6.addresses);
 
-  host-ips =
-    (pkgs.lib.fudo.network.host-ips hostname) ++ localhost-ips;
+  host-ips = (pkgs.lib.fudo.network.host-ips hostname) ++ localhost-ips;
 
   state-directory = toplevel.config.fudo.auth.kdc.state-directory;
 
@@ -24,8 +22,7 @@ let
   master-server = cfg.master-config != null;
   slave-server = cfg.slave-config != null;
 
-  get-fqdn = hostname:
-    "${hostname}.${config.fudo.hosts.${hostname}.domain}";
+  get-fqdn = hostname: "${hostname}.${config.fudo.hosts.${hostname}.domain}";
 
   kdc-conf = generate-kdc-conf {
     realm = cfg.realm;
@@ -34,102 +31,103 @@ let
     acl-data = if master-server then cfg.master-config.acl else null;
   };
 
-  initialize-db =
-    { realm, user, group, kdc-conf, key-file, db-name, max-lifetime, max-renewal,
-      primary-keytab, kadmin-keytab, kpasswd-keytab, ipropd-keytab, local-hostname }: let
+  initialize-db = { realm, user, group, kdc-conf, key-file, db-name
+    , max-lifetime, max-renewal, primary-keytab, kadmin-keytab, kpasswd-keytab
+    , ipropd-keytab, local-hostname }:
+    let
 
-        kadmin-cmd = "kadmin -l -c ${kdc-conf} --";
+      kadmin-cmd = "kadmin -l -c ${kdc-conf} --";
 
-        get-domain-hosts = domain: let
+      get-domain-hosts = domain:
+        let
           host-in-subdomain = host: hostOpts:
             (builtins.match "(.+[.])?${domain}$" hostOpts.domain) != null;
         in attrNames (filterAttrs host-in-subdomain config.fudo.hosts);
 
-        get-host-principals = realm: hostname: let
-          host = config.fudo.hosts.${hostname};
+      get-host-principals = realm: hostname:
+        let host = config.fudo.hosts.${hostname};
         in map (service: "${service}/${hostname}.${host.domain}@${realm}")
-          host.kerberos-services;
+        host.kerberos-services;
 
-        add-principal-str = principal:
-          "${kadmin-cmd} add --random-key --use-defaults ${principal}";
+      add-principal-str = principal:
+        "${kadmin-cmd} add --random-key --use-defaults ${principal}";
 
-        test-existence = principal:
-          "[[ $( ${kadmin-cmd} get ${principal} ) ]]";
+      test-existence = principal: "[[ $( ${kadmin-cmd} get ${principal} ) ]]";
 
-        exists-or-add = principal: ''
-          if ${test-existence principal}; then
-            echo "skipping ${principal}, already exists"
-          else
-            ${add-principal-str principal}
-          fi
-        '';
+      exists-or-add = principal: ''
+        if ${test-existence principal}; then
+          echo "skipping ${principal}, already exists"
+        else
+          ${add-principal-str principal}
+        fi
+      '';
 
-        ensure-host-principals = realm:
-          concatStringsSep "\n"
-            (map exists-or-add
-              (concatMap (get-host-principals realm)
-                (get-domain-hosts (toLower realm))));
+      ensure-host-principals = realm:
+        concatStringsSep "\n" (map exists-or-add
+          (concatMap (get-host-principals realm)
+            (get-domain-hosts (toLower realm))));
 
-        slave-hostnames = map get-fqdn cfg.master-config.slave-hosts;
+      slave-hostnames = map get-fqdn cfg.master-config.slave-hosts;
 
-        ensure-iprop-principals = concatStringsSep "\n"
-          (map (host: exists-or-add "iprop/${host}@${realm}")
-            [ local-hostname ] ++ slave-hostnames);
+      ensure-iprop-principals = concatStringsSep "\n"
+        (map (host: exists-or-add "iprop/${host}@${realm}") [ local-hostname ]
+          ++ slave-hostnames);
 
-        copy-slave-principals-file = let
-          slave-principals = map
-            (host: "iprop/${hostname}@${cfg.realm}")
-            slave-hostnames;
-          slave-principals-file = pkgs.writeText "heimdal-slave-principals"
-            (concatStringsSep "\n" slave-principals);
-        in optionalString (slave-principals-file != null) ''
-          cp ${slave-principals-file} ${state-directory}/slaves
-          # Since it's copied from /nix/store, this is by default read-only,
-          # which causes updates to fail.
-          chmod u+w ${state-directory}/slaves
-        '';
+      copy-slave-principals-file = let
+        slave-principals =
+          map (host: "iprop/${hostname}@${cfg.realm}") slave-hostnames;
+        slave-principals-file = pkgs.writeText "heimdal-slave-principals"
+          (concatStringsSep "\n" slave-principals);
+      in optionalString (slave-principals-file != null) ''
+        cp ${slave-principals-file} ${state-directory}/slaves
+        # Since it's copied from /nix/store, this is by default read-only,
+        # which causes updates to fail.
+        chmod u+w ${state-directory}/slaves
+      '';
 
-      in pkgs.writeShellScript "initialize-kdc-db.sh" ''
-           TMP=$(mktemp -d -t kdc-XXXXXXXX)
-           if [ ! -e ${database-file} ]; then
-             ## CHANGING HOW THIS WORKS
-             ## Now we expect the key to be provided
-             # kstash --key-file=${key-file} --random-key
-             ${kadmin-cmd} init --realm-max-ticket-life="${max-lifetime}" --realm-max-renewable-life="${max-renewal}" ${realm}
-           fi
+    in pkgs.writeShellScript "initialize-kdc-db.sh" ''
+      TMP=$(mktemp -d -t kdc-XXXXXXXX)
+      if [ ! -e ${database-file} ]; then
+        ## CHANGING HOW THIS WORKS
+        ## Now we expect the key to be provided
+        # kstash --key-file=${key-file} --random-key
+        ${kadmin-cmd} init --realm-max-ticket-life="${max-lifetime}" --realm-max-renewable-life="${max-renewal}" ${realm}
+      fi
 
-           ${ensure-host-principals realm}
+      ${ensure-host-principals realm}
 
-           ${ensure-iprop-principals}
+      ${ensure-iprop-principals}
 
-           echo "*** BEGIN EXTRACTING KEYTABS"
-           echo "***   You can probably ignore the 'principal does not exist' errors that follow,"
-           echo "***   they're just testing for principal existence before creating those that"
-           echo "***   don't already exist"
+      echo "*** BEGIN EXTRACTING KEYTABS"
+      echo "***   You can probably ignore the 'principal does not exist' errors that follow,"
+      echo "***   they're just testing for principal existence before creating those that"
+      echo "***   don't already exist"
 
-           ${kadmin-cmd} ext_keytab --keytab=$TMP/primary.keytab */${local-hostname}@${realm}
-           mv $TMP/primary.keytab ${primary-keytab}
-           ${kadmin-cmd} ext_keytab --keytab=$TMP/kadmin.keytab kadmin/admin@${realm}
-           mv $TMP/kadmin.keytab ${kadmin-keytab}
-           ${kadmin-cmd} ext_keytab --keytab=$TMP/kpasswd.keytab kadmin/changepw@${realm}
-           mv $TMP/kpasswd.keytab ${kpasswd-keytab}
-           ${kadmin-cmd} ext_keytab --keytab=$TMP/ipropd.keytab iprop/${local-hostname}@${realm}
-           mv $TMP/ipropd.keytab ${ipropd-keytab}
+      ${kadmin-cmd} ext_keytab --keytab=$TMP/primary.keytab */${local-hostname}@${realm}
+      mv $TMP/primary.keytab ${primary-keytab}
+      ${kadmin-cmd} ext_keytab --keytab=$TMP/kadmin.keytab kadmin/admin@${realm}
+      mv $TMP/kadmin.keytab ${kadmin-keytab}
+      ${kadmin-cmd} ext_keytab --keytab=$TMP/kpasswd.keytab kadmin/changepw@${realm}
+      mv $TMP/kpasswd.keytab ${kpasswd-keytab}
+      ${kadmin-cmd} ext_keytab --keytab=$TMP/ipropd.keytab iprop/${local-hostname}@${realm}
+      mv $TMP/ipropd.keytab ${ipropd-keytab}
 
-           echo "*** END EXTRACTING KEYTABS"
+      echo "*** END EXTRACTING KEYTABS"
 
-           ${copy-slave-principals-file}
-         '';
+      ${copy-slave-principals-file}
+    '';
 
-  generate-kdc-conf = { realm, db-file, key-file, acl-data  }:
+  generate-kdc-conf = { realm, db-file, key-file, acl-data }:
     pkgs.writeText "kdc.conf" ''
       [kdc]
         database = {
           dbname = sqlite:${db-file}
           realm = ${realm}
           mkey_file = ${key-file}
-          ${optionalString (acl-data != null)
-            "acl_file = ${generate-acl-file acl-data}"}
+          ${
+            optionalString (acl-data != null)
+            "acl_file = ${generate-acl-file acl-data}"
+          }
           log_file = ${iprop-log}
         }
 
@@ -171,18 +169,17 @@ let
     };
   };
 
-  generate-acl-file = acl-entries: let
-    perms-to-permstring = perms: concatStringsSep "," perms;
-  in
-    pkgs.writeText "kdc.acl" (concatStringsSep "\n" (mapAttrsToList
+  generate-acl-file = acl-entries:
+    let perms-to-permstring = perms: concatStringsSep "," perms;
+    in pkgs.writeText "kdc.acl" (concatStringsSep "\n" (mapAttrsToList
       (principal: opts:
         "${principal} ${perms-to-permstring opts.perms}${
-          optionalString (opts.target != null) " ${opts.target}" }")
-      acl-entries));
+          optionalString (opts.target != null) " ${opts.target}"
+        }") acl-entries));
 
   kadmin-local = kdc-conf:
     pkgs.writeShellScriptBin "kadmin.local" ''
-      ${pkgs.heimdalFull}/bin/kadmin -l -c ${kdc-conf} $@
+      ${pkgs.heimdal}/bin/kadmin -l -c ${kdc-conf} $@
     '';
 
   masterOpts = { ... }: {
@@ -329,8 +326,7 @@ in {
       }
       {
         assertion = !(master-server && slave-server);
-        message =
-          "Only one of master-config and slave-config may be provided.";
+        message = "Only one of master-config and slave-config may be provided.";
       }
     ];
 
@@ -363,7 +359,7 @@ in {
     };
 
     environment = {
-      systemPackages = [ pkgs.heimdalFull (kadmin-local kdc-conf) ];
+      systemPackages = [ pkgs.heimdal (kadmin-local kdc-conf) ];
 
       ## This shouldn't be necessary...every host gets a krb5.keytab
       # etc = {
@@ -376,9 +372,8 @@ in {
       # };
     };
 
-    systemd.tmpfiles.rules = [
-      "d ${state-directory} 0740 ${cfg.user} ${cfg.group} - -"
-    ];
+    systemd.tmpfiles.rules =
+      [ "d ${state-directory} 0740 ${cfg.user} ${cfg.group} - -" ];
 
     fudo.system = {
       services = if master-server then {
@@ -391,7 +386,8 @@ in {
           after = [ "network.target" ];
           description =
             "Heimdal Kerberos Key Distribution Center (ticket server).";
-          execStart = "${pkgs.heimdalFull}/libexec/heimdal/kdc -c ${kdc-conf} --ports=88 ${listen-addrs}";
+          execStart =
+            "${pkgs.heimdal}/libexec/heimdal/kdc -c ${kdc-conf} --ports=88 ${listen-addrs}";
           user = cfg.user;
           group = cfg.group;
           workingDirectory = state-directory;
@@ -426,26 +422,29 @@ in {
           execStart = "${init-cmd}";
           user = cfg.user;
           group = cfg.group;
-          path = with pkgs; [ heimdalFull ];
+          path = with pkgs; [ heimdal ];
           protectSystem = "full";
           addressFamilies = [ "AF_INET" "AF_INET6" ];
           workingDirectory = state-directory;
           environment = { KRB5_CONFIG = "/etc/krb5.conf"; };
         };
 
-        heimdal-ipropd-master = mkIf (length cfg.master-config.slave-hosts > 0) {
-          requires = [ "heimdal-kdc.service" ];
-          wantedBy = [ "multi-user.target" ];
-          description = "Propagate changes to the master KDC DB to all slaves.";
-          path = with pkgs; [ heimdalFull ];
-          execStart = "${pkgs.heimdalFull}/libexec/heimdal/ipropd-master -c ${kdc-conf} -k ${cfg.master.ipropd-keytab}";
-          user = cfg.user;
-          group = cfg.group;
-          workingDirectory = state-directory;
-          privateNetwork = false;
-          addressFamilies = [ "AF_INET" "AF_INET6" ];
-          environment = { KRB5_CONFIG = "/etc/krb5.conf"; };
-        };
+        heimdal-ipropd-master =
+          mkIf (length cfg.master-config.slave-hosts > 0) {
+            requires = [ "heimdal-kdc.service" ];
+            wantedBy = [ "multi-user.target" ];
+            description =
+              "Propagate changes to the master KDC DB to all slaves.";
+            path = with pkgs; [ heimdal ];
+            execStart =
+              "${pkgs.heimdal}/libexec/heimdal/ipropd-master -c ${kdc-conf} -k ${cfg.master.ipropd-keytab}";
+            user = cfg.user;
+            group = cfg.group;
+            workingDirectory = state-directory;
+            privateNetwork = false;
+            addressFamilies = [ "AF_INET" "AF_INET6" ];
+            environment = { KRB5_CONFIG = "/etc/krb5.conf"; };
+          };
 
       } else {
 
@@ -453,7 +452,7 @@ in {
           listen-addrs = concatStringsSep " "
             (map (addr: "--addresses=${addr}") cfg.bind-addresses);
           command =
-            "${pkgs.heimdalFull}/libexec/heimdal/kdc -c ${kdc-conf} --ports=88 ${listen-addrs}";
+            "${pkgs.heimdal}/libexec/heimdal/kdc -c ${kdc-conf} --ports=88 ${listen-addrs}";
         in {
           wantedBy = [ "multi-user.target" ];
           after = [ "network.target" ];
@@ -471,10 +470,11 @@ in {
 
         heimdal-ipropd-slave = {
           wantedBy = [ "multi-user.target" ];
-          description = "Receive changes propagated from the KDC master server.";
-          path = with pkgs; [ heimdalFull ];
+          description =
+            "Receive changes propagated from the KDC master server.";
+          path = with pkgs; [ heimdal ];
           execStart = concatStringsSep " " [
-            "${pkgs.heimdalFull}/libexec/heimdal/ipropd-slave"
+            "${pkgs.heimdal}/libexec/heimdal/ipropd-slave"
             "--config-file=${kdc-conf}"
             "--keytab=${cfg.slave-config.ipropd-keytab}"
             "--realm=${cfg.realm}"
@@ -501,7 +501,7 @@ in {
         {
           name = "kerberos-adm";
           user = cfg.user;
-          server = "${pkgs.heimdalFull}/libexec/heimdal/kadmind";
+          server = "${pkgs.heimdal}/libexec/heimdal/kadmind";
           protocol = "tcp";
           serverArgs =
             "--config-file=${kdc-conf} --keytab=${cfg.master-config.kadmin-keytab}";
@@ -509,7 +509,7 @@ in {
         {
           name = "kpasswd";
           user = cfg.user;
-          server = "${pkgs.heimdalFull}/libexec/heimdal/kpasswdd";
+          server = "${pkgs.heimdal}/libexec/heimdal/kpasswdd";
           protocol = "udp";
           serverArgs =
             "--config-file=${kdc-conf} --keytab=${cfg.master-config.kpasswdd-keytab}";
@@ -519,12 +519,10 @@ in {
 
     networking = {
       firewall = {
-        allowedTCPPorts = [ 88 ] ++
-                          (optionals master-server [ 749 ]) ++
-                          (optionals slave-server [ 2121 ]);
-        allowedUDPPorts = [ 88 ] ++
-                          (optionals master-server [ 464 ]) ++
-                          (optionals slave-server [ 2121 ]);
+        allowedTCPPorts = [ 88 ] ++ (optionals master-server [ 749 ])
+          ++ (optionals slave-server [ 2121 ]);
+        allowedUDPPorts = [ 88 ] ++ (optionals master-server [ 464 ])
+          ++ (optionals slave-server [ 2121 ]);
       };
     };
   };

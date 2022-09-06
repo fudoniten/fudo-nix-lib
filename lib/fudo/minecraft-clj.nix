@@ -71,7 +71,7 @@ in {
   config = mkIf cfg.enable {
     users = {
       users."${cfg.user}" = {
-        isSystemUser = false;
+        isSystemUser = true;
         home = cfg.data-dir;
         group = cfg.group;
         createHome = true;

@@ -87,7 +87,7 @@ in {
         User = cfg.user;
         Group = cfg.group;
         ExecStart = let
-          mem = "${cfg.allocated-memory}G";
+          mem = "${toString cfg.allocated-memory}G";
           memFlags = [ "-Xms${mem}" "-Xmx${mem}" ];
           flags = commonFlags ++ memFlags
             ++ (optionals (cfg.allocated-memory >= 12) highMemFlags);

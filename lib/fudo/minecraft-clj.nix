@@ -44,7 +44,11 @@ let
     let world-name = name;
     in {
       options = with types; {
-        enable = mkEnableOption "Enable this world.";
+        enable = mkOption {
+          type = bool;
+          description = "Enable this world.";
+          default = true;
+        };
 
         world-name = mkOption {
           type = str;
@@ -180,7 +184,7 @@ in {
     users = {
       users."${cfg.user}" = {
         isSystemUser = true;
-        home = cfg.data-dir;
+        home = cfg.state-directory;
         group = cfg.group;
         createHome = true;
       };

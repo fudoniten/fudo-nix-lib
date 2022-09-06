@@ -259,7 +259,7 @@ in {
             RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
             RestrictRealtime = true;
             RestrictNamespaces = true;
-            ReadWritePaths = [ stateDir ];
+            ReadWritePaths = [ cfg.state-directory ];
           };
         }) cfg.worlds;
     };

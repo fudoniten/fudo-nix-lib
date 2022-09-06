@@ -4,9 +4,20 @@ with lib;
 let
   cfg = config.fudo.minecraft-clj;
 
-  papermcWithPlugins = pkgs.buildEnv {
-    name = "papermcWithPlugins";
-    paths = with pkgs; [ papermc witchcraft-plugin-current ];
+  witchcraft-plugin = let
+    pname = "witchcraft-plugin";
+    version = "0.7.37-for-paper-1.18-shaded";
+  in prev.stdenv.mkDerivation {
+    inherit pname version;
+    src = fetchurl {
+      url =
+        "https://github.com/lambdaisland/witchcraft-plugin/releases/download/v0.7.35/witchcraft-plugin-0.7.37-for-paper-1.18-shaded.jar";
+      sha256 = "0n85yc5ycq9qhl2cs8s3fkj4j8jvndaf8dq1avjr0l0l8bd27kzr";
+    };
+    phases = [ "installPhase" ];
+    installPhase = ''
+      cp $src $out
+    '';
   };
 
   highMemFlags = [
@@ -212,6 +223,8 @@ in {
             cp -f ${admins-file} ${stateDir}/ops.txt
             cp -f ${props-file} ${stateDir}/server.properties
             cp -f ${eula-file} ${stateDir}/eula.txt
+            mkdir -p ${stateDir}/plugins
+            cp ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
             chmod u+w ${stateDir}/server.properties
           '';
 
@@ -232,7 +245,7 @@ in {
               flags = commonFlags ++ memFlags
                 ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
               flagStr = concatStringsSep " " flags;
-            in "${papermcWithPlugins}/bin/minecraft-server ${flagStr}";
+            in "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
 
             Restart = "always";
             NoNewPrivileges = true;

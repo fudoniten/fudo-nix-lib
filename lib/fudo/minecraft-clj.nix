@@ -205,10 +205,13 @@ in {
             admins-file = pkgs.writeText "${sanitizedName}-ops.txt"
               (concatStringsSep "\n" cfg.admins);
             props-file = genPropsFile worldOpts;
+            eula-file =
+              pkgs.writeText "mc-${sanitizedName}-eula.txt" "eula=true";
 
           in pkgs.writeShellScript "mc-initialize-${sanitizedName}.sh" ''
             cp -f ${admins-file} ${stateDir}/ops.txt
             cp -f ${props-file} ${stateDir}/server.properties
+            cp -f ${eula-file} ${stateDir}/eula.txt
             chmod u+w ${stateDir}/server.properties
           '';
 

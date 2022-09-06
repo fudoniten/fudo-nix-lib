@@ -129,7 +129,7 @@ let
     motd = worldOpts.motd;
     difficulty = worldOpts.difficulty;
     gamemode = cfg.game-mode;
-    allow-cheats = worldOpts.allowCheats;
+    allow-cheats = worldOpts.allow-cheats;
     server-port = worldOpts.port;
     hardcore = worldOpts.hardcore;
     pvp = worldOpts.pvp;

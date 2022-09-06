@@ -71,7 +71,7 @@ in {
   config = {
     users = {
       users."${cfg.user}" = {
-        isNormalUser = false;
+        isSystemUser = false;
         home = cfg.data-dir;
         group = cfg.group;
         createHome = true;

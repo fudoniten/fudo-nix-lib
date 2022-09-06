@@ -222,7 +222,7 @@ in {
               mem = "${toString worldOpts.allocated-memory}G";
               memFlags = [ "-Xms${mem}" "-Xmx${mem}" ];
               flags = commonFlags ++ memFlags
-                ++ (optionals (cfg.allocated-memory >= 12) highMemFlags);
+                ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
               flagStr = concatStringsSep " " flags;
             in "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
 

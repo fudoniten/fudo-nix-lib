@@ -68,7 +68,7 @@ in {
     };
   };
 
-  config = {
+  config = mkIf cfg.enable {
     users = {
       users."${cfg.user}" = {
         isSystemUser = false;

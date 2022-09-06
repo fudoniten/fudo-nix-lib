@@ -9,7 +9,7 @@ let
     version = "0.7.37-for-paper-1.18-shaded";
   in pkgs.stdenv.mkDerivation {
     inherit pname version;
-    src = fetchurl {
+    src = pkgs.fetchurl {
       url =
         "https://github.com/lambdaisland/witchcraft-plugin/releases/download/v0.7.35/witchcraft-plugin-0.7.37-for-paper-1.18-shaded.jar";
       sha256 = "0n85yc5ycq9qhl2cs8s3fkj4j8jvndaf8dq1avjr0l0l8bd27kzr";

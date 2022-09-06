@@ -232,7 +232,7 @@ in {
               flags = commonFlags ++ memFlags
                 ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
               flagStr = concatStringsSep " " flags;
-            in "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
+            in "${papermcWithPlugins}/bin/minecraft-server ${flagStr}";
 
             Restart = "always";
             NoNewPrivileges = true;
@@ -242,7 +242,7 @@ in {
             ProtectHome = true;
             ProtectControlGroups = true;
             ProtectKernelModules = true;
-            ProtectKernalTunables = true;
+            ProtectKernelTunables = true;
             RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
             RestrictRealtime = true;
             RestrictNamespaces = true;

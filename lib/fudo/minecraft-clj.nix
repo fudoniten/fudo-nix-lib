@@ -128,7 +128,7 @@ let
     level-seed = worldOpts.world-seed;
     motd = worldOpts.motd;
     difficulty = worldOpts.difficulty;
-    gamemode = cfg.game-mode;
+    gamemode = worldOpts.game-mode;
     allow-cheats = worldOpts.allow-cheats;
     server-port = worldOpts.port;
     hardcore = worldOpts.hardcore;

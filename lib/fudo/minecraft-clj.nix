@@ -222,6 +222,7 @@ in {
             User = cfg.user;
             Group = cfg.group;
             WorkingDirectory = stateDir;
+            ExecStartPre = "${startScript}";
             ExecStart = let
               mem = "${toString worldOpts.allocated-memory}G";
               memFlags = [ "-Xms${mem}" "-Xmx${mem}" ];
@@ -242,6 +243,7 @@ in {
             RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
             RestrictRealtime = true;
             RestrictNamespaces = true;
+            ReadWritePaths = [ stateDir ];
           };
         }) cfg.worlds;
     };

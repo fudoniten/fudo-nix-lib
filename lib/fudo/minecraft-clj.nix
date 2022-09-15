@@ -224,7 +224,7 @@ in {
             cp -f ${props-file} ${stateDir}/server.properties
             cp -f ${eula-file} ${stateDir}/eula.txt
             mkdir -p ${stateDir}/plugins
-            cp ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
+            cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
             chmod u+w ${stateDir}/server.properties
           '';
 
@@ -248,17 +248,17 @@ in {
             in "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
 
             Restart = "always";
-            NoNewPrivileges = true;
-            PrivateTmp = true;
-            PrivateDevices = true;
-            ProtectSystem = "strict";
-            ProtectHome = true;
-            ProtectControlGroups = true;
-            ProtectKernelModules = true;
-            ProtectKernelTunables = true;
-            RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
-            RestrictRealtime = true;
-            RestrictNamespaces = true;
+            # NoNewPrivileges = true;
+            # PrivateTmp = true;
+            # PrivateDevices = true;
+            # ProtectSystem = "strict";
+            # ProtectHome = true;
+            # ProtectControlGroups = true;
+            # ProtectKernelModules = true;
+            # ProtectKernelTunables = true;
+            # RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
+            # RestrictRealtime = true;
+            # RestrictNamespaces = true;
             ReadWritePaths = [ cfg.state-directory ];
           };
         }) cfg.worlds;

@@ -1,6 +1,6 @@
 # NOTE: this assumes that postgres is running locally.
 
-{ config, lib, pkgs, ... } @ toplevel:
+{ config, lib, pkgs, ... }@toplevel:
 
 with lib;
 let
@@ -92,8 +92,10 @@ in {
 
       email = mkOption {
         type = str;
-        description = "Address from which mail will be sent (i.e. 'from' address).";
-        default = "${toplevel.config.fudo.grafana.smtp.username}@${domain-name}";
+        description =
+          "Address from which mail will be sent (i.e. 'from' address).";
+        default =
+          "${toplevel.config.fudo.grafana.smtp.username}@${domain-name}";
       };
 
       domain = mkOption {
@@ -138,13 +140,14 @@ in {
 
     secret-key-file = mkOption {
       type = str;
-      description = "Path to a file containing the server's secret key, used for signatures.";
+      description =
+        "Path to a file containing the server's secret key, used for signatures.";
     };
 
     datasources = mkOption {
       type = attrsOf (submodule datasourceOpts);
       description = "A list of datasources supplied to Grafana.";
-      default = {};
+      default = { };
     };
 
     state-directory = mkOption {
@@ -158,11 +161,9 @@ in {
 
   config = mkIf cfg.enable {
     systemd = {
-      tmpfiles.rules = let
-        grafana-user = config.systemd.services.grafana.serviceConfig.User;
-      in [
-        "d ${cfg.state-directory} 0700 ${grafana-user} - - -"
-      ];
+      tmpfiles.rules =
+        let grafana-user = config.systemd.services.grafana.serviceConfig.User;
+        in [ "d ${cfg.state-directory} 0700 ${grafana-user} - - -" ];
 
       services.grafana.serviceConfig = {
         EnvironmentFile = host-secrets.grafana-environment-file.target-file;
@@ -172,7 +173,7 @@ in {
     fudo.secrets.host-secrets.${hostname}.grafana-environment-file = {
       source-file = pkgs.writeText "grafana.env" ''
         ${optionalString (cfg.ldap != null)
-          ''GRAFANA_LDAP_BIND_PASSWD="${cfg.ldap.bind-passwd}"''}
+        ''GRAFANA_LDAP_BIND_PASSWD="${cfg.ldap.bind-passwd}"''}
       '';
       target-file = "/run/metrics/grafana/auth-bind.passwd";
       user = config.systemd.services.grafana.serviceConfig.User;
@@ -186,8 +187,8 @@ in {
 
         virtualHosts = {
           "${cfg.hostname}" = {
-            enableACME = ! cfg.private-network;
-            forceSSL = ! cfg.private-network;
+            enableACME = !cfg.private-network;
+            forceSSL = !cfg.private-network;
             locations."/".proxyPass = "http://127.0.0.1:3000";
           };
         };
@@ -200,8 +201,7 @@ in {
         protocol = "http";
         port = 3000;
         domain = cfg.hostname;
-        rootUrl = let
-          scheme = if cfg.private-network then "http" else "https";
+        rootUrl = let scheme = if cfg.private-network then "http" else "https";
         in "${scheme}://${cfg.hostname}/";
         dataDir = cfg.state-directory;
 
@@ -210,13 +210,15 @@ in {
           secretKeyFile = cfg.secret-key-file;
         };
 
-        smtp = {
-          enable = true;
-          # TODO: create system user as necessary
-          fromAddress = "${cfg.smtp.username}@${cfg.smtp.domain}";
-          host = "${cfg.smtp.hostname}:25";
-          user = cfg.smtp.username;
-          passwordFile = cfg.smtp.password-file;
+        settings = {
+          smtp = {
+            enable = true;
+            # TODO: create system user as necessary
+            fromAddress = "${cfg.smtp.username}@${cfg.smtp.domain}";
+            host = "${cfg.smtp.hostname}:25";
+            user = cfg.smtp.username;
+            passwordFile = cfg.smtp.password-file;
+          };
         };
 
         extraOptions = mkIf (cfg.ldap != null) (let

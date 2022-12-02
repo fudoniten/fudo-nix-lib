@@ -202,6 +202,8 @@ in {
       groups."${cfg.group}" = { members = [ cfg.user ]; };
     };
 
+    networking.firewall.allowedTCPPorts = [ 25555 ];
+
     systemd = {
       tmpfiles.rules = map (worldOpts:
         "d ${worldStateDir worldOpts} 0700 ${cfg.user} ${cfg.group} - -")
@@ -212,13 +214,13 @@ in {
           sanitizedName = sanitizeName worldOpts.world-name;
           serverName = "minecraft-clj-${sanitizedName}";
           stateDir = worldStateDir worldOpts;
-          startScript = let
+
+          preStartScript = let
             admins-file = pkgs.writeText "${sanitizedName}-ops.txt"
               (concatStringsSep "\n" cfg.admins);
             props-file = genPropsFile worldOpts;
             eula-file =
               pkgs.writeText "mc-${sanitizedName}-eula.txt" "eula=true";
-
           in pkgs.writeShellScript "mc-initialize-${sanitizedName}.sh" ''
             cp -f ${admins-file} ${stateDir}/ops.txt
             cp -f ${props-file} ${stateDir}/server.properties
@@ -227,6 +229,15 @@ in {
             cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
             chmod u+w ${stateDir}/server.properties
           '';
+
+          startScript = let
+            mem = "${toString worldOpts.allocated-memory}G";
+            memFlags = [ "-Xms${mem}" "-Xmx${mem}" ];
+            flags = commonFlags ++ memFlags
+              ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
+            flagStr = concatStringsSep " " flags;
+          in pkgs.writeShellScript "mc-start-${sanitized-Name}.sh"
+          "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
 
         in nameValuePair serverName {
           enable = worldOpts.enable;
@@ -238,27 +249,21 @@ in {
             User = cfg.user;
             Group = cfg.group;
             WorkingDirectory = stateDir;
-            ExecStartPre = "${startScript}";
-            ExecStart = let
-              mem = "${toString worldOpts.allocated-memory}G";
-              memFlags = [ "-Xms${mem}" "-Xmx${mem}" ];
-              flags = commonFlags ++ memFlags
-                ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
-              flagStr = concatStringsSep " " flags;
-            in "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
+            ExecStartPre = "${preStartScript}";
+            ExecStart = "${startScript}";
 
             Restart = "always";
-            # NoNewPrivileges = true;
+            NoNewPrivileges = true;
             # PrivateTmp = true;
-            # PrivateDevices = true;
-            # ProtectSystem = "strict";
-            # ProtectHome = true;
-            # ProtectControlGroups = true;
-            # ProtectKernelModules = true;
-            # ProtectKernelTunables = true;
-            # RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
-            # RestrictRealtime = true;
-            # RestrictNamespaces = true;
+            PrivateDevices = true;
+            ProtectSystem = "strict";
+            ProtectHome = true;
+            ProtectControlGroups = true;
+            ProtectKernelModules = true;
+            ProtectKernelTunables = true;
+            RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
+            RestrictRealtime = true;
+            RestrictNamespaces = true;
             ReadWritePaths = [ cfg.state-directory ];
           };
         }) cfg.worlds;

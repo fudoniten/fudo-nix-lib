@@ -236,7 +236,7 @@ in {
             flags = commonFlags ++ memFlags
               ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
             flagStr = concatStringsSep " " flags;
-          in pkgs.writeShellScript "mc-start-${sanitized-Name}.sh"
+          in pkgs.writeShellScript "mc-start-${sanitizedName}.sh"
           "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
 
         in nameValuePair serverName {

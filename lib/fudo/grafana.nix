@@ -205,19 +205,19 @@ in {
         in "${scheme}://${cfg.hostname}/";
         dataDir = cfg.state-directory;
 
-        security = {
-          adminPasswordFile = cfg.admin-password-file;
-          secretKeyFile = cfg.secret-key-file;
-        };
-
         settings = {
           smtp = {
             enable = true;
             # TODO: create system user as necessary
-            fromAddress = "${cfg.smtp.username}@${cfg.smtp.domain}";
+            from_address = "${cfg.smtp.username}@${cfg.smtp.domain}";
             host = "${cfg.smtp.hostname}:25";
             user = cfg.smtp.username;
-            passwordFile = cfg.smtp.password-file;
+            password = "$__${cfg.smtp.password-file}}";
+          };
+
+          security = {
+            admin_password = "$__{${cfg.admin-password-file}}";
+            secret_key = "$__file{${cfg.secret-key-file}}";
           };
 
           ldap.auth = mkIf (cfg.ldap != null) (let

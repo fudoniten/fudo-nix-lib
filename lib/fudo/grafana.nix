@@ -249,9 +249,14 @@ in {
             org_role = "Viewer"
           '';
         in {
-          AUTH_LDAP_ENABLED = "true";
-          AUTH_LDAP_ALLOW_SIGN_UP = "true";
-          AUTH_LDAP_CONFIG_FILE = config-file;
+          auth.ldap = {
+            enabled = true;
+            allow_sign_up = true;
+            config_file = config-file;
+          };
+          # AUTH_LDAP_ENABLED = "true";
+          # AUTH_LDAP_ALLOW_SIGN_UP = "true";
+          # AUTH_LDAP_CONFIG_FILE = config-file;
         });
 
         database = {

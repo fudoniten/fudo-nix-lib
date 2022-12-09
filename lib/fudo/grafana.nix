@@ -258,7 +258,7 @@ in {
           in {
             enabled = true;
             allow_sign_up = true;
-            config_file = config-file;
+            config_file = "${config-file}";
 
             # AUTH_LDAP_ENABLED = "true";
             # AUTH_LDAP_ALLOW_SIGN_UP = "true";

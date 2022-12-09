@@ -220,6 +220,14 @@ in {
             secret_key = "$__file{${cfg.secret-key-file}}";
           };
 
+          database = {
+            host = cfg.database.hostname;
+            name = cfg.database.name;
+            user = cfg.database.user;
+            password = "$__{${cfg.database.password-file}}";
+            type = "postgres";
+          };
+
           ldap.auth = mkIf (cfg.ldap != null) (let
             base = cfg.ldap.base-dn;
 
@@ -256,14 +264,6 @@ in {
             # AUTH_LDAP_ALLOW_SIGN_UP = "true";
             # AUTH_LDAP_CONFIG_FILE = config-file;
           });
-        };
-
-        database = {
-          host = cfg.database.hostname;
-          name = cfg.database.name;
-          user = cfg.database.user;
-          passwordFile = cfg.database.password-file;
-          type = "postgres";
         };
 
         provision = {

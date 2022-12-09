@@ -264,7 +264,7 @@ in {
 
         provision = {
           enable = true;
-          datasources = let
+          datasources.settings.datasources = let
             make-datasource = datasource: {
               editable = false;
               isDefault = datasource.default;

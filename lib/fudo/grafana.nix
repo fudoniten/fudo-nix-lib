@@ -219,45 +219,44 @@ in {
             user = cfg.smtp.username;
             passwordFile = cfg.smtp.password-file;
           };
-        };
 
-        extraOptions = mkIf (cfg.ldap != null) (let
-          base = cfg.ldap.base-dn;
+          ldap.auth = mkIf (cfg.ldap != null) (let
+            base = cfg.ldap.base-dn;
 
-          config-file = pkgs.writeText "grafana-ldap.toml" ''
-            [[servers]]
-            host = "${concatStringsSep " " cfg.ldap.hosts}"
-            port = 389
-            start_tls = true
+            config-file = pkgs.writeText "grafana-ldap.toml" ''
+              [[servers]]
+              host = "${concatStringsSep " " cfg.ldap.hosts}"
+              port = 389
+              start_tls = true
 
-            bind_dn = "uid=%s,ou=members,${base}"
+              bind_dn = "uid=%s,ou=members,${base}"
 
-            search_filter = "(uid=%s)"
-            search_base_dns = [ "ou=members,${base}" ]
+              search_filter = "(uid=%s)"
+              search_base_dns = [ "ou=members,${base}" ]
 
-            group_search_filter = "(&(objectClass=posixGroup)(memberUid=%s))"
-            group_search_base_dns = ["ou=groups,${base}"]
-            group_search_filter_user_attribute = "uid"
+              group_search_filter = "(&(objectClass=posixGroup)(memberUid=%s))"
+              group_search_base_dns = ["ou=groups,${base}"]
+              group_search_filter_user_attribute = "uid"
 
-            [[servers.group_mappings]]
-            group_dn = "cn=admin,ou=groups,${base}"
-            org_role = "Admin"
-            grafana_admin = true
+              [[servers.group_mappings]]
+              group_dn = "cn=admin,ou=groups,${base}"
+              org_role = "Admin"
+              grafana_admin = true
 
-            [[servers.group_mappings]]
-            group_dn = "cn=*,ou=groups,${base}"
-            org_role = "Viewer"
-          '';
-        in {
-          auth.ldap = {
+              [[servers.group_mappings]]
+              group_dn = "cn=*,ou=groups,${base}"
+              org_role = "Viewer"
+            '';
+          in {
             enabled = true;
             allow_sign_up = true;
             config_file = config-file;
-          };
-          # AUTH_LDAP_ENABLED = "true";
-          # AUTH_LDAP_ALLOW_SIGN_UP = "true";
-          # AUTH_LDAP_CONFIG_FILE = config-file;
-        });
+
+            # AUTH_LDAP_ENABLED = "true";
+            # AUTH_LDAP_ALLOW_SIGN_UP = "true";
+            # AUTH_LDAP_CONFIG_FILE = config-file;
+          });
+        };
 
         database = {
           host = cfg.database.hostname;

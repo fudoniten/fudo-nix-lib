@@ -15,14 +15,15 @@ let
 
   ca-path = "${cfg.state-directory}/ca.pem";
 
-  build-ca-script = target: ca-cert: site-chain: let
-    user = config.services.openldap.user;
-    group = config.services.openldap.group;
-  in pkgs.writeShellScript "build-openldap-ca-script.sh" ''
-    cat ${site-chain} ${ca-cert} > ${target}
-    chmod 440 ${target}
-    chown ${user}:${group} ${target}
-  '';
+  build-ca-script = target: ca-cert: site-chain:
+    let
+      user = config.services.openldap.user;
+      group = config.services.openldap.group;
+    in pkgs.writeShellScript "build-openldap-ca-script.sh" ''
+      cat ${site-chain} ${ca-cert} > ${target}
+      chmod 440 ${target}
+      chown ${user}:${group} ${target}
+    '';
 
   mkHomeDir = username: user-opts:
     if (user-opts.primary-group == "admin") then
@@ -78,7 +79,7 @@ let
 
   usersLdif = base: group-map: user-map:
     join-lines
-      (mapAttrsToList (name: opts: userLdif base name group-map opts) user-map);
+    (mapAttrsToList (name: opts: userLdif base name group-map opts) user-map);
 
 in {
 
@@ -219,12 +220,13 @@ in {
   config = mkIf cfg.enable {
 
     users = {
-      users.openldap = {
-        uid = 389;
-      };
-      groups.openldap = {
-        gid = 389;
-      };
+      users.openldap = { uid = 389; };
+      groups.openldap = { gid = 389; };
+    };
+
+    fileSystems."/var/lib/openldap/database" = {
+      device = "${cfg.state-directory}/database";
+      options = [ "bind" ];
     };
 
     environment = {
@@ -250,9 +252,7 @@ in {
       user = config.services.openldap.user;
       group = config.services.openldap.group;
     in {
-      tmpfiles.rules = [
-        "d ${dirOf ca-path} 0700 ${user} ${group} - -"
-      ];
+      tmpfiles.rules = [ "d ${dirOf ca-path} 0700 ${user} ${group} - -" ];
 
       services.openldap = {
         partOf = [ cfg.systemd-target ];
@@ -261,9 +261,7 @@ in {
           KRB5_KTNAME = cfg.kerberos-keytab;
         };
         preStart = mkAfter ''
-          ${build-ca-script ca-path
-            cfg.ssl-chain
-            cfg.ssl-ca-certificate}
+          ${build-ca-script ca-path cfg.ssl-chain cfg.ssl-ca-certificate}
           # The script is failing to do this
           chown "${user}:${group}" /etc/openldap
         '';
@@ -314,14 +312,15 @@ in {
       settings = let
         makePermEntry = dn: perm: "by ${dn} ${perm}";
 
-        makeAccessLine = target: perm-map: let
-          perm-entries = mapAttrsToList makePermEntry perm-map;
-        in "to ${target} ${concatStringsSep " " perm-entries}";
+        makeAccessLine = target: perm-map:
+          let perm-entries = mapAttrsToList makePermEntry perm-map;
+          in "to ${target} ${concatStringsSep " " perm-entries}";
 
-        makeAccess = access-map: let
-          access-lines = mapAttrsToList makeAccessLine;
-          numbered-access-lines = imap0 (i: line: "{${toString i}}${line}");
-        in numbered-access-lines (access-lines access-map);
+        makeAccess = access-map:
+          let
+            access-lines = mapAttrsToList makeAccessLine;
+            numbered-access-lines = imap0 (i: line: "{${toString i}}${line}");
+          in numbered-access-lines (access-lines access-map);
 
       in {
         attrs = {
@@ -333,11 +332,13 @@ in {
           olcTLSCACertificateFile = ca-path;
           olcSaslSecProps = "noplain,noanonymous";
           olcAuthzRegexp = let
-            authz-regex-entry = i: { regex, target }:
-              "{${toString i}}\"${regex}\" \"${target}\"";
+            authz-regex-entry = i:
+              { regex, target }:
+              ''{${toString i}}"${regex}" "${target}"'';
           in imap0 authz-regex-entry [
             {
-              regex = "^uid=auth/([^.]+).fudo.org,cn=fudo.org,cn=gssapi,cn=auth$";
+              regex =
+                "^uid=auth/([^.]+).fudo.org,cn=fudo.org,cn=gssapi,cn=auth$";
               target = "cn=$1,ou=hosts,dc=fudo,dc=org";
             }
             {
@@ -353,7 +354,8 @@ in {
               target = "cn=$1,ou=hosts,dc=fudo,dc=org";
             }
             {
-              regex = "^gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth$";
+              regex =
+                "^gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth$";
               target = "cn=admin,dc=fudo,dc=org";
             }
           ];
@@ -377,11 +379,7 @@ in {
             attrs = {
               objectClass = [ "olcDatabaseConfig" ];
               olcDatabase = "{0}config";
-              olcAccess = makeAccess {
-                "*" = {
-                  "*" = "none";
-                };
-              };
+              olcAccess = makeAccess { "*" = { "*" = "none"; }; };
             };
           };
           "olcDatabase={1}mdb" = {
@@ -391,8 +389,8 @@ in {
               olcSuffix = cfg.base;
               # olcRootDN = "cn=admin,${cfg.base}";
               # olcRootPW = FIXME; # NOTE: this should be hashed...
-              olcDbDirectory = "${cfg.state-directory}/database";
-              olcDbIndex = [ "objectClass eq" "uid pres,eq" "memberUid eq"];
+              olcDbDirectory = "/var/lib/openldap/database";
+              olcDbIndex = [ "objectClass eq" "uid pres,eq" "memberUid eq" ];
               olcAccess = makeAccess {
                 "attrs=userPassword,shadowLastChange" = {
                   "dn.exact=cn=auth_reader,${cfg.base}" = "read";

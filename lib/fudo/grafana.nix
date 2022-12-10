@@ -197,15 +197,20 @@ in {
       grafana = {
         enable = true;
 
-        addr = "127.0.0.1";
-        protocol = "http";
-        port = 3000;
-        domain = cfg.hostname;
-        rootUrl = let scheme = if cfg.private-network then "http" else "https";
-        in "${scheme}://${cfg.hostname}/";
         dataDir = cfg.state-directory;
 
         settings = {
+
+          server = {
+            root_url =
+              let scheme = if cfg.private-network then "http" else "https";
+              in "${scheme}://${cfg.hostname}/";
+            http_addr = "127.0.0.1";
+            http_port = 3000;
+            protocol = "http";
+            domain = cfg.hostname;
+          };
+
           smtp = {
             enable = true;
             # TODO: create system user as necessary
@@ -228,7 +233,7 @@ in {
             type = "postgres";
           };
 
-          ldap.auth = mkIf (cfg.ldap != null) (let
+          "ldap.auth" = mkIf (cfg.ldap != null) (let
             base = cfg.ldap.base-dn;
 
             config-file = pkgs.writeText "grafana-ldap.toml" ''

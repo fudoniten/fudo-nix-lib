@@ -13,16 +13,16 @@ let
 
   attrOr = attrs: attr: value: if attrs ? ${attr} then attrs.${attr} else value;
 
-  ca-path = "${cfg.state-directory}/ca.pem";
+  ca-path = "/etc/openldap/ca.pem";
 
-  build-ca-script = target: ca-cert: site-chain:
+  build-ca-script = ca-cert: site-chain:
     let
       user = config.services.openldap.user;
       group = config.services.openldap.group;
     in pkgs.writeShellScript "build-openldap-ca-script.sh" ''
-      cat ${site-chain} ${ca-cert} > ${target}
-      chmod 440 ${target}
-      chown ${user}:${group} ${target}
+      cat ${site-chain} ${ca-cert} > ${ca-path}
+      chmod 440 ${ca-path}
+      chown ${user}:${group} ${ca-path}
     '';
 
   mkHomeDir = username: user-opts:
@@ -260,10 +260,10 @@ in {
         environment = mkIf (cfg.kerberos-keytab != null) {
           KRB5_KTNAME = cfg.kerberos-keytab;
         };
-        preStart = mkAfter ''
-          ${build-ca-script ca-path cfg.ssl-chain cfg.ssl-ca-certificate}
+        preStart = mkOrder 5000 ''
+          ${build-ca-script cfg.ssl-chain cfg.ssl-ca-certificate}
           # The script is failing to do this
-          chown "${user}:${group}" /etc/openldap
+          chown "${user}:${group}" -R /etc/openldap
         '';
         serviceConfig = {
           PrivateDevices = true;
@@ -326,7 +326,7 @@ in {
         attrs = {
           cn = "config";
           objectClass = "olcGlobal";
-          olcPidFile = "/run/slapd/slapd.pid";
+          # olcPidFile = "/run/slapd/slapd.pid";
           olcTLSCertificateFile = cfg.ssl-certificate;
           olcTLSCertificateKeyFile = cfg.ssl-private-key;
           olcTLSCACertificateFile = ca-path;

@@ -1,6 +1,8 @@
 # ## NOTE:
 ## This is a copy of the upstream version, which allows for overriding the state directory
 
+## OBSOLETE
+
 { config, pkgs, lib, ... }:
 
 with lib;

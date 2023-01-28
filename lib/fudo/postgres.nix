@@ -347,7 +347,6 @@ in {
           description =
             "A service to set postgresql user passwords after the server has started.";
           after = [ "postgresql.service" ] ++ cfg.required-services;
-          requires = [ "postgresql.service" ] ++ cfg.required-services;
           wantedBy = [ "postgresql.service" ];
           serviceConfig = {
             Type = "oneshot";
@@ -386,10 +385,10 @@ in {
         };
 
         postgresql-finalizer = {
-          requires = [ "postgresql.target" ];
-          after = [ "postgresql.target" "postgresql-password-setter.target" ];
-          partOf = [ cfg.systemd-target ];
-          wantedBy = [ "postgresql.target" ];
+          requires = [ "postgresql.service" ];
+          after = [ "postgresql.service" "postgresql-password-setter.service" ];
+          partOf = [ "postgresql.target" ];
+          wantedBy = [ "postgresql.service" ];
           serviceConfig = {
             User = config.services.postgresql.superUser;
             ExecStart = let

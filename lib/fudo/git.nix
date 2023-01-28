@@ -131,7 +131,7 @@ in {
         rootUrl = "https://${cfg.hostname}/";
         user = mkIf (cfg.user != null) cfg.user;
         ssh = {
-          enable = true;
+          #enable = true;
           clonePort = cfg.ssh.listen-port;
         };
         settings = mkIf (cfg.ssh != null) {

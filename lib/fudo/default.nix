@@ -2,6 +2,8 @@
 
 with lib; {
   imports = [
+    ./auth
+
     ./backplane-service/dns.nix
 
     ./acme-certs.nix
@@ -23,7 +25,7 @@ with lib; {
     ./initrd-network.nix
     ./ipfs.nix
     ./jabber.nix
-    ./kdc.nix
+    # ./kdc.nix
     ./ldap.nix
     ./local-network.nix
     ./mail.nix

@@ -318,7 +318,11 @@ in {
         powerdns = {
           description = "PowerDNS nameserver.";
           requires = [ "powerdns-config-generator.service" ];
-          after = [ "network.target" "powerdns-config-generator.service" ];
+          after = [
+            "network.target"
+            "powerdns-config-generator.service"
+            "postgresql.service"
+          ];
           wantedBy = [ "multi-user.target" ];
           path = with pkgs; [ powerdns postgresql util-linux ];
           serviceConfig = {

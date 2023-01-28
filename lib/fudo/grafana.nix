@@ -217,11 +217,11 @@ in {
             from_address = "${cfg.smtp.username}@${cfg.smtp.domain}";
             host = "${cfg.smtp.hostname}:25";
             user = cfg.smtp.username;
-            password = "$__${cfg.smtp.password-file}}";
+            password = "$__file{${cfg.smtp.password-file}}";
           };
 
           security = {
-            admin_password = "$__{${cfg.admin-password-file}}";
+            admin_password = "$__file{${cfg.admin-password-file}}";
             secret_key = "$__file{${cfg.secret-key-file}}";
           };
 
@@ -229,7 +229,7 @@ in {
             host = cfg.database.hostname;
             name = cfg.database.name;
             user = cfg.database.user;
-            password = "$__{${cfg.database.password-file}}";
+            password = "$__file{${cfg.database.password-file}}";
             type = "postgres";
           };
 

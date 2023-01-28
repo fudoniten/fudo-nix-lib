@@ -260,11 +260,6 @@ in {
         environment = mkIf (cfg.kerberos-keytab != null) {
           KRB5_KTNAME = cfg.kerberos-keytab;
         };
-        preStart = mkOrder 5000 ''
-          ${build-ca-script cfg.ssl-chain cfg.ssl-ca-certificate}
-          # The script is failing to do this
-          chown "${user}:${group}" -R /etc/openldap
-        '';
         serviceConfig = {
           PrivateDevices = true;
           PrivateTmp = true;
@@ -301,6 +296,13 @@ in {
           InaccessiblePaths = [ "/home" "/root" ];
           LimitNOFILE = 49152;
           PermissionsStartOnly = true;
+
+          ExecStartPre = [
+            "${build-ca-script cfg.ssl-chain cfg.ssl-ca-certificate}"
+            ''${pkgs.coreutils}/bin/chown "${user}:${group}" -vR /etc/openldap''
+            ''
+              ${pkgs.coreutils}/bin/chown "${user}:${group}" -vR "/var/lib/openldap/database"''
+          ];
         };
       };
     };

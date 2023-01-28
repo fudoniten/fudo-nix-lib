@@ -22,7 +22,8 @@ let
 
       zone-definition = mkOption {
         type = submodule (import ../types/zone-definition.nix);
-        description = "Definition of network zone to be served by local server.";
+        description =
+          "Definition of network zone to be served by local server.";
       };
     };
   };
@@ -51,7 +52,8 @@ in {
 
     state-directory = mkOption {
       type = str;
-      description = "Path at which to store nameserver state, including DNSSEC keys.";
+      description =
+        "Path at which to store nameserver state, including DNSSEC keys.";
       default = "/var/lib/nsd";
     };
   };
@@ -61,24 +63,26 @@ in {
       allowedTCPPorts = [ 53 ];
       allowedUDPPorts = [ 53 ];
     };
-    
-    fudo.nsd = {
+
+    fileSystems."/var/lib/nsd" = {
+      device = cfg.state-directory;
+      options = [ "bind" ];
+    };
+
+    services.nsd = {
       enable = true;
       identity = cfg.identity;
       interfaces = cfg.listen-ips;
-      stateDir = cfg.state-directory;
-      zones = mapAttrs' (dom: dom-cfg: let
-        net-cfg = dom-cfg.zone-definition;
-      in nameValuePair "${dom}." {
-        dnssec = dom-cfg.dnssec;
+      # stateDir = cfg.state-directory;
+      zones = mapAttrs' (dom: dom-cfg:
+        let net-cfg = dom-cfg.zone-definition;
+        in nameValuePair "${dom}." {
+          dnssec = dom-cfg.dnssec;
 
-        data =
-          pkgs.lib.dns.zoneToZonefile
-            config.instance.build-timestamp
-            dom
+          data = pkgs.lib.dns.zoneToZonefile config.instance.build-timestamp dom
             dom-cfg.zone-definition;
 
-      }) cfg.domains;
+        }) cfg.domains;
     };
   };
 }

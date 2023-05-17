@@ -110,7 +110,6 @@ let
             heimdal-kadmind = {
               wantedBy = [ "heimdal-kdc.service" ];
               after = [ "heimdal-kdc.service" ];
-              bindsTo = [ "heimdal-kdc.service" ];
               description = "Heimdal Kerberos Administration Server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {
@@ -149,7 +148,6 @@ let
             heimdal-kpasswdd = {
               wantedBy = [ "heimdal-kdc.service" ];
               after = [ "heimdal-kdc.service" ];
-              bindsTo = [ "heimdal-kdc.service" ];
               description = "Heimdal Kerberos Password Server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {
@@ -188,7 +186,6 @@ let
 
             heimdal-hprop = mkIf hasSecondary {
               wantedBy = [ "heimdal-kdc.service" ];
-              bindsTo = [ "heimdal-kdc.service" ];
               after = [ "heimdal-kdc.service" ];
               description =
                 "Service to propagate the KDC database to secondary servers.";
@@ -220,8 +217,8 @@ let
                     "--config-file=${kdcConf}"
                     "--"
                     "dump"
-                    "--format=MIT"
-                    "$(echo ${staging-db})"
+                    "--format=Heimdal"
+                    "${staging-db}"
                   ]);
                 ExecStart = pkgs.writeShellScript "kdc-hprop.sh"
                   (concatStringsSep " " ([
@@ -239,35 +236,12 @@ let
           };
 
           paths.heimdal-hprop = mkIf hasSecondary {
-            wantedBy = [ "heimdal-kdc.service" ];
-            bindsTo = [ "heimdal-kdc.service" ];
+            wantedBy = [ "heimdal-hprop.service" ];
+            bindsTo = [ "heimdal-hprop.service" ];
             after = [ "heimdal-kdc.service" ];
             pathConfig = { PathModified = cfg.kdc.database; };
           };
         };
-
-        # services.xinetd = {
-        #   enable = true;
-
-        #   services = [
-        #     {
-        #       name = "kadmin";
-        #       user = cfg.user;
-        #       server = "${pkgs.heimdal}/libexec/heimdal/kadmind";
-        #       protocol = "tcp";
-        #       serverArgs =
-        #         "--config-file=${kdcConf} --keytab=${cfg.kdc.primary.keytabs.kadmind}";
-        #     }
-        #     {
-        #       name = "kpasswd";
-        #       user = cfg.user;
-        #       server = "${pkgs.heimdal}/libexec/heimdal/kpasswdd";
-        #       protocol = "udp";
-        #       serverArgs =
-        #         "--config-file=${kdcConf} --keytab=${cfg.kdc.primary.keytabs.kpasswdd}";
-        #     }
-        #   ];
-        # };
 
         networking.firewall = {
           allowedTCPPorts = [ 88 749 ];
@@ -280,12 +254,12 @@ let
     let
       cfg = config.fudo.auth.kerberos;
 
-      kdcConf = pkgs.writeText "kdc.conf" ''
+      kdcConf = pkgs.writeText "kdc.conf.template" ''
         [kdc]
           database = {
             realm = ${cfg.realm}
             dbname = sqlite:${cfg.kdc.database}
-            mkey_file = ${cfg.kdc.master-key-file}
+            mkey_file = __KEY_FILE__
             log_file = /dev/null
           }
 
@@ -310,7 +284,7 @@ let
             isSystemUser = true;
             group = cfg.group;
           };
-          groups."${cfg.group}" = { members = [ cfg.user ]; };
+          groups."${cfg.group}".members = [ cfg.user ];
         };
 
         systemd = {
@@ -343,6 +317,7 @@ let
                 RestartSec = "5s";
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
+                RuntimeDirectory = "heimdal-kdc-secondary";
                 ExecStart = let
                   ips = if (cfg.kdc.bind-addresses != [ ]) then
                     cfg.kdc.bind-addresses
@@ -353,13 +328,15 @@ let
               };
             };
 
-            heimdal-hpropd = {
+            "heimdal-hpropd@" = {
               wantedBy = [ "heimdal-kdc-secondary.service" ];
               after = [ "heimdal-kdc-secondary.service" ];
               bindsTo = [ "heimdal-kdc-secondary.service" ];
               description = "Heimdal propagation listener server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {
+                StandardInput = "socket";
+                StandardOutput = "socket";
                 PrivateDevices = true;
                 PrivateTmp = true;
                 # PrivateMounts = true;
@@ -387,6 +364,14 @@ let
                   "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
                 ];
               };
+            };
+          };
+
+          sockets.heimdal-hpropd = {
+            wantedBy = [ "sockets.target" ];
+            socketConfig = {
+              ListenStream = "0.0.0.0:754";
+              Accept = true;
             };
           };
         };

@@ -4,20 +4,21 @@ with lib;
 let passwd = import ../passwd.nix { inherit lib; };
 
 in rec {
-  encryptedFSOpts = { ... }:
+  encryptedFSOpts = { name, ... }:
     let
-      mountpoint = { mp, ... }: {
+      mountpoint = { name, ... }: {
         options = with types; {
           mountpoint = mkOption {
             type = str;
             description = "Path at which to mount the filesystem.";
-            default = mp;
+            default = name;
           };
 
           options = mkOption {
             type = listOf str;
             description =
               "List of filesystem options specific to this mountpoint (eg: subvol).";
+            default = [ ];
           };
 
           group = mkOption {
@@ -59,6 +60,18 @@ in rec {
           '';
         };
 
+        type = mkOption {
+          type = enum [ "luks" "luks2" ];
+          description = "Type of the LUKS encryption.";
+          default = "luks";
+        };
+
+        remove-key = mkOption {
+          type = bool;
+          description = "Remove key once the filesystem is decrypted.";
+          default = true;
+        };
+
         filesystem-type = mkOption {
           type = str;
           description = "Filesystem type of the decrypted filesystem.";
@@ -67,6 +80,7 @@ in rec {
         options = mkOption {
           type = listOf str;
           description = "List of filesystem options with which to mount.";
+          default = [ ];
         };
 
         mountpoints = mkOption {

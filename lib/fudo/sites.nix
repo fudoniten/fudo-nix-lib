@@ -139,8 +139,15 @@ let
 
       local-gateway = mkOption {
         type = nullOr str;
-        description = "If this is a NAT site, this should point to the host acting as network gateway.";
+        description =
+          "If this is a NAT site, this should point to the host acting as network gateway.";
         default = null;
+      };
+
+      nexus.domains = mkOption {
+        type = listOf str;
+        description = "Nexus domains to which hosts at this site belong.";
+        default = [ ];
       };
     };
   };

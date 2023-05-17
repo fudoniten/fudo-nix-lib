@@ -7,20 +7,19 @@ let
 
   host-secrets = config.fudo.secrets.host-secrets.${hostname};
 
-  generate-auth-file = name: files: let
-    make-entry = name: passwd-file:
-      ''("${name}" . "${readFile passwd-file}")'';
-    entries = mapAttrsToList make-entry files;
-    content = concatStringsSep "\n" entries;
-  in pkgs.writeText "${name}-backplane-auth.scm" "'(${content})";
+  generate-auth-file = name: files:
+    let
+      make-entry = name: passwd-file:
+        ''("${name}" . "${readFile passwd-file}")'';
+      entries = mapAttrsToList make-entry files;
+      content = concatStringsSep "\n" entries;
+    in pkgs.writeText "${name}-backplane-auth.scm" "'(${content})";
 
   host-auth-file = generate-auth-file "host"
-    (mapAttrs (hostname: hostOpts: hostOpts.password-file)
-      cfg.client-hosts);
+    (mapAttrs (hostname: hostOpts: hostOpts.password-file) cfg.client-hosts);
 
   service-auth-file = generate-auth-file "service"
-    (mapAttrs (service: serviceOpts: serviceOpts.password-file)
-      cfg.services);
+    (mapAttrs (service: serviceOpts: serviceOpts.password-file) cfg.services);
 
   clientHostOpts = { name, ... }: {
     options = with types; {
@@ -49,13 +48,13 @@ in {
     client-hosts = mkOption {
       type = attrsOf (submodule clientHostOpts);
       description = "List of backplane client options.";
-      default = {};
+      default = { };
     };
 
     services = mkOption {
       type = attrsOf (submodule serviceOpts);
       description = "List of backplane service options.";
-      default = {};
+      default = { };
     };
 
     backplane-hostname = mkOption {
@@ -85,8 +84,7 @@ in {
 
       jabber = {
         environment = {
-          FUDO_HOST_PASSWD_FILE =
-            host-secrets.backplane-host-auth.target-file;
+          FUDO_HOST_PASSWD_FILE = host-secrets.backplane-host-auth.target-file;
           FUDO_SERVICE_PASSWD_FILE =
             host-secrets.backplane-service-auth.target-file;
           # GUILE_AUTO_COMPILE = "0";
@@ -98,22 +96,21 @@ in {
           site-config = {
             auth_method = "external";
             extauth_program =
-              # "${pkgs.guile}/bin/guile -s /run/backplane-auth.scm";
               "${pkgs.guile}/bin/guile -s ${pkgs.backplane-auth}/backplane-auth.scm";
             extauth_pool_size = 3;
             auth_use_cache = false;
 
             modules = {
-              mod_adhoc = {};
+              mod_adhoc = { };
               # mod_caps = {};
               # mod_carboncopy = {};
               # mod_client_state = {};
-              mod_configure = {};
+              mod_configure = { };
               # mod_disco = {};
-              mod_fail2ban = {};
+              mod_fail2ban = { };
               # mod_last = {};
               mod_offline.access_max_user_messages = 5000;
-              mod_ping = {};
+              mod_ping = { };
               # mod_pubsub = {
               #   access_createnode = "pubsub_createnode";
               #   ignore_pep_from_offline = true;
@@ -124,9 +121,9 @@ in {
               #   ];
               # };
               # mod_roster = {};
-              mod_stream_mgmt = {};
-              mod_time = {};
-              mod_version = {};
+              mod_stream_mgmt = { };
+              mod_time = { };
+              mod_version = { };
             };
           };
         };

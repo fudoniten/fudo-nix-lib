@@ -33,6 +33,7 @@ with lib; {
     ./minecraft-clj.nix
     ./minecraft-server.nix
     ./netinfo-email.nix
+    ./nexus.nix
     ./node-exporter.nix
     ./nsd.nix
     ./password.nix

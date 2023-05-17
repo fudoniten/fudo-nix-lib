@@ -218,7 +218,7 @@ in {
         cfg.secret-paths;
 
     in {
-      tmpfiles.rules = host-secret-paths ++ build-secret-paths;
+      tmpfiles.rules = unique (host-secret-paths ++ build-secret-paths);
 
       services = host-secret-services // {
         fudo-secrets-watcher = mkIf (length cfg.secret-paths > 0) {

@@ -1,8 +1,6 @@
 # ## NOTE:
 ## This is a copy of the upstream version, which allows for overriding the state directory
 
-## OBSOLETE
-
 { config, pkgs, lib, ... }:
 
 with lib;
@@ -10,9 +8,9 @@ with lib;
 let
   cfg = config.fudo.nsd;
 
-  username = "nsd";
-  stateDir = cfg.stateDir;
-  pidFile = stateDir + "/var/nsd.pid";
+  username = cfg.user;
+  stateDir = cfg.stateDirectory;
+  pidFile = "${stateDir}/run/nsd.pid";
 
   # build nsd with the options needed for the given config
   nsdPkg = pkgs.nsd.override {
@@ -44,6 +42,7 @@ let
     postBuild = ''
       echo "checking zone files"
       cd $out/zones
+
       for zoneFile in *; do
         echo "|- checking zone '$out/zones/$zoneFile'"
         ${nsdPkg}/sbin/nsd-checkzone "$zoneFile" "$zoneFile" || {
@@ -52,9 +51,11 @@ let
             echo Escaping them is not needed any more. Please make sure \
                  to unescape them where they prefix a variable name.
           fi
+
           exit 1
         }
       done
+
       echo "checking configuration file"
       # Save original config file including key references...
       cp $out/nsd.conf{,.orig}
@@ -79,16 +80,20 @@ let
     server:
       chroot:   "${stateDir}"
       username: ${username}
+
       # The directory for zonefile: files. The daemon chdirs here.
       zonesdir: "${stateDir}"
+
       # the list of dynamically added zones.
       database:     "${stateDir}/var/nsd.db"
       pidfile:      "${pidFile}"
       xfrdfile:     "${stateDir}/var/xfrd.state"
       xfrdir:       "${stateDir}/tmp"
       zonelistfile: "${stateDir}/var/zone.list"
+
       # interfaces
     ${forEach "  ip-address: " cfg.interfaces}
+
       ip-freebind:         ${yesOrNo cfg.ipFreebind}
       hide-version:        ${yesOrNo cfg.hideVersion}
       identity:            "${cfg.identity}"
@@ -111,13 +116,16 @@ let
       ${maybeString "version: " cfg.version}
       xfrd-reload-timeout: ${toString cfg.xfrdReloadTimeout}
       zonefiles-check:     ${yesOrNo cfg.zonefilesCheck}
+
       ${maybeString "rrl-ipv4-prefix-length: " cfg.ratelimit.ipv4PrefixLength}
       ${maybeString "rrl-ipv6-prefix-length: " cfg.ratelimit.ipv6PrefixLength}
       rrl-ratelimit:           ${toString cfg.ratelimit.ratelimit}
       ${maybeString "rrl-slip: " cfg.ratelimit.slip}
       rrl-size:                ${toString cfg.ratelimit.size}
       rrl-whitelist-ratelimit: ${toString cfg.ratelimit.whitelistRatelimit}
+
     ${keyConfigFile}
+
     remote-control:
       control-enable:    ${yesOrNo cfg.remoteControl.enable}
       control-key-file:  "${cfg.remoteControl.controlKeyFile}"
@@ -126,7 +134,9 @@ let
       control-port:      ${toString cfg.remoteControl.port}
       server-key-file:   "${cfg.remoteControl.serverKeyFile}"
       server-cert-file:  "${cfg.remoteControl.serverCertFile}"
+
     ${concatStrings (mapAttrsToList zoneConfigFile zoneConfigs)}
+
     ${cfg.extraConfig}
   '';
 
@@ -159,13 +169,16 @@ let
       ${maybeString "outgoing-interface: " zone.outgoingInterface}
     ${forEach "  rrl-whitelist: " zone.rrlWhitelist}
       ${maybeString "zonestats: " zone.zoneStats}
+
       ${maybeToString "max-refresh-time: " zone.maxRefreshSecs}
       ${maybeToString "min-refresh-time: " zone.minRefreshSecs}
       ${maybeToString "max-retry-time:   " zone.maxRetrySecs}
       ${maybeToString "min-retry-time:   " zone.minRetrySecs}
+
       allow-axfr-fallback: ${yesOrNo zone.allowAXFRFallback}
     ${forEach "  allow-notify: " zone.allowNotify}
     ${forEach "  request-xfr: " zone.requestXFR}
+
     ${forEach "  notify: " zone.notify}
       notify-retry:                        ${toString zone.notifyRetry}
     ${forEach "  provide-xfr: " zone.provideXFR}
@@ -194,7 +207,7 @@ let
       allowAXFRFallback = mkOption {
         type = types.bool;
         default = true;
-        description = ''
+        description = lib.mdDoc ''
           If NSD as secondary server should be allowed to AXFR if the primary
           server does not allow IXFR.
         '';
@@ -208,21 +221,24 @@ let
           "10.0.0.1-10.0.0.5 my_tsig_key_name"
           "10.0.3.4&255.255.0.0 BLOCKED"
         ];
-        description = ''
+        description = lib.mdDoc ''
           Listed primary servers are allowed to notify this secondary server.
-          <screen><![CDATA[
-          Format: <ip> <key-name | NOKEY | BLOCKED>
-          <ip> either a plain IPv4/IPv6 address or range. Valid patters for ranges:
-          * 10.0.0.0/24            # via subnet size
-          * 10.0.0.0&255.255.255.0 # via subnet mask
-          * 10.0.0.1-10.0.0.254    # via range
+
+          Format: `<ip> <key-name | NOKEY | BLOCKED>`
+
+          `<ip>` either a plain IPv4/IPv6 address or range.
+          Valid patters for ranges:
+          * `10.0.0.0/24`: via subnet size
+          * `10.0.0.0&255.255.255.0`: via subnet mask
+          * `10.0.0.1-10.0.0.254`: via range
+
           A optional port number could be added with a '@':
-          * 2001:1234::1@1234
-          <key-name | NOKEY | BLOCKED>
-          * <key-name> will use the specified TSIG key
-          * NOKEY      no TSIG signature is required
-          * BLOCKED    notifies from non-listed or blocked IPs will be ignored
-          * ]]></screen>
+          * `2001:1234::1@1234`
+
+          `<key-name | NOKEY | BLOCKED>`
+          * `<key-name>` will use the specified TSIG key
+          * `NOKEY` no TSIG signature is required
+          * `BLOCKED`notifies from non-listed or blocked IPs will be ignored
         '';
       };
 
@@ -235,7 +251,7 @@ let
         # to default values, breaking the parent inheriting function.
         type = types.attrsOf types.anything;
         default = { };
-        description = ''
+        description = lib.mdDoc ''
           Children zones inherit all options of their parents. Attributes
           defined in a child will overwrite the ones of its parent. Only
           leaf zones will be actually served. This way it's possible to
@@ -248,29 +264,29 @@ let
       data = mkOption {
         type = types.lines;
         default = "";
-        description = ''
+        description = lib.mdDoc ''
           The actual zone data. This is the content of your zone file.
           Use imports or pkgs.lib.readFile if you don't want this data in your config file.
         '';
       };
 
-      dnssec = mkEnableOption "DNSSEC";
+      dnssec = mkEnableOption (lib.mdDoc "DNSSEC");
 
       dnssecPolicy = {
         algorithm = mkOption {
           type = types.str;
           default = "RSASHA256";
-          description = "Which algorithm to use for DNSSEC";
+          description = lib.mdDoc "Which algorithm to use for DNSSEC";
         };
         keyttl = mkOption {
           type = types.str;
           default = "1h";
-          description = "TTL for dnssec records";
+          description = lib.mdDoc "TTL for dnssec records";
         };
         coverage = mkOption {
           type = types.str;
           default = "1y";
-          description = ''
+          description = lib.mdDoc ''
             The length of time to ensure that keys will be correct; no action will be taken to create new keys to be activated after this time.
           '';
         };
@@ -282,7 +298,7 @@ let
             postPublish = "1w";
             rollPeriod = "1mo";
           };
-          description = "Key policy for zone signing keys";
+          description = lib.mdDoc "Key policy for zone signing keys";
         };
         ksk = mkOption {
           type = keyPolicy;
@@ -292,14 +308,22 @@ let
             postPublish = "1mo";
             rollPeriod = "0";
           };
-          description = "Key policy for key signing keys";
+          description = lib.mdDoc "Key policy for key signing keys";
+        };
+      };
+
+      ksk = {
+        keyFile = mkOption {
+          type = types.str;
+          description =
+            "Location of the zone key-signing key file on the local host.";
         };
       };
 
       maxRefreshSecs = mkOption {
         type = types.nullOr types.int;
         default = null;
-        description = ''
+        description = lib.mdDoc ''
           Limit refresh time for secondary zones. This is the timer which
           checks to see if the zone has to be refetched when it expires.
           Normally the value from the SOA record is used, but this  option
@@ -310,7 +334,7 @@ let
       minRefreshSecs = mkOption {
         type = types.nullOr types.int;
         default = null;
-        description = ''
+        description = lib.mdDoc ''
           Limit refresh time for secondary zones.
         '';
       };
@@ -318,7 +342,7 @@ let
       maxRetrySecs = mkOption {
         type = types.nullOr types.int;
         default = null;
-        description = ''
+        description = lib.mdDoc ''
           Limit retry time for secondary zones. This is the timeout after
           a failed fetch attempt for the zone. Normally the value from
           the SOA record is used, but this option restricts that value.
@@ -328,7 +352,7 @@ let
       minRetrySecs = mkOption {
         type = types.nullOr types.int;
         default = null;
-        description = ''
+        description = lib.mdDoc ''
           Limit retry time for secondary zones.
         '';
       };
@@ -337,23 +361,24 @@ let
         type = types.listOf types.str;
         default = [ ];
         example = [ "10.0.0.1@3721 my_key" "::5 NOKEY" ];
-        description = ''
+        description = lib.mdDoc ''
           This primary server will notify all given secondary servers about
           zone changes.
-          <screen><![CDATA[
-          Format: <ip> <key-name | NOKEY>
-          <ip> a plain IPv4/IPv6 address with on optional port number (ip@port)
-          <key-name | NOKEY>
-          * <key-name> sign notifies with the specified key
-          * NOKEY      don't sign notifies
-          ]]></screen>
+
+          Format: `<ip> <key-name | NOKEY>`
+
+          `<ip>` a plain IPv4/IPv6 address with on optional port number (ip@port)
+
+          `<key-name | NOKEY>`
+          - `<key-name>` sign notifies with the specified key
+          - `NOKEY` don't sign notifies
         '';
       };
 
       notifyRetry = mkOption {
         type = types.int;
         default = 5;
-        description = ''
+        description = lib.mdDoc ''
           Specifies the number of retries for failed notifies. Set this along with notify.
         '';
       };
@@ -362,8 +387,8 @@ let
         type = types.nullOr types.str;
         default = null;
         example = "2000::1@1234";
-        description = ''
-          This address will be used for zone-transfere requests if configured
+        description = lib.mdDoc ''
+          This address will be used for zone-transfer requests if configured
           as a secondary server or notifications in case of a primary server.
           Supply either a plain IPv4 or IPv6 address with an optional port
           number (ip@port).
@@ -374,17 +399,17 @@ let
         type = types.listOf types.str;
         default = [ ];
         example = [ "192.0.2.0/24 NOKEY" "192.0.2.0/24 my_tsig_key_name" ];
-        description = ''
+        description = lib.mdDoc ''
           Allow these IPs and TSIG to transfer zones, addr TSIG|NOKEY|BLOCKED
-          address range 192.0.2.0/24, 1.2.3.4&amp;255.255.0.0, 3.0.2.20-3.0.2.40
+          address range 192.0.2.0/24, 1.2.3.4&255.255.0.0, 3.0.2.20-3.0.2.40
         '';
       };
 
       requestXFR = mkOption {
         type = types.listOf types.str;
         default = [ ];
-        description = ''
-          Format: <code>[AXFR|UDP] &lt;ip-address&gt; &lt;key-name | NOKEY&gt;</code>
+        description = lib.mdDoc ''
+          Format: `[AXFR|UDP] <ip-address> <key-name | NOKEY>`
         '';
       };
 
@@ -403,7 +428,7 @@ let
             "all"
           ]);
         default = [ ];
-        description = ''
+        description = lib.mdDoc ''
           Whitelists the given rrl-types.
         '';
       };
@@ -412,7 +437,7 @@ let
         type = types.nullOr types.str;
         default = null;
         example = "%s";
-        description = ''
+        description = lib.mdDoc ''
           When set to something distinct to null NSD is able to collect
           statistics per zone. All statistics of this zone(s) will be added
           to the group specified by this given name. Use "%s" to use the zones
@@ -427,19 +452,20 @@ let
     options = {
       keySize = mkOption {
         type = types.int;
-        description = "Key size in bits";
+        description = lib.mdDoc "Key size in bits";
       };
       prePublish = mkOption {
         type = types.str;
-        description = "How long in advance to publish new keys";
+        description = lib.mdDoc "How long in advance to publish new keys";
       };
       postPublish = mkOption {
         type = types.str;
-        description = "How long after deactivation to keep a key in the zone";
+        description =
+          lib.mdDoc "How long after deactivation to keep a key in the zone";
       };
       rollPeriod = mkOption {
         type = types.str;
-        description = "How frequently to change keys";
+        description = lib.mdDoc "How frequently to change keys";
       };
     };
   };
@@ -450,20 +476,42 @@ let
   dnssec = dnssecZones != { };
 
   dnssecTools = pkgs.bind.override { enablePython = true; };
+  ldnsTools = pkgs.ldns.examples;
 
-  signZones = optionalString dnssec ''
+  signZones = let
+    dnssecZoneNames = attrNames dnssecZones;
+    mkdirCmds = map (zone: ''
+      mkdir -p ${stateDir}/dnssec/${zone}
+      chown ${username}:${username} ${stateDir}/dnssec/${zone}
+      chmod 0600 ${stateDir}/dnssec/${zone}
+    '') (attrNames dnssecZones);
+  in optionalString dnssec ''
     mkdir -p ${stateDir}/dnssec
     chown ${username}:${username} ${stateDir}/dnssec
     chmod 0600 ${stateDir}/dnssec
-    ${concatStrings (mapAttrsToList signZone dnssecZones)}
+    ${concatStringsSep "\n" mkdirCmds}
+
+    ${concatStringsSep "\n" (mapAttrsToList signZone dnssecZones)}
   '';
   signZone = name: zone: ''
-    ${dnssecTools}/bin/dnssec-keymgr -g ${dnssecTools}/bin/dnssec-keygen -s ${dnssecTools}/bin/dnssec-settime -K ${stateDir}/dnssec -c ${
-      policyFile name zone.dnssecPolicy
-    } ${name}
-    ${dnssecTools}/bin/dnssec-signzone -S -K ${stateDir}/dnssec -o ${name} -O full -N date ${stateDir}/zones/${name}
-    ${nsdPkg}/sbin/nsd-checkzone ${name} ${stateDir}/zones/${name}.signed && mv -v ${stateDir}/zones/${name}.signed ${stateDir}/zones/${name}
+    ${pkgs.nsdSignZone}/bin/nsd-sign-zone \
+      --verbose \
+      --domain=${name} \
+      --ksk-file=${zone.ksk.keyFile} \
+      --zsk-metadata=${stateDir}/dnssec/${name}/metadata.json \
+      ${stateDir}/zones/${name}
+    ${nsdPkg}/sbin/nsd-checkzone \
+      ${name} \
+      ${stateDir}/zones/${name}.signed &&
+    mv -v ${stateDir}/zones/${name}.signed ${stateDir}/zones/${name}
   '';
+  # signZone = name: zone: ''
+  #   ${dnssecTools}/bin/dnssec-keymgr -g ${dnssecTools}/bin/dnssec-keygen -s ${dnssecTools}/bin/dnssec-settime -K ${stateDir}/dnssec -c ${
+  #     policyFile name zone.dnssecPolicy
+  #   } ${name}
+  #   ${dnssecTools}/bin/dnssec-signzone -S -K ${stateDir}/dnssec -o ${name} -O full -N date ${stateDir}/zones/${name}
+  #   ${nsdPkg}/sbin/nsd-checkzone ${name} ${stateDir}/zones/${name}.signed && mv -v ${stateDir}/zones/${name}.signed ${stateDir}/zones/${name}
+  # '';
   policyFile = name: policy:
     pkgs.writeText "${name}.policy" ''
       zone ${name} {
@@ -484,20 +532,26 @@ in {
   # options are ordered alphanumerically
   options.fudo.nsd = {
 
-    enable = mkEnableOption "NSD authoritative DNS server";
+    enable = mkEnableOption (lib.mdDoc "NSD authoritative DNS server");
 
-    stateDir = mkOption {
+    user = mkOption {
       type = types.str;
-      description = "Directory at which to store NSD state data.";
+      description = "User as which to run the NSD server.";
+      default = "nsd";
+    };
+
+    stateDirectory = mkOption {
+      type = types.str;
+      description = "Location at which to store NSD state.";
       default = "/var/lib/nsd";
     };
 
-    bind8Stats = mkEnableOption "BIND8 like statistics";
+    bind8Stats = mkEnableOption (lib.mdDoc "BIND8 like statistics");
 
     dnssecInterval = mkOption {
       type = types.str;
       default = "1h";
-      description = ''
+      description = lib.mdDoc ''
         How often to check whether dnssec key rollover is required
       '';
     };
@@ -505,7 +559,7 @@ in {
     extraConfig = mkOption {
       type = types.lines;
       default = "";
-      description = ''
+      description = lib.mdDoc ''
         Extra nsd config.
       '';
     };
@@ -513,7 +567,7 @@ in {
     hideVersion = mkOption {
       type = types.bool;
       default = true;
-      description = ''
+      description = lib.mdDoc ''
         Whether NSD should answer VERSION.BIND and VERSION.SERVER CHAOS class queries.
       '';
     };
@@ -521,7 +575,7 @@ in {
     identity = mkOption {
       type = types.str;
       default = "unidentified server";
-      description = ''
+      description = lib.mdDoc ''
         Identify the server (CH TXT ID.SERVER entry).
       '';
     };
@@ -529,7 +583,7 @@ in {
     interfaces = mkOption {
       type = types.listOf types.str;
       default = [ "127.0.0.0" "::1" ];
-      description = ''
+      description = lib.mdDoc ''
         What addresses the server should listen to.
       '';
     };
@@ -537,7 +591,7 @@ in {
     ipFreebind = mkOption {
       type = types.bool;
       default = false;
-      description = ''
+      description = lib.mdDoc ''
         Whether to bind to nonlocal addresses and interfaces that are down.
         Similar to ip-transparent.
       '';
@@ -546,7 +600,7 @@ in {
     ipTransparent = mkOption {
       type = types.bool;
       default = false;
-      description = ''
+      description = lib.mdDoc ''
         Allow binding to non local addresses.
       '';
     };
@@ -554,7 +608,7 @@ in {
     ipv4 = mkOption {
       type = types.bool;
       default = true;
-      description = ''
+      description = lib.mdDoc ''
         Whether to listen on IPv4 connections.
       '';
     };
@@ -562,7 +616,7 @@ in {
     ipv4EDNSSize = mkOption {
       type = types.int;
       default = 4096;
-      description = ''
+      description = lib.mdDoc ''
         Preferred EDNS buffer size for IPv4.
       '';
     };
@@ -570,7 +624,7 @@ in {
     ipv6 = mkOption {
       type = types.bool;
       default = true;
-      description = ''
+      description = lib.mdDoc ''
         Whether to listen on IPv6 connections.
       '';
     };
@@ -578,7 +632,7 @@ in {
     ipv6EDNSSize = mkOption {
       type = types.int;
       default = 4096;
-      description = ''
+      description = lib.mdDoc ''
         Preferred EDNS buffer size for IPv6.
       '';
     };
@@ -586,7 +640,7 @@ in {
     logTimeAscii = mkOption {
       type = types.bool;
       default = true;
-      description = ''
+      description = lib.mdDoc ''
         Log time in ascii, if false then in unix epoch seconds.
       '';
     };
@@ -594,15 +648,15 @@ in {
     nsid = mkOption {
       type = types.nullOr types.str;
       default = null;
-      description = ''
+      description = lib.mdDoc ''
         NSID identity (hex string, or "ascii_somestring").
       '';
     };
 
     port = mkOption {
-      type = types.int;
+      type = types.port;
       default = 53;
-      description = ''
+      description = lib.mdDoc ''
         Port the service should bind do.
       '';
     };
@@ -611,7 +665,7 @@ in {
       type = types.bool;
       default = pkgs.stdenv.isLinux;
       defaultText = literalExpression "pkgs.stdenv.isLinux";
-      description = ''
+      description = lib.mdDoc ''
         Whether to enable SO_REUSEPORT on all used sockets. This lets multiple
         processes bind to the same port. This speeds up operation especially
         if the server count is greater than one and makes fast restarts less
@@ -622,18 +676,18 @@ in {
     rootServer = mkOption {
       type = types.bool;
       default = false;
-      description = ''
+      description = lib.mdDoc ''
         Whether this server will be a root server (a DNS root server, you
         usually don't want that).
       '';
     };
 
-    roundRobin = mkEnableOption "round robin rotation of records";
+    roundRobin = mkEnableOption (lib.mdDoc "round robin rotation of records");
 
     serverCount = mkOption {
       type = types.int;
       default = 1;
-      description = ''
+      description = lib.mdDoc ''
         Number of NSD servers to fork. Put the number of CPUs to use here.
       '';
     };
@@ -641,7 +695,7 @@ in {
     statistics = mkOption {
       type = types.nullOr types.int;
       default = null;
-      description = ''
+      description = lib.mdDoc ''
         Statistics are produced every number of seconds. Prints to log.
         If null no statistics are logged.
       '';
@@ -650,7 +704,7 @@ in {
     tcpCount = mkOption {
       type = types.int;
       default = 100;
-      description = ''
+      description = lib.mdDoc ''
         Maximum number of concurrent TCP connections per server.
       '';
     };
@@ -658,7 +712,7 @@ in {
     tcpQueryCount = mkOption {
       type = types.int;
       default = 0;
-      description = ''
+      description = lib.mdDoc ''
         Maximum number of queries served on a single TCP connection.
         0 means no maximum.
       '';
@@ -667,7 +721,7 @@ in {
     tcpTimeout = mkOption {
       type = types.int;
       default = 120;
-      description = ''
+      description = lib.mdDoc ''
         TCP timeout in seconds.
       '';
     };
@@ -675,7 +729,7 @@ in {
     verbosity = mkOption {
       type = types.int;
       default = 0;
-      description = ''
+      description = lib.mdDoc ''
         Verbosity level.
       '';
     };
@@ -683,7 +737,7 @@ in {
     version = mkOption {
       type = types.nullOr types.str;
       default = null;
-      description = ''
+      description = lib.mdDoc ''
         The version string replied for CH TXT version.server and version.bind
         queries. Will use the compiled package version on null.
         See hideVersion for enabling/disabling this responses.
@@ -693,7 +747,7 @@ in {
     xfrdReloadTimeout = mkOption {
       type = types.int;
       default = 1;
-      description = ''
+      description = lib.mdDoc ''
         Number of seconds between reloads triggered by xfrd.
       '';
     };
@@ -701,7 +755,7 @@ in {
     zonefilesCheck = mkOption {
       type = types.bool;
       default = true;
-      description = ''
+      description = lib.mdDoc ''
         Whether to check mtime of all zone files on start and sighup.
       '';
     };
@@ -713,14 +767,14 @@ in {
           algorithm = mkOption {
             type = types.str;
             default = "hmac-sha256";
-            description = ''
+            description = lib.mdDoc ''
               Authentication algorithm for this key.
             '';
           };
 
           keyFile = mkOption {
             type = types.path;
-            description = ''
+            description = lib.mdDoc ''
               Path to the file which contains the actual base64 encoded
               key. The key will be copied into "${stateDir}/private" before
               NSD starts. The copied file is only accessibly by the NSD
@@ -738,19 +792,19 @@ in {
           };
         }
       '';
-      description = ''
+      description = lib.mdDoc ''
         Define your TSIG keys here.
       '';
     };
 
     ratelimit = {
 
-      enable = mkEnableOption "ratelimit capabilities";
+      enable = mkEnableOption (lib.mdDoc "ratelimit capabilities");
 
       ipv4PrefixLength = mkOption {
         type = types.nullOr types.int;
         default = null;
-        description = ''
+        description = lib.mdDoc ''
           IPv4 prefix length. Addresses are grouped by netblock.
         '';
       };
@@ -758,7 +812,7 @@ in {
       ipv6PrefixLength = mkOption {
         type = types.nullOr types.int;
         default = null;
-        description = ''
+        description = lib.mdDoc ''
           IPv6 prefix length. Addresses are grouped by netblock.
         '';
       };
@@ -766,7 +820,7 @@ in {
       ratelimit = mkOption {
         type = types.int;
         default = 200;
-        description = ''
+        description = lib.mdDoc ''
           Max qps allowed from any query source.
           0 means unlimited. With an verbosity of 2 blocked and
           unblocked subnets will be logged.
@@ -776,7 +830,7 @@ in {
       slip = mkOption {
         type = types.nullOr types.int;
         default = null;
-        description = ''
+        description = lib.mdDoc ''
           Number of packets that get discarded before replying a SLIP response.
           0 disables SLIP responses. 1 will make every response a SLIP response.
         '';
@@ -785,7 +839,7 @@ in {
       size = mkOption {
         type = types.int;
         default = 1000000;
-        description = ''
+        description = lib.mdDoc ''
           Size of the hashtable. More buckets use more memory but lower
           the chance of hash hash collisions.
         '';
@@ -794,7 +848,7 @@ in {
       whitelistRatelimit = mkOption {
         type = types.int;
         default = 2000;
-        description = ''
+        description = lib.mdDoc ''
           Max qps allowed from whitelisted sources.
           0 means unlimited. Set the rrl-whitelist option for specific
           queries to apply this limit instead of the default to them.
@@ -805,12 +859,12 @@ in {
 
     remoteControl = {
 
-      enable = mkEnableOption "remote control via nsd-control";
+      enable = mkEnableOption (lib.mdDoc "remote control via nsd-control");
 
       controlCertFile = mkOption {
         type = types.path;
         default = "/etc/nsd/nsd_control.pem";
-        description = ''
+        description = lib.mdDoc ''
           Path to the client certificate signed with the server certificate.
           This file is used by nsd-control and generated by nsd-control-setup.
         '';
@@ -819,7 +873,7 @@ in {
       controlKeyFile = mkOption {
         type = types.path;
         default = "/etc/nsd/nsd_control.key";
-        description = ''
+        description = lib.mdDoc ''
           Path to the client private key, which is used by nsd-control
           but not by the server. This file is generated by nsd-control-setup.
         '';
@@ -828,15 +882,15 @@ in {
       interfaces = mkOption {
         type = types.listOf types.str;
         default = [ "127.0.0.1" "::1" ];
-        description = ''
+        description = lib.mdDoc ''
           Which interfaces NSD should bind to for remote control.
         '';
       };
 
       port = mkOption {
-        type = types.int;
+        type = types.port;
         default = 8952;
-        description = ''
+        description = lib.mdDoc ''
           Port number for remote control operations (uses TLS over TCP).
         '';
       };
@@ -844,7 +898,7 @@ in {
       serverCertFile = mkOption {
         type = types.path;
         default = "/etc/nsd/nsd_server.pem";
-        description = ''
+        description = lib.mdDoc ''
           Path to the server self signed certificate, which is used by the server
           but and by nsd-control. This file is generated by nsd-control-setup.
         '';
@@ -853,7 +907,7 @@ in {
       serverKeyFile = mkOption {
         type = types.path;
         default = "/etc/nsd/nsd_server.key";
-        description = ''
+        description = lib.mdDoc ''
           Path to the server private key, which is used by the server
           but not by nsd-control. This file is generated by nsd-control-setup.
         '';
@@ -886,6 +940,7 @@ in {
               };
             };
           };
+
           "example.net." = {
             provideXFR = [ "10.3.2.1 NOKEY" ];
             data = '''
@@ -894,7 +949,7 @@ in {
           };
         }
       '';
-      description = ''
+      description = lib.mdDoc ''
         Define your zones here. Zones can cascade other zones and therefore
         inherit settings from parent zones. Look at the definition of
         children to learn about inheritance and child zones.
@@ -918,14 +973,15 @@ in {
       etc."nsd/nsd.conf".source = "${configFile}/nsd.conf";
     };
 
-    users.groups.${username}.gid = config.ids.gids.nsd;
-
-    users.users.${username} = {
-      description = "NSD service user";
-      home = stateDir;
-      createHome = true;
-      uid = config.ids.uids.nsd;
-      group = username;
+    users = {
+      users."${username}" = {
+        description = "NSD service user";
+        home = stateDir;
+        createHome = true;
+        uid = config.ids.uids.nsd;
+        group = username;
+      };
+      groups."${username}".gid = config.ids.gids.nsd;
     };
 
     systemd.services.nsd = {
@@ -947,19 +1003,24 @@ in {
       preStart = ''
         rm -Rf "${stateDir}/private/"
         rm -Rf "${stateDir}/tmp/"
+
         mkdir -m 0700 -p "${stateDir}/private"
         mkdir -m 0700 -p "${stateDir}/tmp"
         mkdir -m 0700 -p "${stateDir}/var"
+
         cat > "${stateDir}/don't touch anything in here" << EOF
         Everything in this directory except NSD's state in var and dnssec
         is automatically generated and will be purged and redeployed by
         the nsd.service pre-start script.
         EOF
+
         chown ${username}:${username} -R "${stateDir}/private"
         chown ${username}:${username} -R "${stateDir}/tmp"
         chown ${username}:${username} -R "${stateDir}/var"
+
         rm -rf "${stateDir}/zones"
         cp -rL "${nsdEnv}/zones" "${stateDir}/zones"
+
         ${copyKeys}
       '';
     };
@@ -968,6 +1029,7 @@ in {
       description = "Automatic DNSSEC key rollover";
 
       wantedBy = [ "nsd.service" ];
+      before = [ "nsd.service" ];
 
       timerConfig = {
         OnActiveSec = cfg.dnssecInterval;
@@ -980,6 +1042,22 @@ in {
 
       wantedBy = [ "nsd.service" ];
       before = [ "nsd.service" ];
+
+      preStart = let
+        zoneRotateCmd = zone:
+          let zoneDir = "${stateDir}/dnssec/${zone}";
+          in ''
+            mkdir -p ${zoneDir}
+            ${pkgs.nsdRotateKeys}/bin/nsd-rotate-keys \
+              --key-directory=${zoneDir} \
+              --validity-period=30 \
+              --period-overlap=10 \
+              --metadata=${zoneDir}/metadata.json \
+              --verbose \
+              ${zone}
+          '';
+        zoneRotateCmds = map zoneRotateCmd (lib.attrNames dnssecZones);
+      in lib.concatStringsSep "\n" zoneRotateCmds;
 
       script = signZones;
 

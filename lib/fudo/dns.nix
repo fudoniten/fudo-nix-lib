@@ -20,6 +20,13 @@ let
         default = true;
       };
 
+      ksk = {
+        key-file = mkOption {
+          type = str;
+          description = "Key-signing key for this zone.";
+        };
+      };
+
       zone-definition = mkOption {
         type = submodule (import ../types/zone-definition.nix);
         description =
@@ -64,25 +71,30 @@ in {
       allowedUDPPorts = [ 53 ];
     };
 
-    fileSystems."/var/lib/nsd" = {
-      device = cfg.state-directory;
-      options = [ "bind" ];
-    };
+    # fileSystems."/var/lib/nsd" = {
+    #   device = cfg.state-directory;
+    #   options = [ "bind" ];
+    # };
 
-    services.nsd = {
-      enable = true;
-      identity = cfg.identity;
-      interfaces = cfg.listen-ips;
-      # stateDir = cfg.state-directory;
-      zones = mapAttrs' (dom: dom-cfg:
-        let net-cfg = dom-cfg.zone-definition;
-        in nameValuePair "${dom}." {
-          dnssec = dom-cfg.dnssec;
+    fudo = {
+      nsd = {
+        enable = true;
+        identity = cfg.identity;
+        interfaces = cfg.listen-ips;
+        stateDirectory = cfg.state-directory;
+        zones = mapAttrs' (dom: dom-cfg:
+          let net-cfg = dom-cfg.zone-definition;
+          in nameValuePair "${dom}." {
+            dnssec = dom-cfg.dnssec;
 
-          data = pkgs.lib.dns.zoneToZonefile config.instance.build-timestamp dom
-            dom-cfg.zone-definition;
+            ksk.keyFile = dom-cfg.ksk.key-file;
 
-        }) cfg.domains;
+            data =
+              pkgs.lib.dns.zoneToZonefile config.instance.build-timestamp dom
+              dom-cfg.zone-definition;
+
+          }) cfg.domains;
+      };
     };
   };
 }

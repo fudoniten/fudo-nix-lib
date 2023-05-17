@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... } @ toplevel:
+{ config, lib, pkgs, ... }@toplevel:
 
 with lib;
 let
@@ -12,7 +12,8 @@ in {
 
     required-services = mkOption {
       type = listOf str;
-      description = "List of systemd units on which the DNS backplane job depends.";
+      description =
+        "List of systemd units on which the DNS backplane job depends.";
       default = [ ];
     };
 
@@ -54,11 +55,12 @@ in {
 
       password-file = mkOption {
         type = str;
-        description = "File containing password for DNS backplane database user.";
+        description =
+          "File containing password for DNS backplane database user.";
       };
 
       ssl-mode = mkOption {
-        type = enum ["no" "yes" "full" "try" "require"];
+        type = enum [ "no" "yes" "full" "try" "require" ];
         description = "SSL connection mode.";
         default = "require";
       };
@@ -86,9 +88,7 @@ in {
         home = backplane-dns-home;
         createHome = true;
       };
-      groups.${cfg.group} = {
-        members = [ cfg.user ];
-      };
+      groups.${cfg.group} = { members = [ cfg.user ]; };
     };
 
     fudo.system.services = {
@@ -110,12 +110,12 @@ in {
         environment = {
           FUDO_DNS_BACKPLANE_XMPP_HOSTNAME = cfg.backplane-server;
           FUDO_DNS_BACKPLANE_XMPP_USERNAME = cfg.backplane-role.role;
-          FUDO_DNS_BACKPLANE_XMPP_PASSWORD_FILE = cfg.backplane-role.password-file;
+          FUDO_DNS_BACKPLANE_XMPP_PASSWORD_FILE =
+            cfg.backplane-role.password-file;
 
           FUDO_DNS_BACKPLANE_DATABASE_HOSTNAME = cfg.database.host;
           FUDO_DNS_BACKPLANE_DATABASE_NAME = cfg.database.database;
-          FUDO_DNS_BACKPLANE_DATABASE_USERNAME =
-            cfg.database.username;
+          FUDO_DNS_BACKPLANE_DATABASE_USERNAME = cfg.database.username;
           FUDO_DNS_BACKPLANE_DATABASE_PASSWORD_FILE =
             cfg.database.password-file;
           FUDO_DNS_BACKPLANE_DATABASE_USE_SSL = cfg.database.ssl-mode;

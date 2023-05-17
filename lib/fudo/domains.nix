@@ -182,6 +182,12 @@ let
           description = "Name of the DNS zone associated with domain.";
           default = null;
         };
+
+        nexus.domains = mkOption {
+          type = listOf str;
+          description = "Nexus domains to which hosts in this domain belong.";
+          default = [ ];
+        };
       };
     };
 

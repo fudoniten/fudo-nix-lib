@@ -44,6 +44,16 @@ let
       serviceConfig = {
         Type = "simple";
         RemainAfterExit = true;
+        ExecStartPre =
+          pkgs.writeShellScript "fudo-secret-prep-${secret-name}.sh" ''
+            if [ ! -d ${dirOf target-file} ]; then
+              mkdir -p ${dirOf target-file}
+              chown ${user}:${group} ${dirOf target-file}
+              chmod ${if (group == null) then "0550" else "0500"} ${
+                dirOf target-file
+              }
+            fi
+          '';
         ExecStart =
           let host-master-key = config.fudo.hosts.${target-host}.master-key;
           in decrypt-script {

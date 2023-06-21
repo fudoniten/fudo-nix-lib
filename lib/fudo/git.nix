@@ -132,6 +132,8 @@ in {
         user = mkIf (cfg.user != null) cfg.user;
         settings = mkIf (cfg.ssh != null) {
           server = {
+            START_SSH_SERVER = true;
+
             # Displayed in the clone URL
             SSH_DOMAIN = cfg.hostname;
             SSH_PORT = mkForce cfg.ssh.listen-port;

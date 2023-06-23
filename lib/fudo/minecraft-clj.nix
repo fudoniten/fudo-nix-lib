@@ -226,7 +226,8 @@ in {
             cp -f ${props-file} ${stateDir}/server.properties
             cp -f ${eula-file} ${stateDir}/eula.txt
             mkdir -p ${stateDir}/plugins
-            cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
+            # Version not working...
+            # cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
             chmod u+w ${stateDir}/server.properties
           '';
 

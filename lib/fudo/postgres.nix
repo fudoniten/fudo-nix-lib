@@ -151,6 +151,12 @@ in {
   options.fudo.postgresql = with types; {
     enable = mkEnableOption "Fudo PostgreSQL Server";
 
+    package = mkOption {
+      type = package;
+      description = "Which package to use for Postgresql server.";
+      default = pkgs.postgresql_11_gssapi;
+    };
+
     ssl-private-key = mkOption {
       type = nullOr str;
       description = "Location of the server SSL private key.";
@@ -247,7 +253,7 @@ in {
 
     networking.firewall.allowedTCPPorts = [ 5432 ];
 
-    environment.systemPackages = with pkgs; [ postgresql_11_gssapi ];
+    environment.systemPackages = with pkgs; [ cfg.package ];
 
     users.groups = {
       ${cfg.socket-group} = { members = [ "postgres" ] ++ cfg.local-users; };
@@ -255,7 +261,7 @@ in {
 
     services.postgresql = {
       enable = true;
-      package = pkgs.postgresql_11_gssapi;
+      package = cfg.package;
       enableTCPIP = true;
       ensureDatabases = mapAttrsToList (name: value: name) cfg.databases;
       ensureUsers = ((mapAttrsToList (username: attrs: {

@@ -9,18 +9,17 @@ let
   get-basename = filename:
     head (builtins.match "^[a-zA-Z0-9]+-(.+)$" (baseNameOf filename));
 
-  format-json-file = filename: pkgs.stdenv.mkDerivation {
-    name = "formatted-${get-basename filename}";
-    phases = [ "installPhase" ];
-    buildInputs = with pkgs; [ python ];
-    installPhase = "python -mjson.tool ${filename} > $out";
-  };
-
+  format-json-file = filename:
+    pkgs.stdenv.mkDerivation {
+      name = "formatted-${get-basename filename}";
+      phases = [ "installPhase" ];
+      buildInputs = with pkgs; [ python3 ];
+      installPhase = "python -mjson.tool ${filename} > $out";
+    };
 
   admin-passwd-file =
-    pkgs.lib.passwd.stablerandom-passwd-file
-      "adguard-dns-proxy-admin"
-      config.instance.build-seed;
+    pkgs.lib.passwd.stablerandom-passwd-file "adguard-dns-proxy-admin"
+    config.instance.build-seed;
 
   filterOpts = {
     options = with types; {
@@ -41,50 +40,39 @@ let
     };
   };
 
-  generate-config = { dns,
-                      http,
-                      filters,
-                      verbose,
-                      upstream-dns,
-                      bootstrap-dns,
-                      blocked-hosts,
-                      enable-dnssec,
-                      local-domain-name,
-                      ... }: {
-    bind_host = http.listen-ip;
-    bind_port = http.listen-port;
-    users = [
-      {
+  generate-config = { dns, http, filters, verbose, upstream-dns, bootstrap-dns
+    , blocked-hosts, enable-dnssec, local-domain-name, ... }: {
+      bind_host = http.listen-ip;
+      bind_port = http.listen-port;
+      users = [{
         name = "admin";
-        password = pkgs.lib.passwd.bcrypt-passwd
-          "adguard-dns-proxy-admin"
+        password = pkgs.lib.passwd.bcrypt-passwd "adguard-dns-proxy-admin"
           admin-passwd-file;
-      }
-    ];
-    auth_attempts = 5;
-    block_auth_min = 30;
-    web_session_ttl = 720;
-    dns = {
-      bind_hosts = dns.listen-ips;
-      port = dns.listen-port;
-      upstream_dns = upstream-dns;
-      bootstrap_dns = bootstrap-dns;
-      blocking_mode = "default";
-      blocked_hosts = blocked-hosts;
-      enable_dnssec = enable-dnssec;
-      local_domain_name = local-domain-name;
+      }];
+      auth_attempts = 5;
+      block_auth_min = 30;
+      web_session_ttl = 720;
+      dns = {
+        bind_hosts = dns.listen-ips;
+        port = dns.listen-port;
+        upstream_dns = upstream-dns;
+        bootstrap_dns = bootstrap-dns;
+        blocking_mode = "default";
+        blocked_hosts = blocked-hosts;
+        enable_dnssec = enable-dnssec;
+        local_domain_name = local-domain-name;
+      };
+      tls.enabled = false;
+      filters = imap1 (i: filter: {
+        enabled = true;
+        name = filter.name;
+        url = filter.url;
+      }) filters;
+      dhcp.enabled = false;
+      clients = [ ];
+      verbose = verbose;
+      schema_version = 10;
     };
-    tls.enabled = false;
-    filters = imap1 (i: filter: {
-      enabled = true;
-      name = filter.name;
-      url = filter.url;
-    }) filters;
-    dhcp.enabled = false;
-    clients = [];
-    verbose = verbose;
-    schema_version = 10;
-  };
 
   generate-config-file = opts:
     format-json-file (pkgs.writeText "adguard-dns-proxy-config.yaml"
@@ -127,7 +115,8 @@ in {
       default = [
         {
           name = "AdGuard DNS filter";
-          url = "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt";
+          url =
+            "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt";
         }
         {
           name = "AdAway Default Blocklist";
@@ -147,11 +136,7 @@ in {
     blocked-hosts = mkOption {
       type = listOf str;
       description = "List of hosts to explicitly block.";
-      default = [
-        "version.bind"
-        "id.server"
-        "hostname.bind"
-      ];
+      default = [ "version.bind" "id.server" "hostname.bind" ];
     };
 
     enable-dnssec = mkOption {
@@ -193,7 +178,8 @@ in {
 
     allowed-networks = mkOption {
       type = nullOr (listOf str);
-      description = "Optional list of networks with which this job may communicate.";
+      description =
+        "Optional list of networks with which this job may communicate.";
       default = null;
     };
 
@@ -220,9 +206,7 @@ in {
         group = cfg.user;
       };
 
-      groups.${cfg.user} = {
-        members = [ cfg.user ];
-      };
+      groups.${cfg.user} = { members = [ cfg.user ]; };
     };
 
     fudo = {
@@ -234,39 +218,40 @@ in {
         };
       };
 
-      system.services.adguard-dns-proxy = let
-        cfg-path = "/run/adguard-dns-proxy/config.yaml";
-      in {
-        description = "DNS Proxy for ad filtering and DNS-over-HTTPS lookups.";
-        wantedBy = [ "default.target" ];
-        after = [ "syslog.target" ];
-        requires = [ "network.target" ];
-        privateNetwork = false;
-        requiredCapabilities = optional upgrade-perms "CAP_NET_BIND_SERVICE";
-        restartWhen = "always";
-        addressFamilies = null;
-        networkWhitelist = cfg.allowed-networks;
-        user = mkIf upgrade-perms cfg.user;
-        runtimeDirectory = "adguard-dns-proxy";
-        stateDirectory = "adguard-dns-proxy";
-        preStart = ''
-          cp ${generate-config-file cfg} ${cfg-path};
-          chown $USER ${cfg-path};
-          chmod u+w ${cfg-path};
-        '';
+      system.services.adguard-dns-proxy =
+        let cfg-path = "/run/adguard-dns-proxy/config.yaml";
+        in {
+          description =
+            "DNS Proxy for ad filtering and DNS-over-HTTPS lookups.";
+          wantedBy = [ "default.target" ];
+          after = [ "syslog.target" ];
+          requires = [ "network.target" ];
+          privateNetwork = false;
+          requiredCapabilities = optional upgrade-perms "CAP_NET_BIND_SERVICE";
+          restartWhen = "always";
+          addressFamilies = null;
+          networkWhitelist = cfg.allowed-networks;
+          user = mkIf upgrade-perms cfg.user;
+          runtimeDirectory = "adguard-dns-proxy";
+          stateDirectory = "adguard-dns-proxy";
+          preStart = ''
+            cp ${generate-config-file cfg} ${cfg-path};
+            chown $USER ${cfg-path};
+            chmod u+w ${cfg-path};
+          '';
 
-        execStart = let
-          args = [
-            "--no-check-update"
-            "--work-dir /var/lib/adguard-dns-proxy"
-            "--pidfile /run/adguard-dns-proxy/adguard-dns-proxy.pid"
-            "--host ${cfg.http.listen-ip}"
-            "--port ${toString cfg.http.listen-port}"
-            "--config ${cfg-path}"
-          ];
-          arg-string = concatStringsSep " " args;
-        in "${pkgs.adguardhome}/bin/adguardhome ${arg-string}";
-      };
+          execStart = let
+            args = [
+              "--no-check-update"
+              "--work-dir /var/lib/adguard-dns-proxy"
+              "--pidfile /run/adguard-dns-proxy/adguard-dns-proxy.pid"
+              "--host ${cfg.http.listen-ip}"
+              "--port ${toString cfg.http.listen-port}"
+              "--config ${cfg-path}"
+            ];
+            arg-string = concatStringsSep " " args;
+          in "${pkgs.adguardhome}/bin/adguardhome ${arg-string}";
+        };
     };
   });
 }

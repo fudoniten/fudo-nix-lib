@@ -73,6 +73,18 @@ let
           default = 25565;
         };
 
+        query-port = mkOption {
+          type = port;
+          description = "Port for queries.";
+          default = 25566;
+        };
+
+        rcon-port = mkOption {
+          type = port;
+          description = "Port for remote commands.";
+          default = 25567;
+        };
+
         difficulty = mkOption {
           type = enum [ "peaceful" "easy" "medium" "hard" ];
           description = "Difficulty setting of this server.";
@@ -144,6 +156,8 @@ let
     server-port = worldOpts.port;
     hardcore = worldOpts.hardcore;
     pvp = worldOpts.pvp;
+    "query.port" = worldOpts.query-port;
+    "rcon.port" = worldOpts.rcon-port;
   };
 
   toProps = attrs:

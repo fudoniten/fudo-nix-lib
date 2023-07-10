@@ -110,6 +110,6 @@ in {
     users.groups.adbusers =
       mkIf host-cfg.android-dev { members = config.instance.local-admins; };
 
-    boot.tmp.useTmpFs = host-cfg.tmp-on-tmpfs;
+    boot.tmp.useTmpfs = host-cfg.tmp-on-tmpfs;
   };
 }

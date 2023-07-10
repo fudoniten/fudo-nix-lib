@@ -243,7 +243,7 @@ in {
             cp -f ${eula-file} ${stateDir}/eula.txt
             mkdir -p ${stateDir}/plugins
             # Version not working...
-            cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
+            # cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
             chmod u+w ${stateDir}/server.properties
           '';
 

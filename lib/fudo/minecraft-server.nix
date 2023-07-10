@@ -4,52 +4,76 @@ with lib;
 let cfg = config.fudo.minecraft-server;
 
 in {
-  options.fudo.minecraft-server = {
+  options.fudo.minecraft-server = with types; {
     enable = mkEnableOption "Start a minecraft server.";
 
     package = mkOption {
-      type = types.package;
+      type = package;
       description = "Minecraft package to use.";
       default = pkgs.minecraft-current;
     };
 
     data-dir = mkOption {
-      type = types.path;
+      type = path;
       description = "Path at which to store minecraft data.";
     };
 
     world-name = mkOption {
-      type = types.str;
+      type = str;
       description = "Name of the server world (used in saves etc).";
     };
 
     motd = mkOption {
-      type = types.str;
+      type = str;
       description = "Welcome message for newcomers.";
       default = "Welcome to Minecraft! Have fun building...";
     };
 
     game-mode = mkOption {
-      type = types.enum [ "survival" "creative" "adventure" "spectator" ];
+      type = enum [ "survival" "creative" "adventure" "spectator" ];
       description = "Game mode of the server.";
       default = "survival";
     };
 
     difficulty = mkOption {
-      type = types.int;
+      type = int;
       description = "Difficulty level, where 0 is peaceful and 3 is hard.";
       default = 2;
     };
 
     allow-cheats = mkOption {
-      type = types.bool;
+      type = bool;
       default = false;
     };
 
     allocated-memory = mkOption {
-      type = types.int;
+      type = int;
       description = "Memory (in GB) to allocate to the Minecraft server.";
       default = 2;
+    };
+
+    port = mkOption {
+      type = port;
+      description = "Port on which to run the Minecraft server.";
+      default = 25565;
+    };
+
+    query-port = mkOption {
+      type = port;
+      description = "Port for queries.";
+      default = 25566;
+    };
+
+    rcon-port = mkOption {
+      type = port;
+      description = "Port for remote commands.";
+      default = 25567;
+    };
+
+    world-seed = mkOption {
+      type = nullOr int;
+      description = "Seed to use while generating the world.";
+      default = null;
     };
   };
 
@@ -64,10 +88,15 @@ in {
       declarative = true;
       serverProperties = {
         level-name = cfg.world-name;
+        level-seed = cfg.world-seed;
         motd = cfg.motd;
         difficulty = cfg.difficulty;
         gamemode = cfg.game-mode;
-        allow-cheats = true;
+        allow-cheats = cfg.allow-cheats;
+        server-port = cfg.port;
+        "rcon.port" = cfg.rcon-port;
+        "query.port" = cfg.query-port;
+        pvp = cfg.allow-pvp;
       };
       jvmOpts = let
         opts = [

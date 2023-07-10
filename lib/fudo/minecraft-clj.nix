@@ -216,7 +216,9 @@ in {
       groups."${cfg.group}" = { members = [ cfg.user ]; };
     };
 
-    networking.firewall.allowedTCPPorts = [ 25555 ];
+    networking.firewall.allowedTCPPorts = [ 25555 ] ++ (lib.concatMap
+      (worldOpts: with worldOpts; [ port query-port rcon-port ])
+      (attrNames cfg.worlds));
 
     systemd = {
       tmpfiles.rules = map (worldOpts:
@@ -241,7 +243,7 @@ in {
             cp -f ${eula-file} ${stateDir}/eula.txt
             mkdir -p ${stateDir}/plugins
             # Version not working...
-            # cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
+            cp -f ${witchcraft-plugin} ${stateDir}/plugins/witchcraft-plugin.jar
             chmod u+w ${stateDir}/server.properties
           '';
 

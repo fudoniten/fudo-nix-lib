@@ -43,13 +43,13 @@ in {
       firewall = mkIf ((length host-cfg.external-interfaces) > 0) {
         enable = true;
         allowedTCPPorts = [ 22 2112 ]; # Make sure _at least_ SSH is allowed
-        trustedInterfaces = let
-          all-interfaces = attrNames config.networking.interfaces;
-        in subtractLists host-cfg.external-interfaces all-interfaces;
+        trustedInterfaces =
+          let all-interfaces = attrNames config.networking.interfaces;
+          in subtractLists host-cfg.external-interfaces all-interfaces;
       };
 
-      hostId = mkIf (host-cfg.machine-id != null)
-        (substring 0 8 host-cfg.machine-id);
+      hostId =
+        mkIf (host-cfg.machine-id != null) (substring 0 8 host-cfg.machine-id);
     };
 
     environment = {
@@ -78,13 +78,15 @@ in {
           mode = "0444";
         };
 
-        current-system-packages.text = with builtins; let
-          packages = map (p: "${p.name}")
-            config.environment.systemPackages;
-          sorted-unique = sort lessThan (unique packages);
-        in "${concatStringsSep "\n" sorted-unique}\n";
+        current-system-packages.text = with builtins;
+          let
+            packages = map (p: "${p.name}") config.environment.systemPackages;
+            sorted-unique = sort lessThan (unique packages);
+          in ''
+            ${concatStringsSep "\n" sorted-unique}
+          '';
       };
-      
+
       systemPackages = with pkgs;
         mkIf (host-cfg.docker-server) [ docker nix-prefetch-docker ];
     };
@@ -105,10 +107,9 @@ in {
     };
 
     programs.adb.enable = host-cfg.android-dev;
-    users.groups.adbusers = mkIf host-cfg.android-dev {
-      members = config.instance.local-admins;
-    };
+    users.groups.adbusers =
+      mkIf host-cfg.android-dev { members = config.instance.local-admins; };
 
-    boot.tmpOnTmpfs = host-cfg.tmp-on-tmpfs;
+    boot.tmp.useTmpFs = host-cfg.tmp-on-tmpfs;
   };
 }

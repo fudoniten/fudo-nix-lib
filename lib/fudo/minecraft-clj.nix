@@ -132,6 +132,12 @@ let
           description = "Allow player-vs-player combat.";
           default = true;
         };
+
+        package = mkOption {
+          type = package;
+          description = "PaperMC package to launch.";
+          default = pkgs.papermc;
+        };
       };
     };
 
@@ -254,7 +260,7 @@ in {
               ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
             flagStr = concatStringsSep " " flags;
           in pkgs.writeShellScript "mc-start-${sanitizedName}.sh"
-          "${pkgs.papermc}/bin/minecraft-server ${flagStr}";
+          "${cfg.package}/bin/minecraft-server ${flagStr}";
 
         in nameValuePair serverName {
           enable = worldOpts.enable;

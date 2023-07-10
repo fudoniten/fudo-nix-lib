@@ -46,6 +46,11 @@ in {
       default = false;
     };
 
+    allow-pvp = mkOption {
+      type = bool;
+      default = false;
+    };
+
     allocated-memory = mkOption {
       type = int;
       description = "Memory (in GB) to allocate to the Minecraft server.";

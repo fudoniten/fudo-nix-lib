@@ -260,7 +260,7 @@ in {
               ++ (optionals (worldOpts.allocated-memory >= 12) highMemFlags);
             flagStr = concatStringsSep " " flags;
           in pkgs.writeShellScript "mc-start-${sanitizedName}.sh"
-          "${cfg.package}/bin/minecraft-server ${flagStr}";
+          "${worldOpts.package}/bin/minecraft-server ${flagStr}";
 
         in nameValuePair serverName {
           enable = worldOpts.enable;

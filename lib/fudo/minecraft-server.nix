@@ -93,7 +93,7 @@ in {
       declarative = true;
       serverProperties = {
         level-name = cfg.world-name;
-        level-seed = cfg.world-seed;
+        level-seed = toString cfg.world-seed;
         motd = cfg.motd;
         difficulty = cfg.difficulty;
         gamemode = cfg.game-mode;

@@ -123,12 +123,8 @@ in {
           passwordFile = cfg.database.password-file;
           type = "postgres";
         };
-        domain = cfg.hostname;
-        httpAddress = "127.0.0.1";
-        httpPort = cfg.local-port;
         repositoryRoot = cfg.repository-dir;
         stateDir = cfg.state-dir;
-        rootUrl = "https://${cfg.hostname}/";
         user = mkIf (cfg.user != null) cfg.user;
         settings = mkIf (cfg.ssh != null) {
           server = {
@@ -141,6 +137,11 @@ in {
             # Actual ip/port on which to listen
             SSH_LISTEN_PORT = cfg.ssh.listen-port;
             SSH_LISTEN_HOST = cfg.ssh.listen-ip;
+
+            ROOT_URL = "https://${cfg.hostname}/";
+            HTTP_ADDR = "127.0.0.1";
+            HTTP_PORT = cfg.local-port;
+            DOMAIN = cfg.hostname;
           };
         };
       };

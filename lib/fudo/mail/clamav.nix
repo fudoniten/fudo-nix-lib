@@ -23,9 +23,15 @@ in {
     users = {
       users.clamav = {
         isSystemUser = true;
+        uid = config.ids.uids.clamav;
+        home = cfg.clamav.state-directory;
+        description = "ClamAV daemon user";
         group = "clamav";
       };
-      groups.clamav = { members = [ "clamav" ]; };
+      groups.clamav = {
+        members = [ "clamav" ];
+        gid = config.ids.gids.clamav;
+      };
     };
 
     systemd.tmpfiles.rules =

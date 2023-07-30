@@ -24,7 +24,7 @@ in {
       users.clamav = {
         isSystemUser = true;
         uid = config.ids.uids.clamav;
-        home = cfg.clamav.state-directory;
+        home = mkForce cfg.clamav.state-directory;
         description = "ClamAV daemon user";
         group = "clamav";
       };

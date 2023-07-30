@@ -36,7 +36,7 @@ in {
         enable = true;
         settings = {
           PhishingScanURLs = "no";
-          DatabaseDirectory = cfg.clamav.state-directory;
+          DatabaseDirectory = mkForce cfg.clamav.state-directory;
           User = "clamav";
         };
       };
@@ -44,7 +44,7 @@ in {
         enable = true;
         settings = {
           User = "clamav";
-          DatabaseDirectory = cfg.clamav.state-directory;
+          DatabaseDirectory = mkForce cfg.clamav.state-directory;
         };
       };
     };

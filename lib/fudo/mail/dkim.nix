@@ -99,17 +99,19 @@ in {
       };
     };
 
-    systemd.services.opendkim = {
-      preStart = lib.mkForce createAllCerts;
-      serviceConfig = {
-        ExecStart = lib.mkForce
-          "${cfg.dkim.package}/bin/opendkim ${escapeShellArgs args}";
-        PermissionsStartOnly = lib.mkForce false;
+    systemd = {
+      tmpfiles.rules = [
+        "d '${cfg.dkim.key-directory}' - ${config.services.opendkim.user} ${config.services.opendkim.group} - -"
+      ];
+      services.opendkim = {
+        preStart = lib.mkForce createAllCerts;
+        serviceConfig = {
+          ExecStart = lib.mkForce
+            "${cfg.dkim.package}/bin/opendkim ${escapeShellArgs args}";
+          PermissionsStartOnly = lib.mkForce false;
+          ReadWritePaths = [ cfg.dkim.key-directory ];
+        };
       };
     };
-
-    systemd.tmpfiles.rules = [
-      "d '${cfg.dkim.key-directory}' - ${config.services.opendkim.user} ${config.services.opendkim.group} - -"
-    ];
   };
 }

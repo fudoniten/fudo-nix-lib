@@ -42,10 +42,7 @@ in {
       };
       updater = {
         enable = true;
-        settings = {
-          User = "clamav";
-          DatabaseDirectory = mkForce cfg.clamav.state-directory;
-        };
+        settings = { DatabaseDirectory = mkForce cfg.clamav.state-directory; };
       };
     };
   };

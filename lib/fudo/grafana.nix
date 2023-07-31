@@ -231,6 +231,7 @@ in {
             user = cfg.database.user;
             password = "$__file{${cfg.database.password-file}}";
             type = "postgres";
+            ssl_mode = "require";
           };
 
           "ldap.auth" = mkIf (cfg.ldap != null) (let

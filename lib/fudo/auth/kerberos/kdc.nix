@@ -364,6 +364,8 @@ let
                   "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
                 ];
               };
+              unitConfig.ConditionPathExists =
+                [ cfg.kdc.database kdc.kdc.secondary.keytabs.hpropd ];
             };
           };
 

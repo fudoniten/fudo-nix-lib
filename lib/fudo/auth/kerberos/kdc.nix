@@ -329,9 +329,9 @@ let
             };
 
             "heimdal-hpropd@" = {
-              wantedBy = [ "heimdal-kdc-secondary.service" ];
-              after = [ "heimdal-kdc-secondary.service" ];
-              bindsTo = [ "heimdal-kdc-secondary.service" ];
+              # wantedBy = [ "heimdal-kdc-secondary.service" ];
+              # after = [ "heimdal-kdc-secondary.service" ];
+              # bindsTo = [ "heimdal-kdc-secondary.service" ];
               description = "Heimdal propagation listener server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {

@@ -326,6 +326,8 @@ let
                   bindClause = "--addresses=${concatStringsSep "," ips}";
                 in "${pkgs.heimdal}/libexec/heimdal/kdc --config-file=${kdcConf} --ports=88 ${bindClause}";
               };
+              unitConfig.ConditionPathExists =
+                [ cfg.kdc.database cfg.kdc.secondary.keytabs.hpropd ];
             };
 
             "heimdal-hpropd@" = {

@@ -365,7 +365,7 @@ let
                 ];
               };
               unitConfig.ConditionPathExists =
-                [ cfg.kdc.database kdc.kdc.secondary.keytabs.hpropd ];
+                [ cfg.kdc.database cfg.kdc.secondary.keytabs.hpropd ];
             };
           };
 

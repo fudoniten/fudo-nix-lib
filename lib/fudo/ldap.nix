@@ -31,23 +31,35 @@ let
     else
       "/home/${user-opts.primary-group}/${username}";
 
-  userLdif = base: name: group-map: opts: ''
-    dn: uid=${name},ou=members,${base}
-    uid: ${name}
-    objectClass: account
-    objectClass: shadowAccount
-    objectClass: posixAccount
-    cn: ${opts.common-name}
-    uidNumber: ${toString (opts.uid)}
-    gidNumber: ${toString (getUserGidNumber opts group-map)}
-    homeDirectory: ${mkHomeDir name opts}
-    description: ${opts.description}
-    shadowLastChange: 12230
-    shadowMax: 99999
-    shadowWarning: 7
-    userPassword: ${opts.ldap-hashed-passwd}
-    mail: ${opts.email}
-  '';
+  userLdif = base: name: group-map: opts:
+    let
+      # TODO: HORRIBLE HACK
+      domains = {
+        fudo = "fudo.org";
+        selby = "selby.ca";
+        informis = "informis.land";
+      };
+      email = if (hasAttr email opts) then
+        email
+      else
+        "${name}@${domains."${opts.primary-group}"}";
+    in ''
+      dn: uid=${name},ou=members,${base}
+      uid: ${name}
+      objectClass: account
+      objectClass: shadowAccount
+      objectClass: posixAccount
+      cn: ${opts.common-name}
+      uidNumber: ${toString (opts.uid)}
+      gidNumber: ${toString (getUserGidNumber opts group-map)}
+      homeDirectory: ${mkHomeDir name opts}
+      description: ${opts.description}
+      shadowLastChange: 12230
+      shadowMax: 99999
+      shadowWarning: 7
+      userPassword: ${opts.ldap-hashed-passwd}
+      mail: ${opts.email}
+    '';
 
   systemUserLdif = base: name: opts: ''
     dn: cn=${name},${base}

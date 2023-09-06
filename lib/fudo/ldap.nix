@@ -39,7 +39,7 @@ let
         selby = "selby.ca";
         informis = "informis.land";
       };
-      email = if (hasAttr email opts) then
+      email = if (opts.email != null) then
         email
       else
         "${name}@${domains."${opts.primary-group}"}";

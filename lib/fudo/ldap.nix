@@ -47,7 +47,7 @@ let
     shadowMax: 99999
     shadowWarning: 7
     userPassword: ${opts.ldap-hashed-passwd}
-    ${optionalString (hasAttr "email" opts) "mail: ${opts.email}"}
+    mail: ${if (opts.email != null) then email else ""}
   '';
 
   systemUserLdif = base: name: opts: ''

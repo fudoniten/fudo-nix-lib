@@ -34,7 +34,6 @@ let
   userLdif = base: name: group-map: opts: ''
     dn: uid=${name},ou=members,${base}
     uid: ${name}
-    objectClass: account
     objectClass: shadowAccount
     objectClass: posixAccount
     objectClass: inetOrgPerson

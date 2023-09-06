@@ -37,6 +37,7 @@ let
     objectClass: account
     objectClass: shadowAccount
     objectClass: posixAccount
+    objectClass: inetOrgPerson
     cn: ${opts.common-name}
     uidNumber: ${toString (opts.uid)}
     gidNumber: ${toString (getUserGidNumber opts group-map)}

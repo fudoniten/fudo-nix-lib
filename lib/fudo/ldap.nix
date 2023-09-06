@@ -40,7 +40,7 @@ let
         informis = "informis.land";
       };
       email = if (opts.email != null) then
-        email
+        opts.email
       else
         "${name}@${domains."${opts.primary-group}"}";
     in ''

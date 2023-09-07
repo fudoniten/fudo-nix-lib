@@ -31,23 +31,27 @@ let
     else
       "/home/${user-opts.primary-group}/${username}";
 
-  userLdif = base: name: group-map: opts: ''
-    dn: uid=${name},ou=members,${base}
-    uid: ${name}
-    objectClass: shadowAccount
-    objectClass: posixAccount
-    objectClass: inetOrgPerson
-    cn: ${opts.common-name}
-    uidNumber: ${toString (opts.uid)}
-    gidNumber: ${toString (getUserGidNumber opts group-map)}
-    homeDirectory: ${mkHomeDir name opts}
-    description: ${opts.description}
-    shadowLastChange: 12230
-    shadowMax: 99999
-    shadowWarning: 7
-    userPassword: ${opts.ldap-hashed-passwd}
-    mail: ${if (opts.email != null) then opts.email else ""}
-  '';
+  userLdif = base: name: group-map: opts:
+    ''
+      dn: uid=${name},ou=members,${base}
+      uid: ${name}
+      objectClass: shadowAccount
+      objectClass: posixAccount
+      objectClass: inetOrgPerson
+      cn: ${opts.common-name}
+      uidNumber: ${toString (opts.uid)}
+      gidNumber: ${toString (getUserGidNumber opts group-map)}
+      homeDirectory: ${mkHomeDir name opts}
+      description: ${opts.description}
+      shadowLastChange: 12230
+      shadowMax: 99999
+      shadowWarning: 7
+      userPassword: ${opts.ldap-hashed-passwd}
+      mail: ${if (opts.email != null) then opts.email else ""}
+      sn: ${if (opts.surname != null) then opts.surname else name}
+    '' ++ (optionalString (opts.given-name != null) ''
+      givenName: ${opts.given-name}
+    '');
 
   systemUserLdif = base: name: opts: ''
     dn: cn=${name},${base}

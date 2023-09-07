@@ -49,7 +49,7 @@ let
       userPassword: ${opts.ldap-hashed-passwd}
       mail: ${if (opts.email != null) then opts.email else ""}
       sn: ${if (opts.surname != null) then opts.surname else name}
-    '' ++ (optionalString (opts.given-name != null) ''
+    '' + (optionalString (opts.given-name != null) ''
       givenName: ${opts.given-name}
     '');
 

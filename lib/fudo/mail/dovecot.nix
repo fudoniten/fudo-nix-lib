@@ -33,30 +33,30 @@ let
         tls = yes
         tls_require_cert = try
       '';
-    in
-      pkgs.writeText "dovecot2-ldap-config.conf.template" ''
-        uris = ${concatStringsSep " " ldap-cfg.server-urls}
-        ldap_version = 3
-        dn = ${ldap-cfg.reader-dn}
-        dnpass = __LDAP_READER_PASSWORD__
-        auth_bind = yes
-        auth_bind_userdn = uid=%u,ou=members,dc=fudo,dc=org
-        base = dc=fudo,dc=org
-        ${ssl-config}
-      '';
+    in pkgs.writeText "dovecot2-ldap-config.conf.template" ''
+      uris = ${concatStringsSep " " ldap-cfg.server-urls}
+      ldap_version = 3
+      dn = ${ldap-cfg.reader-dn}
+      dnpass = __LDAP_READER_PASSWORD__
+      auth_bind = yes
+      auth_bind_userdn = uid=%u,ou=members,dc=fudo,dc=org
+      base = dc=fudo,dc=org
+      ${ssl-config}
+    '';
 
-  ldap-conf-generator = ldap-cfg: let
-    template = ldap-conf-template ldap-cfg;
-    target-dir = dirOf ldap-cfg.generated-ldap-config;
-    target = ldap-cfg.generated-ldap-config;
-  in pkgs.writeScript "dovecot2-ldap-password-swapper.sh" ''
-    mkdir -p ${target-dir}
-    touch ${target}
-    chmod 600 ${target}
-    chown ${config.services.dovecot2.user} ${target}
-    LDAP_READER_PASSWORD=$( cat "${ldap-cfg.reader-password-file}" )
-    sed 's/__LDAP_READER_PASSWORD__/$LDAP_READER_PASSWORD/' '${template}' > ${target}
-  '';
+  ldap-conf-generator = ldap-cfg:
+    let
+      template = ldap-conf-template ldap-cfg;
+      target-dir = dirOf ldap-cfg.generated-ldap-config;
+      target = ldap-cfg.generated-ldap-config;
+    in pkgs.writeScript "dovecot2-ldap-password-swapper.sh" ''
+      mkdir -p ${target-dir}
+      touch ${target}
+      chmod 600 ${target}
+      chown ${config.services.dovecot2.user} ${target}
+      LDAP_READER_PASSWORD=$( cat "${ldap-cfg.reader-password-file}" )
+      sed 's/__LDAP_READER_PASSWORD__/$LDAP_READER_PASSWORD/' '${template}' > ${target}
+    '';
 
   ldap-passwd-entry = ldap-config: ''
     passdb {
@@ -69,7 +69,8 @@ let
     options = with types; {
       ca = mkOption {
         type = nullOr str;
-        description = "The path to the CA cert used to sign the LDAP server certificate.";
+        description =
+          "The path to the CA cert used to sign the LDAP server certificate.";
         default = null;
       };
 
@@ -99,7 +100,8 @@ let
 
       generated-ldap-config = mkOption {
         type = str;
-        description = "Path at which to store the generated LDAP config file, including password.";
+        description =
+          "Path at which to store the generated LDAP config file, including password.";
         default = "/run/dovecot2/config/ldap.conf";
       };
     };
@@ -132,7 +134,7 @@ in {
 
     services.prometheus.exporters.dovecot = mkIf cfg.monitoring.enable {
       enable = true;
-      scopes = ["user" "global"];
+      scopes = [ "user" "global" ];
       listenAddress = "127.0.0.1";
       port = cfg.monitoring.dovecot-listen-port;
       socketPath = "/var/run/dovecot2/old-stats";
@@ -295,9 +297,8 @@ in {
     };
 
     systemd = {
-      tmpfiles.rules = [
-        "d ${sieve-path} 750 ${dovecot-user} ${cfg.mail-group} - -"
-      ];
+      tmpfiles.rules =
+        [ "d ${sieve-path} 750 ${dovecot-user} ${cfg.mail-group} - -" ];
 
       services.dovecot2.preStart = ''
         rm -f ${sieve-path}/*
@@ -307,7 +308,7 @@ in {
         done
 
         ${optionalString (cfg.dovecot.ldap != null)
-          (ldap-conf-generator cfg.dovecot.ldap)}
+        (ldap-conf-generator cfg.dovecot.ldap)}
       '';
     };
   };

@@ -210,8 +210,8 @@ let
                 #   ${convertCmd}
                 #   ls $RUNTIME_DIRECTORY
                 # '';
-                ExecStartPre = pkgs.writeShellScript "kdc-prepare-hprop-dump.sh"
-                  (concatStringsSep " " [
+                ExecStartPre = let
+                  dumpScript = (concatStringsSep " " [
                     "${pkgs.heimdal}/bin/kadmin"
                     "--local"
                     "--config-file=${kdcConf}"
@@ -220,6 +220,13 @@ let
                     "--format=Heimdal"
                     "${staging-db}"
                   ]);
+                in pkgs.writeShellScript "kdc-prepare-hprop-dump.sh" ''
+                  chown ${cfg.user}:${cfg.group} ${staging-db}
+                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
+                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
+                  ${dumpScript}
+                '';
+
                 ExecStart = pkgs.writeShellScript "kdc-hprop.sh"
                   (concatStringsSep " " ([
                     "${pkgs.heimdal}/libexec/heimdal/hprop"

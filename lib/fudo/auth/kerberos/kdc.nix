@@ -99,7 +99,7 @@ let
                 SecureBits = "keep-caps";
                 ExecStartPre = ''
                   chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
-                  chown ${cfg.user}:${cfg.group} ${cfg.state-directory}/kerberos.log
+                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
                 '';
                 ExecStart = let
                   ips = if (cfg.kdc.bind-addresses != [ ]) then

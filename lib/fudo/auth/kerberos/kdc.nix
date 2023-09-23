@@ -74,7 +74,7 @@ let
               after = [ "network-online.target" ];
               description =
                 "Heimdal Kerberos Key Distribution Center (primary ticket server).";
-              path = with pkgs; [ heimdal ];
+              path = with pkgs; [ heimdal coreutils ];
               serviceConfig = {
                 PrivateDevices = true;
                 PrivateTmp = true;
@@ -97,10 +97,12 @@ let
                 RestartSec = "5s";
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
-                ExecStartPre = ''
-                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
-                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
-                '';
+                ExecStartPre = let
+                  chownScript = ''
+                    chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
+                    chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
+                  '';
+                in "+${chownScript}";
                 ExecStart = let
                   ips = if (cfg.kdc.bind-addresses != [ ]) then
                     cfg.kdc.bind-addresses

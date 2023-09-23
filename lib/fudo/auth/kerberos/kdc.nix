@@ -89,7 +89,7 @@ let
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
                 # LockPersonality = true;
-                # PermissionsStartOnly = true;
+                PermissionsStartOnly = false;
                 LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;
@@ -97,6 +97,10 @@ let
                 RestartSec = "5s";
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
+                ExecStartPre = ''
+                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
+                  chown ${cfg.user}:${cfg.group} ${cfg.state-directory}/kerberos.log
+                '';
                 ExecStart = let
                   ips = if (cfg.kdc.bind-addresses != [ ]) then
                     cfg.kdc.bind-addresses
@@ -210,8 +214,8 @@ let
                 #   ${convertCmd}
                 #   ls $RUNTIME_DIRECTORY
                 # '';
-                ExecStartPre = let
-                  dumpScript = (concatStringsSep " " [
+                ExecStartPre = pkgs.writeShellScript "kdc-prepare-hprop-dump.sh"
+                  (concatStringsSep " " [
                     "${pkgs.heimdal}/bin/kadmin"
                     "--local"
                     "--config-file=${kdcConf}"
@@ -220,12 +224,6 @@ let
                     "--format=Heimdal"
                     "${staging-db}"
                   ]);
-                in pkgs.writeShellScript "kdc-prepare-hprop-dump.sh" ''
-                  chown ${cfg.user}:${cfg.group} ${staging-db}
-                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
-                  chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
-                  ${dumpScript}
-                '';
 
                 ExecStart = pkgs.writeShellScript "kdc-hprop.sh"
                   (concatStringsSep " " ([

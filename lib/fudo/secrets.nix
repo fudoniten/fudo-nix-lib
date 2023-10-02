@@ -39,8 +39,8 @@ let
     { source-file, target-file, user, group, permissions, ... }: {
       description =
         "decrypt secret ${secret-name} at ${target-host}:${target-file}.";
-      wantedBy = [ cfg.secret-target ];
-      before = [ cfg.secret-target ];
+      wantedBy = [ cfg.secret-target "multi-user.target" ];
+      before = [ cfg.secret-target "multi-user.target" ];
       serviceConfig = {
         Type = "simple";
         RemainAfterExit = true;

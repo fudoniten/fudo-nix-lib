@@ -1,8 +1,7 @@
 { config, pkgs, lib, ... }:
 
 with lib;
-let
-  cfg = config.fudo.mail-server;
+let cfg = config.fudo.mail-server;
 
 in {
   config = mkIf cfg.enable {
@@ -73,7 +72,7 @@ in {
             mode = "0666";
           }
         ];
-        includes = [];
+        includes = [ ];
       };
     };
 
@@ -87,6 +86,7 @@ in {
       requires = [ "rspamd.service" ];
     };
 
-    users.extraUsers.${config.services.postfix.user}.extraGroups = [ config.services.rspamd.group ];
+    users.extraUsers.${config.services.postfix.user}.extraGroups =
+      [ config.services.rspamd.group ];
   };
 }

@@ -15,8 +15,8 @@ let
 
   make-user-aliases = entries:
     concatStringsSep "\n" (mapAttrsToList (user: aliases:
-      concatStringsSep "\n"
-      (map (alias: "${alias}  ${user}@${cfg.domain}") aliases)) entries);
+      concatStringsSep "\n" (map (alias: "${alias}  ${user}") aliases))
+      entries);
 
   make-alias-users = domains: entries:
     concatStringsSep "\n" (flatten (mapAttrsToList (alias: users:

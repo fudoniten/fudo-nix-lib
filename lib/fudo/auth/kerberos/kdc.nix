@@ -74,21 +74,18 @@ let
               after = [ "network-online.target" ];
               description =
                 "Heimdal Kerberos Key Distribution Center (primary ticket server).";
-              path = with pkgs; [ heimdal coreutils ];
+              path = with pkgs; [ heimdal ];
               serviceConfig = {
                 PrivateDevices = true;
                 PrivateTmp = true;
-                # PrivateMounts = true;
                 ProtectControlGroups = true;
                 ProtectKernelTunables = true;
-                # ProtectSystem = true;
                 ProtectHostname = true;
-                # ProtectHome = true;
+
                 ProtectClock = true;
                 ProtectKernelLogs = true;
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
-                # LockPersonality = true;
                 PermissionsStartOnly = false;
                 LimitNOFILE = 4096;
                 User = cfg.user;
@@ -99,8 +96,8 @@ let
                 SecureBits = "keep-caps";
                 ExecStartPre = let
                   chownScript = ''
-                    chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
-                    chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
+                    ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
+                    ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
                   '';
                 in "+${chownScript}";
                 ExecStart = let

@@ -7,16 +7,17 @@ let
   pthru = obj: builtins.trace obj obj;
 
   remove-blank-lines = str:
-    concatStringsSep "\n\n"
-      (filter builtins.isString
-        (builtins.split "\n\n\n+" str));
+    concatStringsSep "\n\n" (filter builtins.isString (builtins.split ''
 
-  n-spaces = n:
-    concatStringsSep "" (builtins.genList (_: " ") n);
 
-  pad-to-length = strlen: str: let
-    spaces = n-spaces (strlen - (stringLength str));
-  in str + spaces;
+
+      +'' str));
+
+  n-spaces = n: concatStringsSep "" (builtins.genList (_: " ") n);
+
+  pad-to-length = strlen: str:
+    let spaces = n-spaces (strlen - (stringLength str));
+    in str + spaces;
 
   record-matcher = builtins.match "^([^;].*) IN ([A-Z][A-Z0-9]*) (.+)$";
 
@@ -24,32 +25,35 @@ let
 
   max-int = foldr (a: b: if (a < b) then b else a) 0;
 
-  make-zone-formatter = zonedata: let
-    lines = splitString "\n" zonedata;
-    records = filter is-record lines;
-    split-records = map record-matcher records;
-    index-strlen = i: record: stringLength (elemAt record i);
-    record-index-maxlen = i: max-int (map (index-strlen i) split-records);
-  in record-formatter (record-index-maxlen 0) (record-index-maxlen 1);
+  make-zone-formatter = zonedata:
+    let
+      lines = splitString "\n" zonedata;
+      records = filter is-record lines;
+      split-records = map record-matcher records;
+      index-strlen = i: record: stringLength (elemAt record i);
+      record-index-maxlen = i: max-int (map (index-strlen i) split-records);
+    in record-formatter (record-index-maxlen 0) (record-index-maxlen 1);
 
-  record-formatter = name-max: type-max: let
-    name-padder = pad-to-length name-max;
-    type-padder = pad-to-length type-max;
-  in record-line: let
-    record-parts = record-matcher record-line;
-  in
-    if (record-parts == null) then
+  record-formatter = name-max: type-max:
+    let
+      name-padder = pad-to-length name-max;
+      type-padder = pad-to-length type-max;
+    in record-line:
+    let record-parts = record-matcher record-line;
+    in if (record-parts == null) then
       record-line
-    else (let
-      name = elemAt record-parts 0;
-      type = elemAt record-parts 1;
-      data = elemAt record-parts 2;
-    in "${name-padder name} IN ${type-padder type} ${data}");
+    else
+      (let
+        name = elemAt record-parts 0;
+        type = elemAt record-parts 1;
+        data = elemAt record-parts 2;
+      in "${name-padder name} IN ${type-padder type} ${data}");
 
-  format-zone = zonedata: let
-    formatter = make-zone-formatter zonedata;
-    lines = splitString "\n" zonedata;
-  in concatStringsSep "\n" (map formatter lines);
+  format-zone = zonedata:
+    let
+      formatter = make-zone-formatter zonedata;
+      lines = splitString "\n" zonedata;
+    in concatStringsSep "\n" (map formatter lines);
 
   makeSrvRecords = protocol: service: records:
     join-lines (map (record:
@@ -61,13 +65,10 @@ let
     join-lines (mapAttrsToList (makeSrvRecords protocol) services);
 
   makeMetricRecords = metric-type: records:
-    join-lines
-      (map (record:
-        "${metric-type}._metrics._tcp IN SRV ${
-          toString record.priority
-        } ${
-          toString record.weight
-        } ${toString record.port} ${record.host}.") records);
+    join-lines (map (record:
+      "${metric-type}._metrics._tcp IN SRV ${toString record.priority} ${
+        toString record.weight
+      } ${toString record.port} ${record.host}.") records);
 
   srvRecordOpts = with types; {
     options = {
@@ -96,33 +97,31 @@ let
     };
   };
 
-  hostRecords = hostname: nethost-data: let
-    sshfp-records = map (sshfp: "${hostname} IN SSHFP ${sshfp}")
-      nethost-data.sshfp-records;
-    a-record = optional (nethost-data.ipv4-address != null)
-      "${hostname} IN A ${nethost-data.ipv4-address}";
-    aaaa-record = optional (nethost-data.ipv6-address != null)
-      "${hostname} IN AAAA ${nethost-data.ipv6-address}";
-    description-record = optional (nethost-data.description != null)
-      ''${hostname} IN TXT "${nethost-data.description}"'';
-  in join-lines (a-record ++
-                 aaaa-record ++
-                 sshfp-records ++
-                 description-record);
+  hostRecords = hostname: nethost-data:
+    let
+      sshfp-records =
+        map (sshfp: "${hostname} IN SSHFP ${sshfp}") nethost-data.sshfp-records;
+      a-record = optional (nethost-data.ipv4-address != null)
+        "${hostname} IN A ${nethost-data.ipv4-address}";
+      aaaa-record = optional (nethost-data.ipv6-address != null)
+        "${hostname} IN AAAA ${nethost-data.ipv6-address}";
+      description-record = optional (nethost-data.description != null)
+        ''${hostname} IN TXT "${nethost-data.description}"'';
+    in join-lines
+    (a-record ++ aaaa-record ++ sshfp-records ++ description-record);
 
   cnameRecord = alias: host: "${alias} IN CNAME ${host}";
 
   dmarcRecord = dmarc-email:
-    optionalString (dmarc-email != null)
-      ''_dmarc IN TXT "v=DMARC1;p=quarantine;sp=quarantine;rua=mailto:${dmarc-email};"'';
+    optionalString (dmarc-email != null) ''
+      _dmarc IN TXT "v=DMARC1;p=quarantine;sp=quarantine;rua=mailto:${dmarc-email};"'';
 
   mxRecords = mxs: map (mx: "@ IN MX 10 ${mx}.") mxs;
 
   nsRecords = map (ns-host: "@ IN NS ${ns-host}");
 
   flatmapAttrsToList = f: attrs:
-    foldr (a: b: a ++ b) [] (mapAttrsToList f attrs);
-
+    foldr (a: b: a ++ b) [ ] (mapAttrsToList f attrs);
 
   srvRecordPair = domain: protocol: service: record: {
     "_${service}._${protocol}.${domain}" =
@@ -135,15 +134,14 @@ let
     $ORIGIN ${dom}.
     $TTL ${zone.default-ttl}
 
-    ${optionalString (zone.default-host != null)
-      "@ IN A ${zone.default-host}"}
+    ${optionalString (zone.default-host != null) "@ IN A ${zone.default-host}"}
 
     ${join-lines (mxRecords zone.mx)}
 
     ${dmarcRecord zone.dmarc-report-address}
 
     ${optionalString (zone.gssapi-realm != null)
-      ''_kerberos IN TXT "${zone.gssapi-realm}"''}
+    ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
     ${join-lines (nsRecords zone.nameservers)}
 
@@ -164,6 +162,9 @@ let
       zone.subdomains)}
   '';
 
+  concatMapAttrs = f: attrs:
+    concatMap (x: x) (mapAttrsToList (key: val: f key val) attrs);
+
 in rec {
 
   srvRecords = with types; attrsOf (attrsOf (listOf (submodule srvRecordOpts)));
@@ -171,27 +172,24 @@ in rec {
   srvRecordsToBindZone = srvRecords:
     join-lines (mapAttrsToList makeSrvProtocolRecords srvRecords);
 
-  concatMapAttrs = f: attrs:
-    concatMap (x: x) (mapAttrsToList (key: val: f key val) attrs);
-
-  srvRecordsToPairs = domain: srvRecords: 
+  srvRecordsToPairs = domain: srvRecords:
     listToAttrs (concatMapAttrs (protocol: services:
       concatMapAttrs
-      (service: records: map (srvRecordPair domain protocol service) records) services)
-      srvRecords);
+      (service: records: map (srvRecordPair domain protocol service) records)
+      services) srvRecords);
 
   zoneToZonefile = timestamp: dom: zone:
     remove-blank-lines (format-zone ''
-        $ORIGIN ${dom}.
-        $TTL ${zone.default-ttl}
+      $ORIGIN ${dom}.
+      $TTL ${zone.default-ttl}
 
-        @ IN SOA ns1.${dom}. hostmaster.${dom}. (
-            ${toString timestamp}
-            30m
-            2m
-            3w
-            5m)
+      @ IN SOA ns1.${dom}. hostmaster.${dom}. (
+          ${toString timestamp}
+          30m
+          2m
+          3w
+          5m)
 
-        ${domain-records dom zone}
-      '');
+      ${domain-records dom zone}
+    '');
 }

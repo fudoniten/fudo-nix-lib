@@ -42,7 +42,7 @@ let
       wantedBy = [ cfg.secret-target "default.target" ];
       before = [ cfg.secret-target "multi-user.target" ];
       serviceConfig = {
-        Type = "simple";
+        Type = "oneshot";
         RemainAfterExit = true;
         ExecStartPre =
           pkgs.writeShellScript "fudo-secret-prep-${secret-name}.sh" ''
@@ -60,9 +60,8 @@ let
             inherit secret-name source-file target-host target-file
               host-master-key user group permissions;
           };
-        ## This is too aggressive about 'stopping'
-        # ExecStop = pkgs.writeShellScript "fudo-remove-${secret-name}-secret.sh"
-        #   "rm -f ${target-file}";
+        ExecStop = pkgs.writeShellScript "fudo-remove-${secret-name}-secret.sh"
+          "rm -f ${target-file}";
       };
       path = [ pkgs.age ];
     };

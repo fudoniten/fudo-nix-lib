@@ -39,7 +39,7 @@ let
     { source-file, target-file, user, group, permissions, ... }: {
       description =
         "decrypt secret ${secret-name} at ${target-host}:${target-file}.";
-      wantedBy = [ cfg.secret-target "multi-user.target" ];
+      wantedBy = [ cfg.secret-target "default.target" ];
       before = [ cfg.secret-target "multi-user.target" ];
       serviceConfig = {
         Type = "simple";
@@ -60,8 +60,9 @@ let
             inherit secret-name source-file target-host target-file
               host-master-key user group permissions;
           };
-        ExecStop = pkgs.writeShellScript "fudo-remove-${secret-name}-secret.sh"
-          "rm -f ${target-file}";
+        ## This is too aggressive about 'stopping'
+        # ExecStop = pkgs.writeShellScript "fudo-remove-${secret-name}-secret.sh"
+        #   "rm -f ${target-file}";
       };
       path = [ pkgs.age ];
     };

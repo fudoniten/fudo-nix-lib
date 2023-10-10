@@ -39,7 +39,7 @@ let
     { source-file, target-file, user, group, permissions, ... }: {
       description =
         "decrypt secret ${secret-name} at ${target-host}:${target-file}.";
-      wantedBy = [ cfg.secret-target "default.target" ];
+      wantedBy = [ cfg.secret-target "multi-user.target" ];
       before = [ cfg.secret-target "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
@@ -232,7 +232,7 @@ in {
 
       services = host-secret-services // {
         fudo-secrets-watcher = mkIf (length cfg.secret-paths > 0) {
-          wantedBy = [ "default.target" ];
+          wantedBy = [ "multi-user.target" ];
           description =
             "Ensure access for group ${cfg.secret-group} to fudo secret paths.";
           serviceConfig = {
@@ -251,12 +251,12 @@ in {
         ${strip-ext cfg.secret-target} = {
           description =
             "Target indicating that all Fudo secrets are available.";
-          wantedBy = [ "default.target" ];
+          wantedBy = [ "multi-user.target" ];
         };
       };
 
       paths.fudo-secrets-watcher = mkIf (length cfg.secret-paths > 0) {
-        wantedBy = [ "default.target" ];
+        wantedBy = [ "multi-user.target" ];
         description = "Watch fudo secret paths, and correct perms on changes.";
         pathConfig = {
           PathChanged = cfg.secret-paths;

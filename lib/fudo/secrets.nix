@@ -40,7 +40,9 @@ let
       description =
         "decrypt secret ${secret-name} at ${target-host}:${target-file}.";
       wantedBy = [ cfg.secret-target "multi-user.target" ];
+      requires = [ "local-fs.target" ];
       before = [ cfg.secret-target "multi-user.target" ];
+      after = [ "local-fs.target" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

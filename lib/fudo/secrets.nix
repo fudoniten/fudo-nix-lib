@@ -39,9 +39,9 @@ let
     { source-file, target-file, user, group, permissions, ... }: {
       description =
         "decrypt secret ${secret-name} at ${target-host}:${target-file}.";
-      wantedBy = [ cfg.secret-target "multi-user.target" ];
+      wantedBy = [ "default.target" ];
       requires = [ "local-fs.target" ];
-      before = [ cfg.secret-target "multi-user.target" ];
+      before = [ cfg.secret-target ];
       after = [ "local-fs.target" ];
       serviceConfig = {
         Type = "oneshot";
@@ -57,7 +57,7 @@ let
             fi
           '';
         ExecStart =
-          let host-master-key = config.fudo.hosts.${target-host}.master-key;
+          let host-master-key = config.fudo.hosts."${target-host}".master-key;
           in decrypt-script {
             inherit secret-name source-file target-host target-file
               host-master-key user group permissions;

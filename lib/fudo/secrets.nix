@@ -39,7 +39,8 @@ let
     { source-file, target-file, user, group, permissions, ... }: {
       description =
         "decrypt secret ${secret-name} at ${target-host}:${target-file}.";
-      wantedBy = [ "multi-user.target" cfg.secret-target ];
+      wantedBy = [ "multi-user.target" ];
+      requiredBy = [ cfg.secret-target ];
       requires = [ "local-fs.target" ];
       before = [ cfg.secret-target ];
       after = [ "local-fs.target" ];

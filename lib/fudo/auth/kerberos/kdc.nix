@@ -69,7 +69,7 @@ let
 
         systemd = {
           tmpfiles.rules =
-            [ "f ${cfg.database} 0700 ${cfg.user} ${cfg.group} - -" ];
+            [ "f ${cfg.kdc.database} 0700 ${cfg.user} ${cfg.group} - -" ];
 
           services = {
             heimdal-kdc = {
@@ -272,7 +272,7 @@ let
         systemd = {
 
           tmpfiles.rules =
-            [ "f ${cfg.database} 0700 ${cfg.user} ${cfg.group} - -" ];
+            [ "f ${cfg.kdc.database} 0700 ${cfg.user} ${cfg.group} - -" ];
 
           services = {
             heimdal-kdc-secondary = {

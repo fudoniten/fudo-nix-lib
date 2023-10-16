@@ -68,6 +68,9 @@ let
         environment.systemPackages = [ kadminLocal ];
 
         systemd = {
+          tmpfiles.rules =
+            [ "f ${cfg.database} 0700 ${cfg.user} ${cfg.group} - -" ];
+
           services = {
             heimdal-kdc = {
               wantedBy = [ "multi-user.target" ];
@@ -116,22 +119,15 @@ let
               description = "Heimdal Kerberos Administration Server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {
-                # StandardInput = "socket";
-                # StandardOutput = "socket";
                 PrivateDevices = true;
                 PrivateTmp = true;
-                # PrivateMounts = true;
                 ProtectControlGroups = true;
                 ProtectKernelTunables = true;
-                # ProtectSystem = true;
                 ProtectHostname = true;
-                # ProtectHome = true;
                 ProtectClock = true;
                 ProtectKernelLogs = true;
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
-                # LockPersonality = true;
-                # PermissionsStartOnly = true;
                 LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;
@@ -154,12 +150,8 @@ let
               description = "Heimdal Kerberos Password Server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {
-                # This wasn't working:
-                # StandardInput = "socket";
-                # StandardOutput = "socket";
                 PrivateDevices = true;
                 PrivateTmp = true;
-                # PrivateMounts = true;
                 ProtectControlGroups = true;
                 ProtectKernelTunables = true;
                 ProtectSystem = true;
@@ -199,20 +191,6 @@ let
                 Group = cfg.group;
                 Type = "oneshot";
                 RuntimeDirectory = "heimdal-hprop";
-                # ExecStartPre = let
-                #   convertCmd = concatStringsSep " " [
-                #     "${pkgs.kdcConvertDatabase}/bin/kdc-convert-database"
-                #     "--config-file=${kdcConf}"
-                #     "--key=${cfg.kdc.master-key-file}"
-                #     "--format=db3"
-                #     "--realm=${cfg.realm}"
-                #     "--output=${staging-db}"
-                #     "--verbose"
-                #   ];
-                # in pkgs.writeShellScript "convert-kdc-database.sh" ''
-                #   ${convertCmd}
-                #   ls $RUNTIME_DIRECTORY
-                # '';
                 ExecStartPre = pkgs.writeShellScript "kdc-prepare-hprop-dump.sh"
                   (concatStringsSep " " [
                     "${pkgs.heimdal}/bin/kadmin"
@@ -292,6 +270,10 @@ let
         };
 
         systemd = {
+
+          tmpfiles.rules =
+            [ "f ${cfg.database} 0700 ${cfg.user} ${cfg.group} - -" ];
+
           services = {
             heimdal-kdc-secondary = {
               wantedBy = [ "multi-user.target" ];
@@ -302,18 +284,13 @@ let
               serviceConfig = {
                 PrivateDevices = true;
                 PrivateTmp = true;
-                # PrivateMounts = true;
                 ProtectControlGroups = true;
                 ProtectKernelTunables = true;
-                # ProtectSystem = true;
                 ProtectHostname = true;
-                # ProtectHome = true;
                 ProtectClock = true;
                 ProtectKernelLogs = true;
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
-                # LockPersonality = true;
-                # PermissionsStartOnly = true;
                 LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;
@@ -335,9 +312,6 @@ let
             };
 
             "heimdal-hpropd@" = {
-              # wantedBy = [ "heimdal-kdc-secondary.service" ];
-              # after = [ "heimdal-kdc-secondary.service" ];
-              # bindsTo = [ "heimdal-kdc-secondary.service" ];
               description = "Heimdal propagation listener server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {
@@ -345,18 +319,13 @@ let
                 StandardOutput = "socket";
                 PrivateDevices = true;
                 PrivateTmp = true;
-                # PrivateMounts = true;
                 ProtectControlGroups = true;
                 ProtectKernelTunables = true;
-                # ProtectSystem = true;
                 ProtectHostname = true;
-                # ProtectHome = true;
                 ProtectClock = true;
                 ProtectKernelLogs = true;
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
-                # LockPersonality = true;
-                # PermissionsStartOnly = true;
                 LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;

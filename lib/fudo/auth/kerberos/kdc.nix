@@ -98,7 +98,7 @@ let
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
                 ExecStartPre = let
-                  chownScript = ''
+                  chownScript = pkgs.writeShellScript "kerberos-chown.sh" ''
                     ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
                     ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
                   '';

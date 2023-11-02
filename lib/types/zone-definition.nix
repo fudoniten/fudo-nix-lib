@@ -50,11 +50,8 @@ let
       nameservers = mkOption {
         type = listOf str;
         description = "List of zone nameservers.";
-        example = [
-          "ns1.fudo.org."
-          "10.0.0.1"
-        ];
-        default = [];
+        example = [ "ns1.fudo.org." "10.0.0.1" ];
+        default = [ ];
       };
 
       srv-records = mkOption {
@@ -91,12 +88,10 @@ let
               port = 443;
             }
           ];
-          rspamd = [
-            {
-              host = "mail-host.my-domain.com";
-              port = 443;
-            }
-          ];
+          rspamd = [{
+            host = "mail-host.my-domain.com";
+            port = 443;
+          }];
         };
         default = { };
       };
@@ -127,7 +122,7 @@ let
       };
 
       default-host = mkOption {
-        type = nullOr str;
+        type = nullOr (submodule networkHostOpts);
         description =
           "IP of the host which will act as the default server for this domain, if any.";
         default = null;
@@ -165,7 +160,7 @@ let
       subdomains = mkOption {
         type = attrsOf (submodule zoneOpts);
         description = "Subdomains of the current zone.";
-        default = {};
+        default = { };
       };
     };
   };

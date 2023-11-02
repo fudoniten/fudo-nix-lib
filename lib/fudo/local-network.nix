@@ -92,13 +92,14 @@ in {
       default = [ ];
     };
 
-    zone-definition = let
-      zoneOpts = import ../types/zone-definition.nix { inherit lib; };
-    in mkOption {
-      type = submodule zoneOpts;
-      description = "Definition of network zone to be served by local server.";
-      default = { };
-    };
+    zone-definition =
+      let zoneOpts = import ../types/zone-definition.nix { inherit lib; };
+      in mkOption {
+        type = submodule zoneOpts;
+        description =
+          "Definition of network zone to be served by local server.";
+        default = { };
+      };
 
     extra-records = mkOption {
       type = listOf str;
@@ -109,16 +110,17 @@ in {
 
   config = mkIf cfg.enable {
 
-    fudo.system.hostfile-entries = let 
-      other-hosts = filterAttrs
-        (hostname: hostOpts: hostname != config.instance.hostname)
+    fudo.system.hostfile-entries = let
+      other-hosts =
+        filterAttrs (hostname: hostOpts: hostname != config.instance.hostname)
         cfg.zone-definition.hosts;
     in mapAttrs' (hostname: hostOpts:
-      nameValuePair hostOpts.ipv4-address ["${hostname}.${cfg.domain}" hostname])
-      other-hosts;
-    
-    services.dhcpd4 = let
-      zone = cfg.zone-definition;
+      nameValuePair hostOpts.ipv4-address [
+        "${hostname}.${cfg.domain}"
+        hostname
+      ]) other-hosts;
+
+    services.dhcpd4 = let zone = cfg.zone-definition;
     in {
       enable = true;
 
@@ -179,19 +181,22 @@ in {
         '';
       };
 
-      filterRedundantIps = official-hosts: hosts: let
-        host-by-ip = groupBy (hostOpts: hostOpts.ipv4-address) hosts;
-      in filter (hostOpts:
-        if (length (getAttr hostOpts.ipv4-address host-by-ip) == 1) then
-          true
-        else elem hostOpts.hostname official-hosts) hosts;
+      filterRedundantIps = official-hosts: hosts:
+        let host-by-ip = groupBy (hostOpts: hostOpts.ipv4-address) hosts;
+        in filter (hostOpts:
+          if (length (getAttr hostOpts.ipv4-address host-by-ip) == 1) then
+            true
+          else
+            elem hostOpts.hostname official-hosts) hosts;
       ipTo24Block = ip:
         concatStringsSep "." (reverseList (take 3 (splitString "." ip)));
       hostsByBlock = official-hosts:
         groupBy (host-data: ipTo24Block host-data.ipv4-address)
-          (filterRedundantIps official-hosts (attrValues zone.hosts));
+        (filterRedundantIps official-hosts (attrValues zone.hosts));
       hostPtrRecord = host-data:
-        "${last (splitString "." host-data.ipv4-address)} IN PTR ${host-data.hostname}.${cfg.domain}.";
+        "${
+          last (splitString "." host-data.ipv4-address)
+        } IN PTR ${host-data.hostname}.${cfg.domain}.";
 
       blockZones = official-hosts:
         mapAttrsToList blockHostsToZone (hostsByBlock official-hosts);
@@ -213,16 +218,18 @@ in {
 
       domain-name = config.instance.local-domain;
 
-      domain-hosts =
-        attrNames
-          (filterAttrs (_: hostOpts:
-            hostOpts.domain == domain-name)
-            config.fudo.hosts);
+      domain-hosts = attrNames
+        (filterAttrs (_: hostOpts: hostOpts.domain == domain-name)
+          config.fudo.hosts);
 
     in {
       enable = true;
       cacheNetworks = [ cfg.network "localhost" "localnets" ];
-      forwarders = [ "${cfg.recursive-resolver.host} port ${toString cfg.recursive-resolver.port}" ];
+      forwarders = [
+        "${cfg.recursive-resolver.host} port ${
+          toString cfg.recursive-resolver.port
+        }"
+      ];
       listenOn = cfg.dns-listen-ips;
       listenOnIpv6 = cfg.dns-listen-ipv6s;
       extraOptions = concatStringsSep "\n" [
@@ -235,43 +242,11 @@ in {
         master = true;
         name = cfg.domain;
         file = let
-          zone-data = pkgs.lib.dns.zoneToZonefile
-            config.instance.build-timestamp
-            cfg.domain
-            zone;
+          zone-data =
+            pkgs.lib.dns.zoneToZonefile config.instance.build-timestamp
+            cfg.domain zone;
         in pkgs.writeText "zone-${cfg.domain}" zone-data;
-        # file = pkgs.writeText "${cfg.domain}-zone" ''
-        #   @ IN SOA ns1.${cfg.domain}. hostmaster.${cfg.domain}. (
-        #     ${toString config.instance.build-timestamp}
-        #     5m
-        #     2m
-        #     6w
-        #     5m)
-
-        #   $TTL 1h
-
-        #   @ IN NS ns1.${cfg.domain}.
-
-        #   $ORIGIN ${cfg.domain}.
-
-        #   $TTL 30m
-
-        #   ${optionalString (zone.gssapi-realm != null)
-        #   ''_kerberos IN TXT "${zone.gssapi-realm}"''}
-
-        #   ${join-lines
-        #   (imap1 (i: server-ip: "ns${toString i} IN A ${server-ip}")
-        #     cfg.dns-servers)}
-        #   ${join-lines (mapAttrsToList hostARecord zone.hosts)}
-        #   ${join-lines (mapAttrsToList hostSshFpRecords zone.hosts)}
-        #   ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
-        #   ${join-lines zone.verbatim-dns-records}
-        #   ${pkgs.lib.dns.srvRecordsToBindZone zone.srv-records}
-        #   ${join-lines cfg.extra-records}
-        # '';
-      }] ++ (optionals
-        cfg.enable-reverse-mappings
-        (blockZones domain-hosts));
+      }] ++ (optionals cfg.enable-reverse-mappings (blockZones domain-hosts));
     };
   };
 }

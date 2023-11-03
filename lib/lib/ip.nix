@@ -39,8 +39,10 @@ in rec {
     in foldr (a: b: a + b) 0 (imap0 (i: el: (leftShift el (i * 8))) els);
 
   intToIpv4 = int:
-    concatStringsSep "."
-    (map (i: toString (bitAnd (rightShift int (i * 8)) 255)) [ 3 2 1 0 ]);
+    let
+      toComponent = i: toString (bitAnd (rightShift int (i * 8)) 255);
+      components = map toComponent [ 3 2 1 0 ];
+    in concatStringsSep "." components;
 
   maskFromV32Network = network:
     let
@@ -65,12 +67,13 @@ in rec {
       ip-int = ipv4ToInt ip;
       net-min = networkMinIp network;
       net-max = networkMaxIp network;
-    in (ip-int >= (ipv4ToInt (trace "MIN-IP: ${networkMinIp}" networkMinIp)))
-    && (ip-int <= (ipv4ToInt (trace "MIN-IP: ${networkMinIp}" networkMaxIp)));
+    in (ip-int >= (ipv4ToInt networkMinIp))
+    && (ip-int <= (ipv4ToInt networkMaxIp));
 
   getNetworkMask = network: toInt (elemAt (splitString "/" network) 1);
 
   getNetworkBase = network:
+    assert (builtins.match ".+/[0-9]+" network) != null;
     let
       ip = elemAt (splitString "/" network) 0;
       insignificantBits = 32 - (getNetworkMask network);

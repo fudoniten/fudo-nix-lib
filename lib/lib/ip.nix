@@ -65,7 +65,8 @@ in rec {
       ip-int = ipv4ToInt ip;
       net-min = networkMinIp network;
       net-max = networkMaxIp network;
-    in (ip-int >= networkMinIp) && (ip-int <= networkMaxIp);
+    in (ip-int >= (ipv4ToInt networkMinIp))
+    && (ip-int <= (ipv4ToInt networkMaxIp));
 
   getNetworkMask = network: toInt (elemAt (splitString "/" network) 1);
 

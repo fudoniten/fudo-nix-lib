@@ -130,37 +130,41 @@ let
       } ${record.host}.";
   };
 
-  domain-records = dom: zone: ''
-    $ORIGIN ${dom}.
-    $TTL ${zone.default-ttl}
+  domain-records = dom: zone:
+    let
+      defaultHostRecords = optionalString (zone.default-host != null)
+        (hostRecords "@" zone.default-host);
+    in ''
+      $ORIGIN ${dom}.
+      $TTL ${zone.default-ttl}
 
-    ${optionalString (zone.default-host != null) "@ IN A ${zone.default-host}"}
+      ${defaultHostRecords}
 
-    ${join-lines (mxRecords zone.mx)}
+      ${join-lines (mxRecords zone.mx)}
 
-    ${dmarcRecord zone.dmarc-report-address}
+      ${dmarcRecord zone.dmarc-report-address}
 
-    ${optionalString (zone.gssapi-realm != null)
-    ''_kerberos IN TXT "${zone.gssapi-realm}"''}
+      ${optionalString (zone.gssapi-realm != null)
+      ''_kerberos IN TXT "${zone.gssapi-realm}"''}
 
-    ${join-lines (nsRecords zone.nameservers)}
+      ${join-lines (nsRecords zone.nameservers)}
 
-    ${join-lines (mapAttrsToList makeSrvProtocolRecords zone.srv-records)}
+      ${join-lines (mapAttrsToList makeSrvProtocolRecords zone.srv-records)}
 
-    ${join-lines (mapAttrsToList makeMetricRecords zone.metric-records)}
+      ${join-lines (mapAttrsToList makeMetricRecords zone.metric-records)}
 
-    $TTL ${zone.host-record-ttl}
+      $TTL ${zone.host-record-ttl}
 
-    ${join-lines (mapAttrsToList hostRecords zone.hosts)}
+      ${join-lines (mapAttrsToList hostRecords zone.hosts)}
 
-    ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
+      ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
 
-    ${join-lines zone.verbatim-dns-records}
+      ${join-lines zone.verbatim-dns-records}
 
-    ${join-lines (mapAttrsToList
-      (subdom: subdomCfg: domain-records "${subdom}.${dom}" subdomCfg)
-      zone.subdomains)}
-  '';
+      ${join-lines (mapAttrsToList
+        (subdom: subdomCfg: domain-records "${subdom}.${dom}" subdomCfg)
+        zone.subdomains)}
+    '';
 
   concatMapAttrs = f: attrs:
     concatMap (x: x) (mapAttrsToList (key: val: f key val) attrs);

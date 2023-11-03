@@ -74,7 +74,6 @@ let
           services = {
             heimdal-kdc = {
               wantedBy = [ "multi-user.target" ];
-              after = [ "network-online.target" ];
               description =
                 "Heimdal Kerberos Key Distribution Center (primary ticket server).";
               path = with pkgs; [ heimdal ];
@@ -277,7 +276,6 @@ let
           services = {
             heimdal-kdc-secondary = {
               wantedBy = [ "multi-user.target" ];
-              after = [ "network-online.target" ];
               description =
                 "Heimdal Kerberos Key Distribution Center (secondary ticket server).";
               path = with pkgs; [ heimdal ];

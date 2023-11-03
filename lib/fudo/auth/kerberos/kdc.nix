@@ -180,7 +180,6 @@ let
 
             heimdal-hprop = mkIf hasSecondary {
               wantedBy = [ "heimdal-kdc.service" ];
-              after = [ "heimdal-kdc.service" ];
               description =
                 "Service to propagate the KDC database to secondary servers.";
               path = with pkgs; [ heimdal ];

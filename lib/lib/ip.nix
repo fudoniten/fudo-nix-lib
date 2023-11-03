@@ -65,15 +65,13 @@ in rec {
   ipv4OnNetwork = ip: network:
     let
       ip-int = ipv4ToInt ip;
-      net-min = networkMinIp network;
-      net-max = networkMaxIp network;
-    in (ip-int >= (ipv4ToInt networkMinIp))
-    && (ip-int <= (ipv4ToInt networkMaxIp));
+      netMin = networkMinIp network;
+      netMax = networkMaxIp network;
+    in (ip-int >= (ipv4ToInt netMin)) && (ip-int <= (ipv4ToInt netMax));
 
   getNetworkMask = network: toInt (elemAt (splitString "/" network) 1);
 
   getNetworkBase = network:
-    assert (builtins.match ".+/[0-9]+" network) != null;
     let
       ip = elemAt (splitString "/" network) 0;
       insignificantBits = 32 - (getNetworkMask network);

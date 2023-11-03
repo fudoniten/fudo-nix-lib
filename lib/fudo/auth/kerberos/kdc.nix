@@ -179,7 +179,7 @@ let
             };
 
             heimdal-hprop = mkIf hasSecondary {
-              wantedBy = [ "heimdal-kdc.service" ];
+              wantedBy = [ "multi-user.service" ];
               description =
                 "Service to propagate the KDC database to secondary servers.";
               path = with pkgs; [ heimdal ];
@@ -218,8 +218,7 @@ let
           paths.heimdal-hprop = mkIf hasSecondary {
             wantedBy = [ "heimdal-hprop.service" ];
             bindsTo = [ "heimdal-hprop.service" ];
-            after = [ "heimdal-kdc.service" ];
-            pathConfig = { PathModified = cfg.kdc.database; };
+            pathConfig.PathModified = cfg.kdc.database;
           };
         };
 

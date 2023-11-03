@@ -49,7 +49,9 @@ in rec {
     in intToIpv4
     (leftShift (rightShift fullMask insignificantBits) insignificantBits);
 
-  networkMinIp = network: intToIpv4 (1 + (ipv4ToInt (getNetworkBase network)));
+  networkMinIp = network:
+    intToIpv4
+    (1 + (ipv4ToInt (getNetworkBase (trace "NETWORK: ${network}" network))));
 
   networkMaxIp = network:
     intToIpv4 (rightPadBits (ipv4ToInt (getNetworkBase network))

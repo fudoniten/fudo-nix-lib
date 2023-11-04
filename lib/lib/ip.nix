@@ -51,7 +51,7 @@ in rec {
     in intToIpv4
     (leftShift (rightShift fullMask insignificantBits) insignificantBits);
 
-  networkMinIp = network: intToIpv4 (1 + (ipv4ToInt (getNetworkBase network)));
+  networkMinIp = network: intToIpv4 (ipv4ToInt (getNetworkBase network));
 
   networkMaxIp = network:
     intToIpv4 (rightPadBits (ipv4ToInt (getNetworkBase network))
@@ -59,8 +59,7 @@ in rec {
 
   # To avoid broadcast IP...
   networkMaxButOneIp = network:
-    intToIpv4 ((rightPadBits (ipv4ToInt (getNetworkBase network))
-      (32 - (getNetworkMask network))) - 1);
+    intToIpv4 ((ipv4ToInt (networkMaxIp network)) - 1);
 
   ipv4OnNetwork = ip: network:
     let

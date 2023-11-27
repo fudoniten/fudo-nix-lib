@@ -57,10 +57,16 @@ let
         port = dns.listen-port;
         upstream_dns = upstream-dns;
         bootstrap_dns = bootstrap-dns;
-        blocking_mode = "default";
-        blocked_hosts = blocked-hosts;
         enable_dnssec = enable-dnssec;
         local_domain_name = local-domain-name;
+        protection_enabled = true;
+        blocking_mode = "default";
+        blocked_hosts = blocked-hosts;
+        filtering_enabled = true;
+        parental_enabled = false;
+        safesearch_enabled = false;
+        use_private_ptr_resolvers = cfg.dns.reverse-dns != [ ];
+        local_ptr_upstreams = cfg.dns.reverse-dns;
       };
       tls.enabled = false;
       filters = imap1 (i: filter: {
@@ -93,6 +99,13 @@ in {
         type = port;
         description = "Port on which to listen for DNS queries.";
         default = 53;
+      };
+
+      reverse-dns = mkOption {
+        type = listOf str;
+        description =
+          "DNS servers on which to perform reverse lookups for private addresses (if any).";
+        default = [ ];
       };
     };
 

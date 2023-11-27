@@ -2,54 +2,55 @@
 
 with pkgs.lib;
 let
-  hash-ldap-passwd-pkg = name: passwd-file: pkgs.stdenv.mkDerivation {
-    name = "${name}-ldap-passwd";
+  hash-ldap-passwd-pkg = name: passwd-file:
+    pkgs.stdenv.mkDerivation {
+      name = "${name}-ldap-passwd";
 
-    phases = [ "installPhase" ];
+      phases = [ "installPhase" ];
 
-    buildInputs = with pkgs; [ openldap ];
+      buildInputs = with pkgs; [ openldap ];
 
-    installPhase = let
-      passwd = removeSuffix "\n" (readFile passwd-file);
-    in ''
-      slappasswd -s ${passwd} | tr -d '\n' > $out
-    '';
-  };
+      installPhase = let passwd = removeSuffix "\n" (readFile passwd-file);
+      in ''
+        slappasswd -s ${passwd} | tr -d '\n' > $out
+      '';
+    };
 
   hash-ldap-passwd = name: passwd-file:
     readFile "${hash-ldap-passwd-pkg name passwd-file}";
 
-  generate-random-passwd = name: length: pkgs.stdenv.mkDerivation {
-    name = "${name}-random-passwd";
+  generate-random-passwd = name: length:
+    pkgs.stdenv.mkDerivation {
+      name = "${name}-random-passwd";
 
-    phases = [ "installPhase" ];
+      phases = [ "installPhase" ];
 
-    buildInputs = with pkgs; [ pwgen ];
+      buildInputs = with pkgs; [ pwgen ];
 
-    installPhase = ''
-      pwgen --secure --num-passwords=1 ${toString length} | tr -d '\n' > $out
-    '';
-  };
+      installPhase = ''
+        pwgen --secure --num-passwords=1 ${toString length} | tr -d '\n' > $out
+      '';
+    };
 
-  bcrypt-passwd-pkg = name: passwd-file: pkgs.stdenv.mkDerivation {
-    name = "${name}-bcrypt";
+  bcrypt-passwd-pkg = name: passwd-file:
+    pkgs.stdenv.mkDerivation {
+      name = "${name}-bcrypt";
 
-    phases = [ "installPhase" ];
+      phases = [ "installPhase" ];
 
-    buildInputs = with pkgs; [ apacheHttpd ];
+      buildInputs = with pkgs; [ apacheHttpd ];
 
-    installPhase = let
-      passwd = removeSuffix "\n" (readFile passwd-file);
-    in ''
-      htpasswd -bnBC 10 "" ${passwd} | tr -d ':\n' | sed 's/$2y/$2a/' > $out
-    '';
-  };
+      installPhase = let passwd = removeSuffix "\n" (readFile passwd-file);
+      in ''
+        htpasswd -bnBC 10 "" ${passwd} | tr -d ':\n' | sed 's/$2y/$2a/' > $out
+      '';
+    };
 
   bcrypt-passwd = name: passwd-file:
     readFile "${bcrypt-passwd-pkg name passwd-file}";
 
-
-  generate-stablerandom-passwd = name: { seed, length ? 20, ... }:
+  generate-stablerandom-passwd = name:
+    { seed, length ? 20, ... }:
     pkgs.stdenv.mkDerivation {
       name = "${name}-stablerandom-passwd";
 
@@ -59,7 +60,9 @@ let
 
       installPhase = ''
         echo "${name}-${seed}" > seedfile
-        pwgen --secure --num-passwords=1 -H seedfile ${toString length} | tr -d '\n' > $out
+        pwgen --secure --num-passwords=1 -H seedfile ${
+          toString length
+        } | tr -d '\n' > $out
       '';
     };
 

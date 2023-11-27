@@ -143,6 +143,18 @@ in {
           name = "OISD.NL Blocklist";
           url = "https://abp.oisd.nl/";
         }
+        {
+          name = "FireBog Easy Privacy";
+          url = "https://v.firebog.net/hosts/Easyprivacy.txt";
+        }
+        {
+          name = "FireBog Easy Ads";
+          url = "https://v.firebog.net/hosts/Easylist.txt";
+        }
+        {
+          name = "FireBog Easy Admiral";
+          url = "https://v.firebog.net/hosts/Admiral.txt";
+        }
       ];
     };
 

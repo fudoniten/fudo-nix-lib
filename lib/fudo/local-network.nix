@@ -142,7 +142,7 @@ in {
         in [
           {
             name = "domain-name-servers";
-            data = cfg.joinList dns-servers;
+            data = joinList cfg.dns-servers;
           }
           {
             name = "subnet-mask";

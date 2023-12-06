@@ -6,13 +6,19 @@ let
 
   join-lines = concatStringsSep "\n";
 
-  traceout = out: builtins.trace out out;
+  inherit (pkgs.lib.ip)
+    getNetworkBase maskFromV32Network networkMinIp networkMaxIp;
 
 in {
 
   options.fudo.local-network = with types; {
 
     enable = mkEnableOption "Enable local network configuration (DHCP & DNS).";
+
+    state-directory = mkOption {
+      type = str;
+      description = "Path at which to store server state.";
+    };
 
     domain = mkOption {
       type = str;
@@ -120,38 +126,64 @@ in {
         hostname
       ]) other-hosts;
 
-    services.dhcpd4 = let zone = cfg.zone-definition;
-    in {
+    services.kea = {
       enable = true;
-
-      machines = mapAttrsToList (hostname: hostOpts: {
-        ethernetAddress = hostOpts.mac-address;
-        hostName = hostname;
-        ipAddress = hostOpts.ipv4-address;
-      }) (filterAttrs (host: hostOpts:
-        hostOpts.mac-address != null && hostOpts.ipv4-address != null)
-        zone.hosts);
-
-      interfaces = cfg.dhcp-interfaces;
-
-      extraConfig = ''
-        subnet ${pkgs.lib.ip.getNetworkBase cfg.network} netmask ${
-          pkgs.lib.ip.maskFromV32Network cfg.network
-        } {
-          authoritative;
-          option subnet-mask ${pkgs.lib.ip.maskFromV32Network cfg.network};
-          option broadcast-address ${pkgs.lib.ip.networkMaxIp cfg.network};
-          option routers ${cfg.gateway};
-          option domain-name-servers ${concatStringsSep " " cfg.dns-servers};
-          option domain-name "${cfg.domain}";
-          option domain-search "${
-            concatStringsSep " " ([ cfg.domain ] ++ cfg.search-domains)
-          }";
-          range ${pkgs.lib.ip.networkMinIp cfg.dhcp-dynamic-network} ${
-            pkgs.lib.ip.networkMaxButOneIp cfg.dhcp-dynamic-network
-          };
-        }
-      '';
+      settings = {
+        interfaces-config.interfaces = cfg.dhcp-interfaces;
+        lease-database = {
+          name = "${cfg.state-directory}/dhcp4.leases";
+          type = "memfile";
+          persist = true;
+        };
+        valid-lifetime = 4000;
+        rebind-timer = 2000;
+        renew-timer = 1000;
+        option-data = [
+          {
+            name = "domain-name-servers";
+            data = cfg.dns-servers;
+          }
+          {
+            name = "subnet-mask";
+            data = maskFromV32Network cfg.network;
+          }
+          {
+            name = "broadcast-address";
+            data = networkMaxIp cfg.network;
+          }
+          {
+            name = "routers";
+            data = cfg.gateway;
+          }
+          {
+            name = "domain-name";
+            data = cfg.domain;
+          }
+          {
+            name = "domain-search";
+            data = [ cfg.domain ] ++ cfg.search-domains;
+          }
+        ];
+        subnet4 = [{
+          pools = [{
+            pool = let
+              minIp = networkMinIp cfg.dhcp-dynamic-network;
+              maxIp = networkMaxIp cfg.dhcp-dynamic-nework;
+            in "${minIp} - ${maxIp}";
+          }];
+          subnet = cfg.network;
+          reservations = let
+            hostsWithMac = filterAttrs (_: hostOpts:
+              !isNull hostOpts.mac-address && !isNull hostOpts.ipv4-address)
+              cfg.zone-definition.hosts;
+          in mapAttrsToList (hostname:
+            { mac-address, ipv4-address, ... }: {
+              enthernetAddress = mac-address;
+              hostName = hostname;
+              ipAddress = ipv4-address;
+            }) hostsWithMac;
+        }];
+      };
     };
 
     services.bind = let

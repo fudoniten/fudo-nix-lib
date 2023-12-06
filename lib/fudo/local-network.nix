@@ -168,7 +168,7 @@ in {
           pools = [{
             pool = let
               minIp = networkMinIp cfg.dhcp-dynamic-network;
-              maxIp = networkMaxIp cfg.dhcp-dynamic-nework;
+              maxIp = networkMaxIp cfg.dhcp-dynamic-network;
             in "${minIp} - ${maxIp}";
           }];
           subnet = cfg.network;

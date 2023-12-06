@@ -138,10 +138,11 @@ in {
         valid-lifetime = 4000;
         rebind-timer = 2000;
         renew-timer = 1000;
-        option-data = [
+        option-data = let joinList = concatStringsSep ", ";
+        in [
           {
             name = "domain-name-servers";
-            data = cfg.dns-servers;
+            data = cfg.joinList dns-servers;
           }
           {
             name = "subnet-mask";
@@ -161,7 +162,7 @@ in {
           }
           {
             name = "domain-search";
-            data = [ cfg.domain ] ++ cfg.search-domains;
+            data = joinList ([ cfg.domain ] ++ cfg.search-domains);
           }
         ];
         subnet4 = [{

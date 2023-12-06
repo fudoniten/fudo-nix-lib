@@ -179,7 +179,7 @@ in {
               cfg.zone-definition.hosts;
           in mapAttrsToList (hostname:
             { mac-address, ipv4-address, ... }: {
-              enthernetAddress = mac-address;
+              ethernetAddress = mac-address;
               hostName = hostname;
               ipAddress = ipv4-address;
             }) hostsWithMac;

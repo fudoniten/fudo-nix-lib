@@ -126,7 +126,7 @@ in {
         hostname
       ]) other-hosts;
 
-    services.kea = {
+    services.kea.dhcp4 = {
       enable = true;
       settings = {
         interfaces-config.interfaces = cfg.dhcp-interfaces;

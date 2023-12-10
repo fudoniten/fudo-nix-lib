@@ -145,7 +145,7 @@ in {
     };
 
     datasources = mkOption {
-      type = attrsOf (submodule datasourceOpts);
+      type = listOf (submodule datasourceOpts);
       description = "A list of datasources supplied to Grafana.";
       default = { };
     };

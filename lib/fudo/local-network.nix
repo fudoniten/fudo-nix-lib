@@ -126,6 +126,13 @@ in {
         hostname
       ]) other-hosts;
 
+    systemd = {
+      tmpfiles.rules = [ "d ${cfg.state-directory} 0700 root root - -" ];
+
+      services.kea-dhcp4-server.serviceConfig.ReadWritePaths =
+        [ cfg.state-directory ];
+    };
+
     services.kea.dhcp4 = {
       enable = true;
       settings = {

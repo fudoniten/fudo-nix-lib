@@ -126,22 +126,15 @@ in {
         hostname
       ]) other-hosts;
 
-    systemd = {
-      tmpfiles.rules = [ "d ${cfg.state-directory} 0700 root root - -" ];
-
-      services.kea-dhcp4-server.serviceConfig.ReadWritePaths =
-        [ cfg.state-directory ];
-    };
-
     services.kea.dhcp4 = {
       enable = true;
       settings = {
         interfaces-config.interfaces = cfg.dhcp-interfaces;
-        lease-database = {
-          name = "${cfg.state-directory}/dhcp4.leases";
-          type = "memfile";
-          persist = true;
-        };
+        # lease-database = {
+        #   name = "${cfg.state-directory}/dhcp4.leases";
+        #   type = "memfile";
+        #   persist = true;
+        # };
         valid-lifetime = 4000;
         rebind-timer = 2000;
         renew-timer = 1000;

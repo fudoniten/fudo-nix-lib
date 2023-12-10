@@ -130,11 +130,6 @@ in {
       enable = true;
       settings = {
         interfaces-config.interfaces = cfg.dhcp-interfaces;
-        # lease-database = {
-        #   name = "${cfg.state-directory}/dhcp4.leases";
-        #   type = "memfile";
-        #   persist = true;
-        # };
         valid-lifetime = 4000;
         rebind-timer = 2000;
         renew-timer = 1000;

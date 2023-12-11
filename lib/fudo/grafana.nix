@@ -145,7 +145,7 @@ in {
     };
 
     datasources = mkOption {
-      type = listOf (submodule datasourceOpts);
+      type = attrsOf (submodule datasourceOpts);
       description = "A list of datasources supplied to Grafana.";
       default = { };
     };
@@ -231,7 +231,7 @@ in {
             user = cfg.database.user;
             password = "$__file{${cfg.database.password-file}}";
             type = "postgres";
-            ssl_mode = "require";
+            ssl_mode = if cfg.private-nework then "disable" else "require";
           };
 
           "ldap.auth" = mkIf (cfg.ldap != null) (let

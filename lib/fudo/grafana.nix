@@ -192,10 +192,6 @@ in {
       tmpfiles.rules =
         let grafana-user = config.systemd.services.grafana.serviceConfig.User;
         in [ "d ${cfg.state-directory} 0700 ${grafana-user} - - -" ];
-
-      services.grafana.serviceConfig = {
-        EnvironmentFile = host-secrets.grafana-environment-file.target-file;
-      };
     };
 
     # fudo.secrets.host-secrets.${hostname}.grafana-environment-file = {

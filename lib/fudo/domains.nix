@@ -51,11 +51,11 @@ let
         metrics = mkOption {
           type = nullOr (submodule {
             options = {
-              grafanaHost = mkOption {
+              grafana-host = mkOption {
                 type = str;
                 description = "Hostname of the Grafana Metrics Analysis tool.";
               };
-              prometheusHost = mkOption {
+              prometheus-host = mkOption {
                 type = str;
                 description =
                   "Hostname of the Prometheus Metrics Aggregator tool.";

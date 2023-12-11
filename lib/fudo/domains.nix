@@ -48,11 +48,20 @@ let
           default = "admin@${domain}";
         };
 
-        grafana-hosts = mkOption {
-          type = listOf str;
-          description =
-            "List of hosts acting as Grafana metric analyzers. Requires prometheus hosts as well.";
-          default = [ ];
+        metrics = mkOption {
+          type = nullOr (submodule {
+            options = {
+              grafanaHost = mkOption {
+                type = str;
+                description = "Hostname of the Grafana Metrics Analysis tool.";
+              };
+              prometheusHost = mkOption {
+                type = str;
+                description =
+                  "Hostname of the Prometheus Metrics Aggregator tool.";
+              };
+            };
+          });
         };
 
         log-aggregator = mkOption {
@@ -143,13 +152,6 @@ let
           type = listOf str;
           description =
             "List of hosts acting as LDAP authentication servers for the domain.";
-          default = [ ];
-        };
-
-        prometheus-hosts = mkOption {
-          type = listOf str;
-          description =
-            "List of hosts acting aas prometheus metric scrapers for hosts in this network.";
           default = [ ];
         };
 

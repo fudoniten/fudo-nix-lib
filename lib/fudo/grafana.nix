@@ -105,28 +105,6 @@ in {
       };
     };
 
-    database = {
-      name = mkOption {
-        type = str;
-        description = "Database name.";
-        default = "grafana";
-      };
-      hostname = mkOption {
-        type = str;
-        description = "Hostname of the database server.";
-        default = "localhost";
-      };
-      user = mkOption {
-        type = str;
-        description = "Database username.";
-        default = "grafana";
-      };
-      password-file = mkOption {
-        type = str;
-        description = "File containing the database user's password.";
-      };
-    };
-
     oauth = let
       oauthOpts.options = {
         hostname = mkOption {
@@ -250,50 +228,9 @@ in {
           };
 
           database = {
-            host = cfg.database.hostname;
-            name = cfg.database.name;
-            user = cfg.database.user;
-            password = "$__file{${cfg.database.password-file}}";
-            type = "postgres";
-            ssl_mode = if cfg.private-network then "disable" else "require";
+            type = "sqlite3";
+            path = "${cfg.state-directory}/database.sqlite";
           };
-
-          # "ldap.auth" = mkIf (cfg.ldap != null) (let
-          #   base = cfg.ldap.base-dn;
-
-          #   config-file = pkgs.writeText "grafana-ldap.toml" ''
-          #     [[servers]]
-          #     host = "${concatStringsSep " " cfg.ldap.hosts}"
-          #     port = 389
-          #     start_tls = true
-
-          #     bind_dn = "uid=%s,ou=members,${base}"
-
-          #     search_filter = "(uid=%s)"
-          #     search_base_dns = [ "ou=members,${base}" ]
-
-          #     group_search_filter = "(&(objectClass=posixGroup)(memberUid=%s))"
-          #     group_search_base_dns = ["ou=groups,${base}"]
-          #     group_search_filter_user_attribute = "uid"
-
-          #     [[servers.group_mappings]]
-          #     group_dn = "cn=admin,ou=groups,${base}"
-          #     org_role = "Admin"
-          #     grafana_admin = true
-
-          #     [[servers.group_mappings]]
-          #     group_dn = "cn=*,ou=groups,${base}"
-          #     org_role = "Viewer"
-          #   '';
-          # in {
-          #   enabled = true;
-          #   allow_sign_up = true;
-          #   config_file = "${config-file}";
-
-          #   # AUTH_LDAP_ENABLED = "true";
-          #   # AUTH_LDAP_ALLOW_SIGN_UP = "true";
-          #   # AUTH_LDAP_CONFIG_FILE = config-file;
-          # });
 
           auth = mkIf (!isNull cfg.oauth) {
             signout_redirect_url =

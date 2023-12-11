@@ -127,11 +127,39 @@ in {
       };
     };
 
-    ldap = mkOption {
-      type = nullOr (submodule ldapOpts);
-      description = "";
+    oauth = let
+      oauthOpts.options = {
+        hostname = mkOption {
+          type = str;
+          description = "Host of the OAuth server.";
+        };
+
+        client-id = mkOption {
+          type = str;
+          description = "Path to file containing the Grafana OAuth client ID.";
+        };
+
+        client-secret = mkOption {
+          type = str;
+          description =
+            "Path to file containing the Grafana OAuth client secret.";
+        };
+
+        slug = mkOption {
+          type = str;
+          description = "The application slug on the OAuth server.";
+        };
+      };
+    in mkOption {
+      type = nullOr (submodule oauthOpts);
       default = null;
     };
+
+    # ldap = mkOption {
+    #   type = nullOr (submodule ldapOpts);
+    #   description = "";
+    #   default = null;
+    # };
 
     admin-password-file = mkOption {
       type = str;
@@ -170,14 +198,14 @@ in {
       };
     };
 
-    fudo.secrets.host-secrets.${hostname}.grafana-environment-file = {
-      source-file = pkgs.writeText "grafana.env" ''
-        ${optionalString (cfg.ldap != null)
-        ''GRAFANA_LDAP_BIND_PASSWD="${cfg.ldap.bind-passwd}"''}
-      '';
-      target-file = "/run/metrics/grafana/auth-bind.passwd";
-      user = config.systemd.services.grafana.serviceConfig.User;
-    };
+    # fudo.secrets.host-secrets.${hostname}.grafana-environment-file = {
+    #   source-file = pkgs.writeText "grafana.env" ''
+    #     ${optionalString (cfg.ldap != null)
+    #     ''GRAFANA_LDAP_BIND_PASSWD="${cfg.ldap.bind-passwd}"''}
+    #   '';
+    #   target-file = "/run/metrics/grafana/auth-bind.passwd";
+    #   user = config.systemd.services.grafana.serviceConfig.User;
+    # };
 
     services = {
       nginx = {
@@ -234,42 +262,64 @@ in {
             ssl_mode = if cfg.private-network then "disable" else "require";
           };
 
-          "ldap.auth" = mkIf (cfg.ldap != null) (let
-            base = cfg.ldap.base-dn;
+          # "ldap.auth" = mkIf (cfg.ldap != null) (let
+          #   base = cfg.ldap.base-dn;
 
-            config-file = pkgs.writeText "grafana-ldap.toml" ''
-              [[servers]]
-              host = "${concatStringsSep " " cfg.ldap.hosts}"
-              port = 389
-              start_tls = true
+          #   config-file = pkgs.writeText "grafana-ldap.toml" ''
+          #     [[servers]]
+          #     host = "${concatStringsSep " " cfg.ldap.hosts}"
+          #     port = 389
+          #     start_tls = true
 
-              bind_dn = "uid=%s,ou=members,${base}"
+          #     bind_dn = "uid=%s,ou=members,${base}"
 
-              search_filter = "(uid=%s)"
-              search_base_dns = [ "ou=members,${base}" ]
+          #     search_filter = "(uid=%s)"
+          #     search_base_dns = [ "ou=members,${base}" ]
 
-              group_search_filter = "(&(objectClass=posixGroup)(memberUid=%s))"
-              group_search_base_dns = ["ou=groups,${base}"]
-              group_search_filter_user_attribute = "uid"
+          #     group_search_filter = "(&(objectClass=posixGroup)(memberUid=%s))"
+          #     group_search_base_dns = ["ou=groups,${base}"]
+          #     group_search_filter_user_attribute = "uid"
 
-              [[servers.group_mappings]]
-              group_dn = "cn=admin,ou=groups,${base}"
-              org_role = "Admin"
-              grafana_admin = true
+          #     [[servers.group_mappings]]
+          #     group_dn = "cn=admin,ou=groups,${base}"
+          #     org_role = "Admin"
+          #     grafana_admin = true
 
-              [[servers.group_mappings]]
-              group_dn = "cn=*,ou=groups,${base}"
-              org_role = "Viewer"
-            '';
-          in {
+          #     [[servers.group_mappings]]
+          #     group_dn = "cn=*,ou=groups,${base}"
+          #     org_role = "Viewer"
+          #   '';
+          # in {
+          #   enabled = true;
+          #   allow_sign_up = true;
+          #   config_file = "${config-file}";
+
+          #   # AUTH_LDAP_ENABLED = "true";
+          #   # AUTH_LDAP_ALLOW_SIGN_UP = "true";
+          #   # AUTH_LDAP_CONFIG_FILE = config-file;
+          # });
+
+          auth = mkIf (!isNull cfg.oauth) {
+            signout_redirect_url =
+              "https://${cfg.oauth.hostname}/application/o/${cfg.oauth.slug}/end-session/";
+            oauth_auto_login = true;
+          };
+
+          "auth.generic_oauth" = mkIf (!isNull cfg.oauth) {
+            name = "Authentik";
             enabled = true;
-            allow_sign_up = true;
-            config_file = "${config-file}";
-
-            # AUTH_LDAP_ENABLED = "true";
-            # AUTH_LDAP_ALLOW_SIGN_UP = "true";
-            # AUTH_LDAP_CONFIG_FILE = config-file;
-          });
+            client_id = "$__file{${cfg.oauth.client-id}}";
+            client_secret = "$__file{${cfg.oauth.client-secret}}";
+            scopes = "openid email profile";
+            auth_url = "https://${cfg.oauth.hostname}/application/o/authorize/";
+            token_url = "https://${cfg.oauth.hostname}/application/o/token/";
+            api_url = "https://${cfg.oauth.hostname}/application/o/userinfo/";
+            role_attribute_path = concatStringsSep " || " [
+              "contains(groups[*], 'Metrics Admin') && 'Admin'"
+              "contains(groups[*], 'Metrics Editor') && 'Editor'"
+              "'Viewer'"
+            ];
+          };
         };
 
         provision = {

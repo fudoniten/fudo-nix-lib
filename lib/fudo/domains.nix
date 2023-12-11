@@ -62,6 +62,7 @@ let
               };
             };
           });
+          default = null;
         };
 
         log-aggregator = mkOption {

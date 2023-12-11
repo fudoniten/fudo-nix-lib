@@ -231,7 +231,7 @@ in {
             user = cfg.database.user;
             password = "$__file{${cfg.database.password-file}}";
             type = "postgres";
-            ssl_mode = if cfg.private-nework then "disable" else "require";
+            ssl_mode = if cfg.private-network then "disable" else "require";
           };
 
           "ldap.auth" = mkIf (cfg.ldap != null) (let

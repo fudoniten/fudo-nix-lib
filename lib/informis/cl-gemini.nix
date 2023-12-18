@@ -156,7 +156,7 @@ in {
           ExecStartPre =
             "${ensure-certificates cfg.hostname cfg.user cfg.ssl-private-key
             cfg.ssl-certificate}";
-          ExecStart = "${pkgs.cl-gemini}/bin/launch-server.sh";
+          ExecStart = "${pkgs.cl-gemini}/bin/cl-gemini-launcher";
           Restart = "on-failure";
           PIDFile = "/run/cl-gemini.$USERNAME.uid";
           User = cfg.user;

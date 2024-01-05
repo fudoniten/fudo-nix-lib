@@ -188,6 +188,7 @@ let
                 User = cfg.user;
                 Group = cfg.group;
                 Type = "oneshot";
+                Restart = "on-failure";
                 RuntimeDirectory = "heimdal-hprop";
                 ExecStartPre = pkgs.writeShellScript "kdc-prepare-hprop-dump.sh"
                   (concatStringsSep " " [
@@ -325,10 +326,11 @@ let
                 LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;
-                Restart = "always";
-                RestartSec = "5s";
+                Restart =
+                  "never"; # Server will retry -- this results in stacking
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
+                ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
                 ExecStart = concatStringsSep " " [
                   "${pkgs.heimdal}/libexec/heimdal/hpropd"
                   "--database=sqlite:${cfg.kdc.database}"

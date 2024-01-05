@@ -154,7 +154,7 @@ in {
     package = mkOption {
       type = package;
       description = "Which package to use for Postgresql server.";
-      default = pkgs.postgresql_11_gssapi;
+      default = pkgs.postgresql_15_gssapi;
     };
 
     ssl-private-key = mkOption {

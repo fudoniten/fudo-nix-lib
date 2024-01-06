@@ -331,7 +331,7 @@ let
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
                 ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
-                ExecStart = writeShellScript "launch-heimdal-hpropd.sh"
+                ExecStart = pkgs.writeShellScript "launch-heimdal-hpropd.sh"
                   (concatStringsSep " " [
                     "${pkgs.heimdal}/libexec/heimdal/hpropd"
                     "--database=sqlite:${cfg.kdc.database}"

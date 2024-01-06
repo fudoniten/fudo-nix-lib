@@ -326,16 +326,17 @@ let
                 LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;
-                Restart =
-                  "never"; # Server will retry -- this results in stacking
+                # Server will retry -- this results in stacking
+                Restart = "never";
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
                 ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
-                ExecStart = concatStringsSep " " [
-                  "${pkgs.heimdal}/libexec/heimdal/hpropd"
-                  "--database=sqlite:${cfg.kdc.database}"
-                  "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
-                ];
+                ExecStart = writeShellScript "launch-heimdal-hpropd.sh"
+                  (concatStringsSep " " [
+                    "${pkgs.heimdal}/libexec/heimdal/hpropd"
+                    "--database=sqlite:${cfg.kdc.database}"
+                    "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
+                  ]);
               };
               unitConfig.ConditionPathExists =
                 [ cfg.kdc.database cfg.kdc.secondary.keytabs.hpropd ];

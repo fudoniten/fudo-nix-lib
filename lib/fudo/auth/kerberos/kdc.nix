@@ -323,20 +323,22 @@ let
                 ProtectKernelLogs = true;
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
-                # LimitNOFILE = 4096;
+                LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;
                 # Server will retry -- this results in stacking
                 Restart = "never";
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
-                # ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
-                ExecStart = pkgs.writeShellScript "launch-heimdal-hpropd.sh"
-                  (concatStringsSep " " [
-                    "${pkgs.heimdal}/libexec/heimdal/hpropd"
-                    "--database=sqlite:${cfg.kdc.database}"
-                    "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
-                  ]);
+                ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
+                ExecStart = let
+                  startScript = pkgs.writeShellScript "launch-heimdal-hpropd.sh"
+                    (concatStringsSep " " [
+                      "${pkgs.heimdal}/libexec/heimdal/hpropd"
+                      "--database=sqlite:${cfg.kdc.database}"
+                      "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
+                    ]);
+                in "${startScript}";
               };
               unitConfig.ConditionPathExists =
                 [ cfg.kdc.database cfg.kdc.secondary.keytabs.hpropd ];

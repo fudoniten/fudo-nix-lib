@@ -323,7 +323,7 @@ let
                 ProtectKernelLogs = true;
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
-                LimitNOFILE = 4096;
+                LimitNOFILE = "4096";
                 User = cfg.user;
                 Group = cfg.group;
                 # Server will retry -- this results in stacking

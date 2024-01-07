@@ -312,6 +312,25 @@ let
               description = "Heimdal propagation listener server.";
               path = with pkgs; [ heimdal ];
               serviceConfig = {
+                StandardInput = "socket";
+                StandardOutput = "socket";
+                PrivateDevices = true;
+                PrivateTmp = true;
+                ProtectControlGroups = true;
+                ProtectKernelTunables = true;
+                ProtectHostname = true;
+                ProtectClock = true;
+                ProtectKernelLogs = true;
+                MemoryDenyWriteExecute = true;
+                RestrictRealtime = true;
+                LimitNOFILE = "4096";
+                User = cfg.user;
+                Group = cfg.group;
+                # Server will retry -- this results in stacking
+                Restart = "no";
+                AmbientCapabilities = "CAP_NET_BIND_SERVICE";
+                SecureBits = "keep-caps";
+                ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
                 ExecStart = let
                   startScript = pkgs.writeShellScript "launch-heimdal-hpropd.sh"
                     (concatStringsSep " " [

@@ -413,7 +413,11 @@ in {
         };
       };
 
-      declarativeContents = {
+      declarativeContents = let
+        usersWithPasswords =
+          filterAttrs (_: userOpts: userOpts.ldap-hashed-password != null)
+          cfg.users;
+      in {
         "${cfg.base}" = ''
           dn: ${cfg.base}
           objectClass: top
@@ -436,7 +440,7 @@ in {
 
           ${systemUsersLdif cfg.base cfg.system-users}
           ${groupsLdif cfg.base cfg.groups}
-          ${usersLdif cfg.base cfg.groups cfg.users}
+          ${usersLdif cfg.base cfg.groups usersWithPasswords}
         '';
       };
     };

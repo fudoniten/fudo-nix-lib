@@ -339,6 +339,8 @@ let
                       "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
                     ]);
                 in "${startScript}";
+                ExecStartPost =
+                  "chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}";
               };
               unitConfig.ConditionPathExists =
                 [ cfg.kdc.database cfg.kdc.secondary.keytabs.hpropd ];

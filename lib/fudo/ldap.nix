@@ -415,7 +415,7 @@ in {
 
       declarativeContents = let
         usersWithPasswords =
-          filterAttrs (_: userOpts: userOpts.ldap-hashed-password != null)
+          filterAttrs (_: userOpts: userOpts.ldap-hashed-passwd != null)
           cfg.users;
       in {
         "${cfg.base}" = ''

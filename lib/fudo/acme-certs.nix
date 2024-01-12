@@ -122,20 +122,20 @@ in {
   };
 
   config = {
-    security.acme.certs = mapAttrs (domain: domainOpts:
-      {
-        #   email = domainOpts.admin-email;
-        #   webroot = cfg.challenge-path;
-        #   group = "nginx";
-        #   extraDomainNames = domainOpts.extra-domains;
-      }) localDomains;
+    # security.acme.certs = mapAttrs (domain: domainOpts:
+    #   {
+    #     #   email = domainOpts.admin-email;
+    #     #   webroot = cfg.challenge-path;
+    #     #   group = "nginx";
+    #     #   extraDomainNames = domainOpts.extra-domains;
+    #   }) localDomains;
 
     # Assume that if we're acquiring SSL certs, we have a real IP for the
     # host. nginx must have an acme dir for security.acme to work.
     services.nginx = mkIf hasLocalDomains {
       enable = true;
       recommendedTlsSettings = true;
-      virtualHosts = let server-path = "/.well-known/acme-challenge";
+      virtualHosts = let serverPath = "/.well-known/acme-challenge";
       in (mapAttrs (domain: domainOpts: {
         # THIS IS A HACK. Getting redundant paths. So if {domain} is configured
         # somewhere else, assume ACME is already set.
@@ -151,7 +151,7 @@ in {
           serverName = "_";
           default = true;
           locations = {
-            "${server-path}" = {
+            "${serverPath}" = {
               root = cfg.challenge-path;
               extraConfig = "auth_basic off;";
             };

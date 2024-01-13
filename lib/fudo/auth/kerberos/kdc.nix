@@ -234,7 +234,7 @@ let
     let
       cfg = config.fudo.auth.kerberos;
 
-      kdcConf = pkgs.writeText "kdc.conf.template" ''
+      kdcConf = pkgs.writeText "kdc.conf" ''
         [kdc]
           database = {
             realm = ${cfg.realm}

@@ -310,7 +310,7 @@ let
 
             "heimdal-hpropd@" = {
               description = "Heimdal propagation listener server.";
-              path = with pkgs; [ heimdal ];
+              path = with pkgs; [ coreutils heimdal ];
               serviceConfig = {
                 StandardInput = "socket";
                 StandardOutput = "socket";

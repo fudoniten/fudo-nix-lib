@@ -332,7 +332,7 @@ let
                 SecureBits = "keep-caps";
                 ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
                 StateDirectory = "hemidal-hpropd";
-                ExecStartPre =
+                ExecStartPre = pkgs.writeShellScript "heimdal-prepare-db.sh"
                   "cp ${cfg.kdc.database} $STATE_DIRECTORY/realm.db";
                 ExecStart = let
                   startScript = pkgs.writeShellScript "launch-heimdal-hpropd.sh"
@@ -342,7 +342,7 @@ let
                       "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
                     ]);
                 in "${startScript}";
-                ExecStartPost = ''
+                ExecStartPost = pkgs.writeShellScript "heimdal-restore-db.sh" ''
                   chown ${cfg.user}:${cfg.group} $STATE_DIRECTORY/realm.db
                   mv $STATE_DIRECTORY/realm.db ${cfg.kdc.database}
                 '';

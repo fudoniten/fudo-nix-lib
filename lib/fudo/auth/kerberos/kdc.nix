@@ -288,6 +288,7 @@ let
                 ProtectKernelLogs = true;
                 MemoryDenyWriteExecute = true;
                 RestrictRealtime = true;
+                PermissionsStartOnly = false;
                 LimitNOFILE = 4096;
                 User = cfg.user;
                 Group = cfg.group;
@@ -295,7 +296,12 @@ let
                 RestartSec = "5s";
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
-                RuntimeDirectory = "heimdal-kdc-secondary";
+                ExecStartPre = let
+                  chownScript = pkgs.writeShellScript "kerberos-chown.sh" ''
+                    ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
+                    ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
+                  '';
+                in "+${chownScript}";
                 ExecStart = let
                   ips = if (cfg.kdc.bind-addresses != [ ]) then
                     cfg.kdc.bind-addresses
@@ -304,8 +310,7 @@ let
                   bindClause = "--addresses=${concatStringsSep "," ips}";
                 in "${pkgs.heimdal}/libexec/heimdal/kdc --config-file=${kdcConf} --ports=88 ${bindClause}";
               };
-              unitConfig.ConditionPathExists =
-                [ cfg.kdc.database cfg.kdc.secondary.keytabs.hpropd ];
+              unitConfig.ConditionPathExists = [ cfg.kdc.database ];
             };
 
             "heimdal-hpropd@" = {

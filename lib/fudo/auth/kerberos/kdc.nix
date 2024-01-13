@@ -239,7 +239,7 @@ let
           database = {
             realm = ${cfg.realm}
             dbname = sqlite:${cfg.kdc.database}
-            mkey_file = __KEY_FILE__
+            mkey_file = ${cfg.kdc.master-key-file}
             log_file = /dev/null
           }
 

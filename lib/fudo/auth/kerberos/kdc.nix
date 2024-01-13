@@ -331,16 +331,21 @@ let
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
                 ReadWritePaths = [ "${dirOf cfg.kdc.database}" ];
+                StateDirectory = "hemidal-hpropd";
+                ExecStartPre =
+                  "cp ${cfg.kdc.database} $STATE_DIRECTORY/realm.db";
                 ExecStart = let
                   startScript = pkgs.writeShellScript "launch-heimdal-hpropd.sh"
                     (concatStringsSep " " [
                       "${pkgs.heimdal}/libexec/heimdal/hpropd"
-                      "--database=sqlite:${cfg.kdc.database}"
+                      "--database=sqlite:$STATE_DIRECTORY/realm.db"
                       "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
                     ]);
                 in "${startScript}";
-                ExecStartPost =
-                  "chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}";
+                ExecStartPost = ''
+                  chown ${cfg.user}:${cfg.group} $STATE_DIRECTORY/realm.db
+                  mv $STATE_DIRECTORY/realm.db ${cfg.kdc.database}
+                '';
               };
               unitConfig.ConditionPathExists =
                 [ cfg.kdc.database cfg.kdc.secondary.keytabs.hpropd ];

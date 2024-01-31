@@ -1,27 +1,32 @@
 { config, lib, pkgs, ... }:
 
 with lib;
-let
-  zoneOpts =
-    import ../types/zone-definition.nix { inherit lib; };
+let zoneOpts = import ../types/zone-definition.nix { inherit lib; };
 in {
-  options.fudo.zones = with types; mkOption {
-    type = attrsOf (submodule zoneOpts);
-    description = "A map of network zone to zone definition.";
-    default = { };
-  };
+  options.fudo.zones = with types;
+    mkOption {
+      type = attrsOf (submodule zoneOpts);
+      description = "A map of network zone to zone definition.";
+      default = { };
+    };
 
   config = let
-    domain-name = config.instance.local-domain;
+    domainName = config.instance.local-domain;
+    zoneName = config.domains."${domainName}".zone;
+    isLocal = ip: ip == "::1" || hasPrefix "127.";
     # FIXME: ipv6?
-    local-networks = config.instance.local-networks;
-    net-names = map (network: "ipv4:${network}")
-      local-networks;
-    local-net-string = concatStringsSep " " net-names;
+    localNetworks = filter (ip: !isLocal ip) config.instance.local-networks;
+    makeName = network:
+      if !isNull (builtins.match ":" ip) then
+        "ip6:${network}"
+      else
+        "ip4:${network}";
+    netNames = map makeName localNetworks;
+    localNetString = concatStringsSep " " netNames;
   in {
-    fudo.zones.${domain-name}.verbatim-dns-records = [
-      ''@ IN TXT "v=spf1 mx ${local-net-string} -all"''
-      ''@ IN SPF "v=spf1 mx ${local-net-string} -all"''
+    fudo.zones."${zoneName}".verbatim-dns-records = [
+      ''@ IN TXT "v=spf1 mx ${localNetString} -all"''
+      ''@ IN SPF "v=spf1 mx ${localNetString} -all"''
     ];
   };
 }

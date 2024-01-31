@@ -14,7 +14,6 @@ in {
     domainName = config.instance.local-domain;
     zoneName = config.fudo.domains."${domainName}".zone;
     isLocal = network: network == "::1" || hasPrefix "127." network;
-    # FIXME: ipv6?
     localNetworks =
       filter (network: !(isLocal network)) config.instance.local-networks;
     makeName = network:

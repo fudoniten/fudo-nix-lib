@@ -13,7 +13,7 @@ in {
   config = let
     domainName = config.instance.local-domain;
     zoneName = config.fudo.domains."${domainName}".zone;
-    isLocal = network: network == "::1" || hasPrefix "127." network;
+    isLocal = network: hasPrefix "::1/" network || hasPrefix "127." network;
     localNetworks =
       filter (network: !(isLocal network)) config.instance.local-networks;
     makeName = network:

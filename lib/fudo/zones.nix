@@ -13,7 +13,7 @@ in {
   config = let
     domainName = config.instance.local-domain;
     zoneName = config.fudo.domains."${domainName}".zone;
-    isLocal = ip: ip == "::1" || hasPrefix "127.";
+    isLocal = ip: ip == "::1" || hasPrefix "127." ip;
     # FIXME: ipv6?
     localNetworks = filter (ip: !(isLocal ip)) config.instance.local-networks;
     makeName = network:

@@ -10,23 +10,23 @@ in {
       default = { };
     };
 
-  config = let
-    domainName = config.instance.local-domain;
-    zoneName = config.fudo.domains."${domainName}".zone;
-    isLocal = network: hasPrefix "::1/" network || hasPrefix "127." network;
-    localNetworks =
-      filter (network: !(isLocal network)) config.instance.local-networks;
-    makeName = network:
-      if !isNull (builtins.match ":" network) then
-        "ip6:${network}"
-      else
-        "ip4:${network}";
-    netNames = map makeName localNetworks;
-    localNetString = concatStringsSep " " netNames;
-  in {
-    fudo.zones."${zoneName}".verbatim-dns-records = [
-      ''@ IN TXT "v=spf1 mx ${localNetString} -all"''
-      ''@ IN SPF "v=spf1 mx ${localNetString} -all"''
-    ];
-  };
+  # config = let
+  #   domainName = config.instance.local-domain;
+  #   zoneName = config.fudo.domains."${domainName}".zone;
+  #   isLocal = network: hasPrefix "::1/" network || hasPrefix "127." network;
+  #   localNetworks =
+  #     filter (network: !(isLocal network)) config.instance.local-networks;
+  #   makeName = network:
+  #     if !isNull (builtins.match ":" network) then
+  #       "ip6:${network}"
+  #     else
+  #       "ip4:${network}";
+  #   netNames = map makeName localNetworks;
+  #   localNetString = concatStringsSep " " netNames;
+  # in {
+  #   fudo.zones."${zoneName}".verbatim-dns-records = [
+  #     ''@ IN TXT "v=spf1 mx ${localNetString} -all"''
+  #     ''@ IN SPF "v=spf1 mx ${localNetString} -all"''
+  #   ];
+  # };
 }

@@ -6,13 +6,12 @@ let
 
   cfg = config.fudo.webmail;
 
+  base-data-path = cfg.state-directory;
+
   webmail-user = cfg.user;
   webmail-group = cfg.group;
 
-  base-data-path = "/run/rainloop";
-
-  concatMapAttrs = f: attrs:
-    foldr (a: b: a // b) {} (mapAttrsToList f attrs);
+  concatMapAttrs = f: attrs: foldr (a: b: a // b) { } (mapAttrsToList f attrs);
 
   fastcgi-conf = builtins.toFile "fastcgi.conf" ''
     fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
@@ -57,142 +56,149 @@ let
       '';
     })) cfg.sites;
 
-  siteOpts = { site-host, ... }: with types; {
-    options = {
-      title = mkOption {
-        type = str;
-        description = "Webmail site title";
-        example = "My Webmail";
-      };
-
-      debug = mkOption {
-        type = bool;
-        description = "Turn debug logs on.";
-        default = false;
-      };
-
-      mail-server = mkOption {
-        type = str;
-        description = "Mail server from which to send & recieve email.";
-        default = "mail.fudo.org";
-      };
-
-      favicon = mkOption {
-        type = str;
-        description = "URL of the site favicon";
-        example = "https://www.somepage.com/fav.ico";
-      };
-
-      messages-per-page = mkOption {
-        type = int;
-        description = "Default number of messages to show per page";
-        default = 30;
-      };
-
-      max-upload-size = mkOption {
-        type = int;
-        description = "Size limit in MB for uploaded files";
-        default = 30;
-      };
-
-      theme = mkOption {
-        type = str;
-        description = "Default theme to use for this webmail site.";
-        default = "Default";
-      };
-
-      domain = mkOption {
-        type = str;
-        description = "Domain for which the server acts as webmail server";
-      };
-
-      edit-mode = mkOption {
-        type = enum [ "Plain" "Html" "PlainForced" "HtmlForced" ];
-        description = "Default text editing mode for email";
-        default = "Html";
-      };
-
-      layout-mode = mkOption {
-        type = enum [ "side" "bottom" ];
-        description = "Layout mode to use for email preview.";
-        default = "side";
-      };
-
-      enable-threading = mkOption {
-        type = bool;
-        description = "Whether to enable threading for email.";
-        default = true;
-      };
-
-      enable-mobile = mkOption {
-        type = bool;
-        description = "Whether to enable a mobile site view.";
-        default = true;
-      };
-
-      database = mkOption {
-        type = nullOr (submodule databaseOpts);
-        description = "Database configuration for storing contact data.";
-        example = {
-          name = "my_db";
-          host = "db.domain.com";
-          user = "my_user";
-          password-file = /path/to/some/file.pw;
+  siteOpts = { name, ... }:
+    with types; {
+      options = {
+        title = mkOption {
+          type = str;
+          description = "Webmail site title";
+          example = "My Webmail";
         };
-        default = null;
-      };
 
-      admin-email = mkOption {
-        type = str;
-        description = "Email of administrator of this site.";
-        default = "admin@fudo.org";
+        debug = mkOption {
+          type = bool;
+          description = "Turn debug logs on.";
+          default = false;
+        };
+
+        mail-server = mkOption {
+          type = str;
+          description = "Mail server from which to send & recieve email.";
+          default = "mail.fudo.org";
+        };
+
+        favicon = mkOption {
+          type = str;
+          description = "URL of the site favicon";
+          example = "https://www.somepage.com/fav.ico";
+        };
+
+        messages-per-page = mkOption {
+          type = int;
+          description = "Default number of messages to show per page";
+          default = 30;
+        };
+
+        max-upload-size = mkOption {
+          type = int;
+          description = "Size limit in MB for uploaded files";
+          default = 30;
+        };
+
+        theme = mkOption {
+          type = str;
+          description = "Default theme to use for this webmail site.";
+          default = "Default";
+        };
+
+        domain = mkOption {
+          type = str;
+          description = "Domain for which the server acts as webmail server";
+        };
+
+        edit-mode = mkOption {
+          type = enum [ "Plain" "Html" "PlainForced" "HtmlForced" ];
+          description = "Default text editing mode for email";
+          default = "Html";
+        };
+
+        layout-mode = mkOption {
+          type = enum [ "side" "bottom" ];
+          description = "Layout mode to use for email preview.";
+          default = "side";
+        };
+
+        enable-threading = mkOption {
+          type = bool;
+          description = "Whether to enable threading for email.";
+          default = true;
+        };
+
+        enable-mobile = mkOption {
+          type = bool;
+          description = "Whether to enable a mobile site view.";
+          default = true;
+        };
+
+        state-directory = mkOption {
+          type = str;
+          description = "The path at which to store server state.";
+        };
+
+        database = mkOption {
+          type = nullOr (submodule databaseOpts);
+          description = "Database configuration for storing contact data.";
+          example = {
+            name = "my_db";
+            host = "db.domain.com";
+            user = "my_user";
+            password-file = /path/to/some/file.pw;
+          };
+          default = null;
+        };
+
+        admin-email = mkOption {
+          type = str;
+          description = "Email of administrator of this site.";
+          default = "admin@fudo.org";
+        };
       };
     };
-  };
 
-  databaseOpts = { ... }: with types; {
-    options = {
-      type = mkOption {
-        type = enum [ "pgsql" "mysql" ];
-        description = "Driver to use when connecting to the database.";
-        default = "pgsql";
-      };
+  databaseOpts = { ... }:
+    with types; {
+      options = {
+        type = mkOption {
+          type = enum [ "pgsql" "mysql" ];
+          description = "Driver to use when connecting to the database.";
+          default = "pgsql";
+        };
 
-      hostname = mkOption {
-        type = str;
-        description = "Name of host running the database.";
-        example = "my-db.domain.com";
-      };
+        hostname = mkOption {
+          type = str;
+          description = "Name of host running the database.";
+          example = "my-db.domain.com";
+        };
 
-      port = mkOption {
-        type = int;
-        description = "Port on which the database server is listening.";
-        default = 5432;
-      };
+        port = mkOption {
+          type = int;
+          description = "Port on which the database server is listening.";
+          default = 5432;
+        };
 
-      name = mkOption {
-        type = str;
-        description =
-          "Name of the database containing contact info. <user> must have access.";
-        default = "rainloop_webmail";
-      };
+        name = mkOption {
+          type = str;
+          description =
+            "Name of the database containing contact info. <user> must have access.";
+          default = "rainloop_webmail";
+        };
 
-      user = mkOption {
-        type = str;
-        description = "User as which to connect to the database.";
-        default = "webmail";
-      };
+        user = mkOption {
+          type = str;
+          description = "User as which to connect to the database.";
+          default = "webmail";
+        };
 
-      password-file = mkOption {
-        type = nullOr str;
-        description = ''
-          Password to use when connecting to the database.
+        password-file = mkOption {
+          type = nullOr str;
+          description = ''
+            Password to use when connecting to the database.
 
-          If unset, a random password will be generated.
-        '';
+            If unset, a random password will be generated.
+          '';
+        };
       };
     };
-  };
 
 in {
   options.fudo.webmail = with types; {
@@ -240,9 +246,8 @@ in {
       };
     };
 
-    security.acme.certs = mapAttrs
-      (site: site-cfg: { email = site-cfg.admin-email; })
-      cfg.sites;
+    security.acme.certs =
+      mapAttrs (site: site-cfg: { email = site-cfg.admin-email; }) cfg.sites;
 
     services = {
       phpfpm = {
@@ -298,11 +303,12 @@ in {
       };
     };
 
-    fudo.secrets.host-secrets.${hostname} = concatMapAttrs
-      (site: site-cfg: let
+    fudo.secrets.host-secrets.${hostname} = concatMapAttrs (site: site-cfg:
+      let
 
         site-config-file = builtins.toFile "${site}-rainloop.cfg"
-          (import ./include/rainloop.nix lib site site-cfg site-packages.${site}.version);
+          (import ./include/rainloop.nix lib site site-cfg
+            site-packages.${site}.version);
 
         domain-config-file = builtins.toFile "${site}-domain.cfg" ''
           imap_host = "${site-cfg.mail-server}"
@@ -341,8 +347,10 @@ in {
       webmail-init = let
         link-configs = concatStringsSep "\n" (mapAttrsToList (site: site-cfg:
           let
-            cfg-file = config.fudo.secrets.host-secrets.${hostname}."${site}-site-config".target-file;
-            domain-cfg-file = config.fudo.secrets.host-secrets.${hostname}."${site}-domain-config".target-file;
+            cfg-file =
+              config.fudo.secrets.host-secrets.${hostname}."${site}-site-config".target-file;
+            domain-cfg-file =
+              config.fudo.secrets.host-secrets.${hostname}."${site}-domain-config".target-file;
           in ''
             ${pkgs.coreutils}/bin/mkdir -p ${base-data-path}/${site}/_data_/_default_/configs
             ${pkgs.coreutils}/bin/cp ${cfg-file} ${base-data-path}/${site}/_data_/_default_/configs/application.ini

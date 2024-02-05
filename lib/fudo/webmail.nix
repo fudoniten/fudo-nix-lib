@@ -130,11 +130,6 @@ let
           default = true;
         };
 
-        state-directory = mkOption {
-          type = str;
-          description = "The path at which to store server state.";
-        };
-
         database = mkOption {
           type = nullOr (submodule databaseOpts);
           description = "Database configuration for storing contact data.";
@@ -215,6 +210,11 @@ in {
           admin-password = "shh-don't-tell";
         };
       };
+    };
+
+    state-directory = mkOption {
+      type = str;
+      description = "The path at which to store server state.";
     };
 
     user = mkOption {

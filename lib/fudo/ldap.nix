@@ -248,10 +248,10 @@ in {
       };
     };
 
-    networking.firewall = {
-      allowedTCPPorts = [ 389 636 ];
-      allowedUDPPorts = [ 389 ];
-    };
+    # networking.firewall = {
+    #   allowedTCPPorts = [ 389 636 ];
+    #   allowedUDPPorts = [ 389 ];
+    # };
 
     systemd = let
       user = config.services.openldap.user;

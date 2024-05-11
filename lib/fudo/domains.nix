@@ -187,10 +187,26 @@ let
           default = null;
         };
 
-        nexus.domains = mkOption {
-          type = listOf str;
-          description = "Nexus domains to which hosts in this domain belong.";
-          default = [ ];
+        nexus = {
+          public-domains = mkOption {
+            type = listOf str;
+            description = "Nexus domains to which hosts in this domain belong.";
+            default = [ ];
+          };
+
+          private-domains = mkOption {
+            type = listOf str;
+            description =
+              "Nexus private domains to which hosts in this domain belong.";
+            default = [ ];
+          };
+
+          tailscale-domains = mkOption {
+            type = listOf str;
+            description =
+              "Nexus tailscale domains to which hosts in this domain belong.";
+            default = [ ];
+          };
         };
       };
     };

@@ -143,11 +143,26 @@ let
           "If this is a NAT site, this should point to the host acting as network gateway.";
         default = null;
       };
+      nexus = {
+        public-domains = mkOption {
+          type = listOf str;
+          description = "Nexus domains to which hosts in this domain belong.";
+          default = [ ];
+        };
 
-      nexus.domains = mkOption {
-        type = listOf str;
-        description = "Nexus domains to which hosts at this site belong.";
-        default = [ ];
+        private-domains = mkOption {
+          type = listOf str;
+          description =
+            "Nexus private domains to which hosts in this domain belong.";
+          default = [ ];
+        };
+
+        tailscale-domains = mkOption {
+          type = listOf str;
+          description =
+            "Nexus tailscale domains to which hosts in this domain belong.";
+          default = [ ];
+        };
       };
     };
   };

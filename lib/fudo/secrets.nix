@@ -44,6 +44,7 @@ let
       requires = [ "local-fs.target" ];
       before = [ cfg.secret-target ];
       after = [ "local-fs.target" ];
+      restartIfChanged = true;
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

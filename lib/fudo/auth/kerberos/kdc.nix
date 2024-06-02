@@ -108,7 +108,7 @@ let
                   else
                     [ "0.0.0.0" ];
                   bindClause = "--addresses=${concatStringsSep "," ips}";
-                in "${pkgs.heimdal}/libexec/heimdal/kdc --config-file=${kdcConf} --ports=88 ${bindClause}";
+                in "${pkgs.heimdal}/libexec/kdc --config-file=${kdcConf} --ports=88 ${bindClause}";
               };
             };
 
@@ -135,7 +135,7 @@ let
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
                 ExecStart = concatStringsSep " " [
-                  "${pkgs.heimdal}/libexec/heimdal/kadmind"
+                  "${pkgs.heimdal}/libexec/kadmind"
                   "--config-file=${kdcConf}"
                   "--keytab=${cfg.kdc.primary.keytabs.kadmind}"
                   "--realm=${cfg.realm}"
@@ -170,7 +170,7 @@ let
                 AmbientCapabilities = "CAP_NET_BIND_SERVICE";
                 SecureBits = "keep-caps";
                 ExecStart = concatStringsSep " " [
-                  "${pkgs.heimdal}/libexec/heimdal/kpasswdd"
+                  "${pkgs.heimdal}/libexec/kpasswdd"
                   "--config-file=${kdcConf}"
                   "--keytab=${cfg.kdc.primary.keytabs.kpasswdd}"
                   "--realm=${cfg.realm}"
@@ -203,7 +203,7 @@ let
 
                 ExecStart = pkgs.writeShellScript "kdc-hprop.sh"
                   (concatStringsSep " " ([
-                    "${pkgs.heimdal}/libexec/heimdal/hprop"
+                    "${pkgs.heimdal}/libexec/hprop"
                     ''--master-key="${cfg.kdc.master-key-file}"''
                     #''--database="(echo "${staging-db}")"''
                     "--database=sqlite:${cfg.kdc.database}"
@@ -308,7 +308,7 @@ let
                   else
                     [ "0.0.0.0" ];
                   bindClause = "--addresses=${concatStringsSep "," ips}";
-                in "${pkgs.heimdal}/libexec/heimdal/kdc --config-file=${kdcConf} --ports=88 ${bindClause}";
+                in "${pkgs.heimdal}/libexec/kdc --config-file=${kdcConf} --ports=88 ${bindClause}";
               };
               unitConfig.ConditionPathExists = [ cfg.kdc.database ];
             };
@@ -342,7 +342,7 @@ let
                 ExecStart = let
                   startScript = pkgs.writeShellScript "launch-heimdal-hpropd.sh"
                     (concatStringsSep " " [
-                      "${pkgs.heimdal}/libexec/heimdal/hpropd"
+                      "${pkgs.heimdal}/libexec/hpropd"
                       "--database=sqlite:$STATE_DIRECTORY/realm.db"
                       "--keytab=${cfg.kdc.secondary.keytabs.hpropd}"
                     ]);

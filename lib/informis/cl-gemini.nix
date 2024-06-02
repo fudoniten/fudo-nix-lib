@@ -28,21 +28,6 @@ let
       };
     };
 
-  ensure-certificates = hostname: user: key: cert:
-    pkgs.writeShellScript "ensure-gemini-certificates.sh" ''
-      if [[ ! -e ${key} ]]; then
-        TARGET_CERT_DIR=$(${pkgs.coreutils}/bin/dirname ${cert})
-        TARGET_KEY_DIR=$(${pkgs.coreutils}/bin/dirname ${key})
-        if [[ ! -d $TARGET_CERT_DIR ]]; then mkdir -p $TARGET_CERT_DIR; fi
-        if [[ ! -d $TARGET_KEY_DIR ]]; then mkdir -p $TARGET_KEY_DIR; fi
-        ${pkgs.openssl}/bin/openssl req -new -subj "/CN=.${hostname}" -addext "subjectAltName = DNS:${hostname}, DNS:.${hostname}" -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -days 3650 -nodes -out ${cert} -keyout ${key}
-        ${pkgs.coreutils}/bin/chown -R ${user}:nogroup ${cert}
-        ${pkgs.coreutils}/bin/chown -R ${user}:nogroup ${key}
-        ${pkgs.coreutils}/bin/chmod 0444 ${cert}
-        ${pkgs.coreutils}/bin/chmod 0400 ${key}
-      fi
-    '';
-
   generate-feeds = feeds:
     let
       feed-strings = mapAttrsToList (feed-name: opts:

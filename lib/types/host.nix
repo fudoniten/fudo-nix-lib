@@ -36,12 +36,6 @@ in rec {
             '';
             default = [ ];
           };
-
-          world-readable = mkOption {
-            type = bool;
-            description = "Whether to leave the top level world-readable.";
-            default = true;
-          };
         };
       };
     in {
@@ -255,6 +249,13 @@ in rec {
           type = bool;
           description = "Whether the host is a NixOS system.";
           default = true;
+        };
+
+        fudo-system = mkOption {
+          type = bool;
+          description =
+            "Whether the host is a Fudo host (i.e. needs generated keys) without being a NixOS system.";
+          default = false;
         };
 
         arch = mkOption {

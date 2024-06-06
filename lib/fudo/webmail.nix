@@ -337,7 +337,7 @@ in {
 
         "${site}-domain-config" = {
           source-file = domain-config-file;
-          target-file = "/var/run/webmail/rainloop/domain-${site}-rainloop.cfg";
+          target-file = "/run/webmail/rainloop/domain-${site}-rainloop.cfg";
           user = cfg.user;
         };
       }) cfg.sites;

@@ -36,6 +36,12 @@ in rec {
             '';
             default = [ ];
           };
+
+          world-readable = mkOption {
+            type = bool;
+            description = "Whether to leave the top level world-readable.";
+            default = true;
+          };
         };
       };
     in {

@@ -9,14 +9,14 @@ let
         default = name;
       };
 
-      servers = mkOption {
-        type = listOf str;
-        description = "List of servers for this Nexus domain.";
+      server = mkOption {
+        type = str;
+        description = "Primary server for this Nexus domain.";
       };
 
-      dns-servers = mkOption {
+      secondary-dns-servers = mkOption {
         type = listOf str;
-        description = "List of DNS servers for this Nexus domain.";
+        description = "List of secondary DNS servers for this Nexus domain.";
       };
 
       gssapi-realm = mkOption {

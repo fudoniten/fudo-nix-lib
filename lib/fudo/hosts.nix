@@ -93,7 +93,7 @@ in {
 
     time.timeZone = site.timezone;
 
-    krb5.libdefaults.default_realm = domain.gssapi-realm;
+    security.krb5.settings.libdefaults.default_realm = domain.gssapi-realm;
 
     services = {
       cron.mailto = domain.admin-email;

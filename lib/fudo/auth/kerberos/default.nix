@@ -8,7 +8,7 @@ in {
   config = {
     security.krb5 = {
       enable = true;
-      kerberos = pkgs.heimdal;
+      package = pkgs.heimdal;
       settings = {
         libdefaults = {
           default_realm = realm;

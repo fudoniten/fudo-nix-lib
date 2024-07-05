@@ -6,7 +6,7 @@ in {
   imports = [ ./kdc.nix ];
 
   config = {
-    krb5 = {
+    security.krb5 = {
       enable = true;
       kerberos = pkgs.heimdal;
       libdefaults = {

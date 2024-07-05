@@ -9,19 +9,21 @@ in {
     security.krb5 = {
       enable = true;
       kerberos = pkgs.heimdal;
-      libdefaults = {
-        default_realm = realm;
-        allow_weak_crypto = false;
-        dns_lookup_kdc = true;
-        dns_lookup_realm = true;
-        forwardable = true;
-        proxiable = true;
-      };
-      appdefaults = {
-        forwardable = true;
-        proxiable = true;
-        encrypt = true;
-        forward = true;
+      settings = {
+        libdefaults = {
+          default_realm = realm;
+          allow_weak_crypto = false;
+          dns_lookup_kdc = true;
+          dns_lookup_realm = true;
+          forwardable = true;
+          proxiable = true;
+        };
+        appdefaults = {
+          forwardable = true;
+          proxiable = true;
+          encrypt = true;
+          forward = true;
+        };
       };
     };
 

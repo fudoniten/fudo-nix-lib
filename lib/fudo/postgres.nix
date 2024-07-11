@@ -356,7 +356,7 @@ in {
           description =
             "A service to set postgresql user passwords after the server has started.";
           after = [ "postgresql.service" ] ++ cfg.required-services;
-          reqires = [ "postgresql.service" ] ++ cfg.required-services;
+          requires = [ "postgresql.service" ] ++ cfg.required-services;
           wantedBy = [ "postgresql.service" ];
           serviceConfig = {
             Type = "oneshot";

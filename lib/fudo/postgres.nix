@@ -266,7 +266,7 @@ in {
       ensureUsers = map (user: {
         name = user;
         ensureClauses.login = true;
-      }) attrNames cfg.users;
+      }) (attrNames cfg.users);
       # ensureUsers = ((mapAttrsToList (username: attrs: {
       #   name = username;
       #   ensurePermissions = userDatabaseAccess username attrs.databases;

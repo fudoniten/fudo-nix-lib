@@ -9,8 +9,6 @@ let
 
   gssapi-realm = config.fudo.domains.${domain-name}.gssapi-realm;
 
-  join-lines = lib.concatStringsSep "\n";
-
   strip-ext = filename: head (builtins.match "^(.+)[.][^.]+$" filename);
 
   userDatabaseOpts = { database, ... }: {
@@ -101,7 +99,7 @@ let
         exit 2
       fi
 
-      ${join-lines (mapAttrsToList (user: opts:
+      ${concatStrings (mapAttrsToList (user: opts:
         password-setter-script user opts.password-file "$OUTPUT_FILE")
         (filterPasswordedUsers users))}
     '';
@@ -113,15 +111,15 @@ let
   makeEntry = nw:
     "hostssl  all  all  ${nw} gss include_realm=0 krb_realm=${gssapi-realm}";
 
-  makeNetworksEntry = networks: join-lines (map makeEntry networks);
+  makeNetworksEntry = networks: concatStrings (map makeEntry networks);
 
   makeLocalUserPasswordEntries = users: networks:
     let
       network-entries = user: db:
-        join-lines
+        concatStrings
         (map (network: "hostssl  ${db}  ${user}  ${network} md5") networks);
-    in join-lines (mapAttrsToList (user: opts:
-      join-lines (map (db: ''
+    in concatStrings (mapAttrsToList (user: opts:
+      concatStrings (map (db: ''
         local  ${db}  ${user}   md5
         host   ${db}  ${user}   127.0.0.1/16   md5
         host   ${db}  ${user}   ::1/128        md5
@@ -132,19 +130,20 @@ let
 
   enableDatabaseExtensionsSql = database: databaseOpts: ''
     \c ${database}
-    ${join-lines (map enableExtensionSql databaseOpts.extensions)}
+    ${concatStrings (map enableExtensionSql databaseOpts.extensions)}
   '';
 
   userTableAccessSql = user: entity: access:
     "GRANT ${access} ON ${entity} TO ${user};";
   userDatabaseAccessSql = user: database: dbOpts: ''
     \c ${database}
-    ${join-lines
+    ${concatStrings
     (mapAttrsToList (userTableAccessSql user) dbOpts.entity-access)}
   '';
   userAccessSql = user: userOpts:
-    join-lines (mapAttrsToList (userDatabaseAccessSql user) userOpts.databases);
-  usersAccessSql = users: join-lines (mapAttrsToList userAccessSql users);
+    concatStrings
+    (mapAttrsToList (userDatabaseAccessSql user) userOpts.databases);
+  usersAccessSql = users: concatStrings (mapAttrsToList userAccessSql users);
 
 in {
 
@@ -264,14 +263,18 @@ in {
       package = cfg.package;
       enableTCPIP = true;
       ensureDatabases = mapAttrsToList (name: value: name) cfg.databases;
-      ensureUsers = ((mapAttrsToList (username: attrs: {
-        name = username;
-        ensurePermissions = userDatabaseAccess username attrs.databases;
-      }) cfg.users) ++ (flatten (mapAttrsToList (database: opts:
-        (map (username: {
-          name = username;
-          ensurePermissions = { "DATABASE ${database}" = "ALL PRIVILEGES"; };
-        }) opts.users)) cfg.databases)));
+      ensureUsers = map (user: {
+        name = user;
+        ensureClauses.login = true;
+      }) (attrNames cfg.users);
+      # ensureUsers = ((mapAttrsToList (username: attrs: {
+      #   name = username;
+      #   ensurePermissions = userDatabaseAccess username attrs.databases;
+      # }) cfg.users) ++ (flatten (mapAttrsToList (database: opts:
+      #   (map (username: {
+      #     name = username;
+      #     ensurePermissions = { "DATABASE ${database}" = "ALL PRIVILEGES"; };
+      #   }) opts.users)) cfg.databases)));
 
       settings = let ssl-enabled = cfg.ssl-certificate != null;
       in {
@@ -353,11 +356,12 @@ in {
           description =
             "A service to set postgresql user passwords after the server has started.";
           after = [ "postgresql.service" ] ++ cfg.required-services;
+          requires = [ "postgresql.service" ] ++ cfg.required-services;
           wantedBy = [ "postgresql.service" ];
           serviceConfig = {
             Type = "oneshot";
             User = config.services.postgresql.superUser;
-            ExecStart = "${password-wrapper-script}";
+            ExecStart = password-wrapper-script;
           };
           partOf = [ cfg.systemd-target ];
         };
@@ -393,19 +397,29 @@ in {
         postgresql-finalizer = {
           requires = [ "postgresql.service" ];
           after = [ "postgresql.service" "postgresql-password-setter.service" ];
-          partOf = [ "postgresql.target" ];
+          partOf = [ cfg.systemd-target ];
           wantedBy = [ "postgresql.service" ];
           serviceConfig = {
             User = config.services.postgresql.superUser;
             ExecStart = let
-              allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
+              enableExtensionsClause = concatStrings
+                (mapAttrsToList enableDatabaseExtensionsSql cfg.databases);
+
+              grantMasterAccessSql = db: user: ''
+                GRANT ALL PRIVILEGES ON DATABASE ${db} TO ${user};
+                \c ${db} postgres
+                GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${user};
+                \c postgres postgres
+              '';
+
+              grantMasterAccess = concatStrings (mapAttrsToList (database: opts:
+                concatStrings (map (grantMasterAccessSql database) opts.users))
+                cfg.databases);
 
               extra-settings-sql = pkgs.writeText "settings.sql" ''
-                ${join-lines
-                (mapAttrsToList enableDatabaseExtensionsSql cfg.databases)}
+                ${enableExtensionsClause}
 
-                ${concatStringsSep "\n" (map allow-user-login
-                  (mapAttrsToList (key: val: key) cfg.users))}
+                ${grantMasterAccess}
 
                 ${usersAccessSql cfg.users}
               '';

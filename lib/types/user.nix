@@ -119,6 +119,13 @@ with lib; rec {
           description = "User's surname.";
           default = null;
         };
+
+        config-user = mkOption {
+          type = nullOr str;
+          description =
+            "When generating config, consider this to be the 'real' user.";
+          default = null;
+        };
       };
     };
 

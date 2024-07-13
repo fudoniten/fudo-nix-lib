@@ -9,15 +9,8 @@ let
       load-path-string =
         concatStringsSep " " (map (path: ''"${path}"'') load-paths);
     in pkgs.writeText "slynk.lisp" ''
-      (load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))
-      (ql:quickload :slynk)
-      (setf asdf:*central-registry*
-       (append asdf:*central-registry*
-        (list ${load-path-string})))
+      (asdf:load-system 'slynk)
       (slynk:create-server :port ${toString port} :dont-close t)
-      (dolist (var '("LD_LIBRARY_PATH"))
-        (format t "~S: ~S~%" var (sb-unix::posix-getenv var)))
-
       (loop (sleep 60))
     '';
 
@@ -28,7 +21,6 @@ let
       asdf-system-connections
       cl_plus_ssl
       cl-ppcre
-      quicklisp
       quri
       uiop
       usocket

@@ -4,11 +4,8 @@ with lib;
 let
   cfg = config.fudo.slynk;
 
-  initScript = port: load-paths:
-    let
-      load-path-string =
-        concatStringsSep " " (map (path: ''"${path}"'') load-paths);
-    in pkgs.writeText "slynk.lisp" ''
+  initScript = port:
+    pkgs.writeText "slynk.lisp" ''
       (asdf:load-system 'slynk)
       (slynk:create-server :port ${toString port} :dont-close t)
       (loop (sleep 60))
@@ -41,7 +38,7 @@ in {
       description = "Slynk Common Lisp server.";
 
       serviceConfig = {
-        ExecStart = "sbcl --load ${initScript cfg.port load-paths}";
+        ExecStart = "sbcl --load ${initScript cfg.port}";
         Restart = "on-failure";
         PIDFile = "/run/slynk.$USERNAME.pid";
       };

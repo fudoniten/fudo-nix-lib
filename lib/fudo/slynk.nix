@@ -21,17 +21,18 @@ let
       (loop (sleep 60))
     '';
 
-  lisp-libs = with pkgs.lispPackages; [
-    alexandria
-    asdf-package-system
-    asdf-system-connections
-    cl_plus_ssl
-    cl-ppcre
-    quicklisp
-    quri
-    uiop
-    usocket
-  ];
+  sbclWithLibs = pkgs.sbcl.withPackages (ps:
+    with ps; [
+      alexandria
+      asdf-package-system
+      asdf-system-connections
+      cl_plus_ssl
+      cl-ppcre
+      quicklisp
+      quri
+      uiop
+      usocket
+    ]);
 
 in {
   options.fudo.slynk = {
@@ -48,20 +49,17 @@ in {
     systemd.user.services.slynk = {
       description = "Slynk Common Lisp server.";
 
-      serviceConfig =
-        let load-paths = (map (pkg: "${pkg}/lib/common-lisp/") lisp-libs);
-        in {
-          ExecStartPre = "${pkgs.lispPackages.quicklisp}/bin/quicklisp init";
-          ExecStart =
-            "${pkgs.sbcl}/bin/sbcl --load ${initScript cfg.port load-paths}";
-          Restart = "on-failure";
-          PIDFile = "/run/slynk.$USERNAME.pid";
-        };
+      serviceConfig = {
+        ExecStart = "sbcl --load ${initScript cfg.port load-paths}";
+        Restart = "on-failure";
+        PIDFile = "/run/slynk.$USERNAME.pid";
+      };
 
       path = with pkgs; [
         gcc
         glibc # for getent
         file
+        sbclWithLibs
       ];
 
       environment = { LD_LIBRARY_PATH = "${pkgs.openssl.out}/lib"; };

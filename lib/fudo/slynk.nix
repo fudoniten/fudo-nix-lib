@@ -22,7 +22,6 @@ let
       cl_plus_ssl
       cl-ppcre
       quri
-      uiop
       usocket
     ]);
 

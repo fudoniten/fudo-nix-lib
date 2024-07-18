@@ -4,6 +4,8 @@ with lib;
 let
   cfg = config.fudo.local-network;
 
+  inherit (pkgs.lib) getHostIpv4;
+
   join-lines = concatStringsSep "\n";
 
   inherit (pkgs.lib.ip)

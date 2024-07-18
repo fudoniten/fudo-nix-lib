@@ -124,7 +124,7 @@ in {
           config.fudo.hosts);
     in mapAttrs' (hostname: _:
       nameValuePair (getHostIpv4 hostname) [ (getHostFqdn hostname) hostname ])
-    filterAttrs (hostname: _: !isNull (getHostIpv4 hostname)) siteHosts;
+    (filterAttrs (hostname: _: !isNull (getHostIpv4 hostname)) siteHosts);
 
     services.kea.dhcp4 = {
       enable = true;

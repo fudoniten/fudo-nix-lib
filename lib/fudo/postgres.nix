@@ -7,9 +7,13 @@ let
   hostname = config.instance.hostname;
   domain-name = config.instance.local-domain;
 
+  sslEnabled = cfg.ssl-certificate != null;
+
   gssapi-realm = config.fudo.domains.${domain-name}.gssapi-realm;
 
   strip-ext = filename: head (builtins.match "^(.+)[.][^.]+$" filename);
+
+  joinLines = concatStringsSep "\n";
 
   userDatabaseOpts = { database, ... }: {
     options = {
@@ -99,7 +103,7 @@ let
         exit 2
       fi
 
-      ${concatStrings (mapAttrsToList (user: opts:
+      ${joinLines (mapAttrsToList (user: opts:
         password-setter-script user opts.password-file "$OUTPUT_FILE")
         (filterPasswordedUsers users))}
     '';
@@ -109,17 +113,19 @@ let
       nameValuePair "DATABASE ${database}" databaseOpts.access) databases;
 
   makeEntry = nw:
-    "hostssl  all  all  ${nw} gss include_realm=0 krb_realm=${gssapi-realm}";
+    let hostClause = if sslEnabled then "hostssl" else "host";
+    in "${hostClause}  all  all  ${nw} gss include_realm=0 krb_realm=${gssapi-realm}";
 
-  makeNetworksEntry = networks: concatStrings (map makeEntry networks);
+  makeNetworksEntry = networks: joinLines (map makeEntry networks);
 
   makeLocalUserPasswordEntries = users: networks:
     let
       network-entries = user: db:
-        concatStrings
-        (map (network: "hostssl  ${db}  ${user}  ${network} md5") networks);
-    in concatStrings (mapAttrsToList (user: opts:
-      concatStrings (map (db: ''
+        joinLines (map (network:
+          let hostClause = if sslEnabled then "hostssl" else "host";
+          in "${hostClause}  ${db}  ${user}  ${network} md5") networks);
+    in joinLines (mapAttrsToList (user: opts:
+      joinLines (map (db: ''
         local  ${db}  ${user}   md5
         host   ${db}  ${user}   127.0.0.1/16   md5
         host   ${db}  ${user}   ::1/128        md5
@@ -130,20 +136,18 @@ let
 
   enableDatabaseExtensionsSql = database: databaseOpts: ''
     \c ${database}
-    ${concatStrings (map enableExtensionSql databaseOpts.extensions)}
+    ${joinLines (map enableExtensionSql databaseOpts.extensions)}
   '';
 
   userTableAccessSql = user: entity: access:
     "GRANT ${access} ON ${entity} TO ${user};";
   userDatabaseAccessSql = user: database: dbOpts: ''
     \c ${database}
-    ${concatStrings
-    (mapAttrsToList (userTableAccessSql user) dbOpts.entity-access)}
+    ${joinLines (mapAttrsToList (userTableAccessSql user) dbOpts.entity-access)}
   '';
   userAccessSql = user: userOpts:
-    concatStrings
-    (mapAttrsToList (userDatabaseAccessSql user) userOpts.databases);
-  usersAccessSql = users: concatStrings (mapAttrsToList userAccessSql users);
+    joinLines (mapAttrsToList (userDatabaseAccessSql user) userOpts.databases);
+  usersAccessSql = users: joinLines (mapAttrsToList userAccessSql users);
 
 in {
 
@@ -376,7 +380,7 @@ in {
           #   allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
 
           #   extra-settings-sql = pkgs.writeText "settings.sql" ''
-          #   ${concatStringsSep "\n"
+          #   ${joinLinesSep "\n"
           #     (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
           #   ${usersAccessSql cfg.users}
           # '';
@@ -391,7 +395,7 @@ in {
           serviceConfig.ExecStartPost =
             mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
 
-          postStop = concatStringsSep "\n" cfg.cleanup-tasks;
+          postStop = joinLinesSep "\n" cfg.cleanup-tasks;
         };
 
         postgresql-finalizer = {
@@ -402,7 +406,7 @@ in {
           serviceConfig = {
             User = config.services.postgresql.superUser;
             ExecStart = let
-              enableExtensionsClause = concatStrings
+              enableExtensionsClause = joinLines
                 (mapAttrsToList enableDatabaseExtensionsSql cfg.databases);
 
               grantMasterAccessSql = db: user: ''
@@ -412,8 +416,8 @@ in {
                 \c postgres postgres
               '';
 
-              grantMasterAccess = concatStrings (mapAttrsToList (database: opts:
-                concatStrings (map (grantMasterAccessSql database) opts.users))
+              grantMasterAccess = joinLines (mapAttrsToList (database: opts:
+                joinLines (map (grantMasterAccessSql database) opts.users))
                 cfg.databases);
 
               extra-settings-sql = pkgs.writeText "settings.sql" ''

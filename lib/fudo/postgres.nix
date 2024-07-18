@@ -7,6 +7,8 @@ let
   hostname = config.instance.hostname;
   domain-name = config.instance.local-domain;
 
+  sslEnabled = cfg.ssl-certificate != null;
+
   gssapi-realm = config.fudo.domains.${domain-name}.gssapi-realm;
 
   join-lines = lib.concatStringsSep "\n";
@@ -111,15 +113,17 @@ let
       nameValuePair "DATABASE ${database}" databaseOpts.access) databases;
 
   makeEntry = nw:
-    "hostssl  all  all  ${nw} gss include_realm=0 krb_realm=${gssapi-realm}";
+    let hostClause = if sslEnabled then "hostssl" else "host";
+    in "${hostClause}  all  all  ${nw} gss include_realm=0 krb_realm=${gssapi-realm}";
 
   makeNetworksEntry = networks: join-lines (map makeEntry networks);
 
   makeLocalUserPasswordEntries = users: networks:
     let
       network-entries = user: db:
-        join-lines
-        (map (network: "hostssl  ${db}  ${user}  ${network} md5") networks);
+        join-lines (map (network:
+          let hostClause = if sslEnabled then "hostssl" else "host";
+          in "hostssl  ${db}  ${user}  ${network} md5") networks);
     in join-lines (mapAttrsToList (user: opts:
       join-lines (map (db: ''
         local  ${db}  ${user}   md5

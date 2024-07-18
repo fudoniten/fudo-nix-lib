@@ -116,15 +116,10 @@ in {
 
   config = mkIf cfg.enable {
 
-    fudo.system.hostfile-entries = let
-      other-hosts =
-        filterAttrs (hostname: hostOpts: hostname != config.instance.hostname)
-        cfg.zone-definition.hosts;
-    in mapAttrs' (hostname: hostOpts:
-      nameValuePair hostOpts.ipv4-address [
-        "${hostname}.${cfg.domain}"
-        hostname
-      ]) other-hosts;
+    fudo.system.hostfile-entries = mapAttrs' (hostname: _:
+      nameValuePair (getHostIpv4 hostname) [ (getHostFqdn hostname) hostname ])
+      (filterAttrs (_: hostOpts: hostOpts.site == config.instance.local-site)
+        config.fudo.hosts);
 
     services.kea.dhcp4 = {
       enable = true;

@@ -380,7 +380,7 @@ in {
           #   allow-user-login = user: "ALTER ROLE ${user} WITH LOGIN;";
 
           #   extra-settings-sql = pkgs.writeText "settings.sql" ''
-          #   ${joinLinesSep "\n"
+          #   ${joinLines
           #     (map allow-user-login (mapAttrsToList (key: val: key) cfg.users))}
           #   ${usersAccessSql cfg.users}
           # '';
@@ -395,7 +395,7 @@ in {
           serviceConfig.ExecStartPost =
             mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
 
-          postStop = joinLinesSep "\n" cfg.cleanup-tasks;
+          postStop = joinLines cfg.cleanup-tasks;
         };
 
         postgresql-finalizer = {

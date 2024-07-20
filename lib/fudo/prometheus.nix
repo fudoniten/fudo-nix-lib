@@ -79,7 +79,6 @@ in {
     state-directory = mkOption {
       type = str;
       description = "Directory at which to store Prometheus state.";
-      default = "/var/lib/prometheus";
     };
 
     private-network = mkEnableOption "Network is private.";

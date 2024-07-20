@@ -159,7 +159,6 @@ in {
     state-directory = mkOption {
       type = str;
       description = "Directory at which to store Grafana state data.";
-      default = "/var/lib/grafana";
     };
 
     private-network = mkEnableOption "Network is private, no SSL.";

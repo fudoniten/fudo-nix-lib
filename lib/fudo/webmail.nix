@@ -366,6 +366,9 @@ in {
         '');
       in {
         requiredBy = [ "nginx.service" ];
+        before = [ "nginx.service" ];
+        requires = [ config.fudo.secrets.secret-target ];
+        after = [ config.fudo.secrets.secret-target ];
         description =
           "Initialize webmail service directories prior to starting nginx.";
         script = "${scriptPkg}/bin/webmail-init.sh";

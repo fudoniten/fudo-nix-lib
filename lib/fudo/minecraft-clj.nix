@@ -268,6 +268,7 @@ in {
             "${worldOpts.world-name} Minecraft Server with Clojure REPL";
           wantedBy = [ "multi-user.target" ];
           after = [ "network-online.target" ];
+          requires = [ "network-online.target" ];
           serviceConfig = {
             User = cfg.user;
             Group = cfg.group;

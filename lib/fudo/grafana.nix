@@ -198,7 +198,7 @@ in {
       grafana = {
         enable = true;
 
-        dataDir = cfg.state-directory;
+        dataDir = toPath cfg.state-directory;
 
         settings = {
 

@@ -137,7 +137,7 @@ in {
           job_name = type;
           honor_labels = false;
           scheme = if cfg.private-network then "http" else "https";
-          metrics_path = "/metrics/${type}";
+          metrics_path = "/metrics";
           static_configs = if (hasAttr type cfg.static-targets) then [{
             targets = cfg.static-targets.${type};
           }] else

@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, ... }@toplevel:
 
 with lib;
 let cfg = config.fudo.metrics.prometheus;
@@ -15,35 +15,46 @@ in {
       description = "The prometheus package that should be used.";
     };
 
-    service-discovery-dns = mkOption {
-      type = attrsOf (listOf str);
-      description = ''
-        A map of exporter type to a list of domains to use for service discovery.
-      '';
-      example = {
-        node = [ "node._metrics._tcp.my-domain.com" ];
-        postfix = [ "postfix._metrics._tcp.my-domain.com" ];
-      };
-      default = {
-        dovecot = [ ];
-        node = [ ];
-        postfix = [ ];
-        rspamd = [ ];
-      };
-    };
+    scrapers = let
+      scraperOpts.options = {
+        name = mkOption {
+          type = str;
+          description = "Name of this exporter.";
+        };
 
-    static-targets = mkOption {
-      type = attrsOf (listOf str);
-      description = ''
-        A map of exporter type to a list of host:ports from which to collect metrics.
-      '';
-      example = { node = [ "my-host.my-domain:1111" ]; };
-      default = {
-        dovecot = [ ];
-        node = [ ];
-        postfix = [ ];
-        rspamd = [ ];
+        secured = mkOption {
+          type = str;
+          description = "Whether to use https instead of http.";
+          default = !toplevel.config.fudo.metrics.prometheus.private-network;
+        };
+
+        path = mkOption {
+          type = str;
+          description = "Host path at which to find exported metrics.";
+          default = "/metrics";
+        };
+
+        port = mkOption {
+          type = port;
+          description = "Port on which to scrape for metrics.";
+          default = 80;
+        };
+
+        hostnames = mkOption {
+          type = listOf str;
+          description = "Explicit list of hosts to scrape for metrics.";
+          default = [ ];
+        };
+
+        dns-sd-records = mkOption {
+          type = listOf str;
+          description = "List of DNS records to query for hosts to scrape.";
+          default = [ ];
+        };
       };
+    in mkOption {
+      type = listOf (submodule scraperOpts);
+      default = [ ];
     };
 
     docker-hosts = mkOption {
@@ -133,21 +144,17 @@ in {
       port = 9090;
 
       scrapeConfigs = let
-        make-job = type: {
-          job_name = type;
+        mkScraper = { name, secured, path, port, hostnames, dns-sd-records }: {
+          job_name = name;
           honor_labels = false;
-          scheme = if cfg.private-network then "http" else "https";
-          metrics_path = "/metrics/${type}";
-          static_configs = if (hasAttr type cfg.static-targets) then [{
-            targets = cfg.static-targets.${type};
-          }] else
-            [ ];
-          dns_sd_configs = if (hasAttr type cfg.service-discovery-dns) then [{
-            names = cfg.service-discovery-dns.${type};
-          }] else
-            [ ];
+          scheme = if secured then "https" else "http";
+          metrics_path = path;
+          static_configs =
+            let attachPort = hostname: "${hostname}:${toString port}";
+            in [{ targets = map attachPort hostnames; }];
+          dns_sd_configs = [{ names = dns-sd-records; }];
         };
-      in map make-job [ "docker" "node" "dovecot" "postfix" "rspamd" ];
+      in map mkScraper cfg.scrapers;
 
       pushgateway = {
         enable = if (cfg.push-url != null) then true else false;

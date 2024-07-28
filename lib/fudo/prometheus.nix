@@ -37,10 +37,14 @@ in {
         port = mkOption {
           type = port;
           description = "Port on which to scrape for metrics.";
-          default = 80;
+          default =
+            if toplevel.config.fudo.metrics.prometheus.private-network then
+              80
+            else
+              443;
         };
 
-        hostnames = mkOption {
+        static-targets = mkOption {
           type = listOf str;
           description = "Explicit list of hosts to scrape for metrics.";
           default = [ ];
@@ -144,16 +148,17 @@ in {
       port = 9090;
 
       scrapeConfigs = let
-        mkScraper = { name, secured, path, port, hostnames, dns-sd-records }: {
-          job_name = name;
-          honor_labels = false;
-          scheme = if secured then "https" else "http";
-          metrics_path = path;
-          static_configs =
-            let attachPort = hostname: "${hostname}:${toString port}";
-            in [{ targets = map attachPort hostnames; }];
-          dns_sd_configs = [{ names = dns-sd-records; }];
-        };
+        mkScraper =
+          { name, secured, path, port, static-targets, dns-sd-records }: {
+            job_name = name;
+            honor_labels = false;
+            scheme = if secured then "https" else "http";
+            metrics_path = path;
+            static_configs =
+              let attachPort = target: "${target}:${toString port}";
+              in [{ targets = map attachPort static-targets; }];
+            dns_sd_configs = [{ names = dns-sd-records; }];
+          };
       in map mkScraper cfg.scrapers;
 
       pushgateway = {

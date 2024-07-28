@@ -154,10 +154,11 @@ in {
             honor_labels = false;
             scheme = if secured then "https" else "http";
             metrics_path = path;
-            static_configs =
-              let attachPort = target: "${target}:${toString port}";
-              in [{ targets = map attachPort static-targets; }];
-            dns_sd_configs = [{ names = dns-sd-records; }];
+            static_configs = mkif (static-targets != [ ])
+              (let attachPort = target: "${target}:${toString port}";
+              in [{ targets = map attachPort static-targets; }]);
+            dns_sd_configs =
+              mkIf (dns-sd-records != [ ]) [{ names = dns-sd-records; }];
           };
       in map mkScraper cfg.scrapers;
 

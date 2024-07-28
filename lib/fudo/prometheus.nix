@@ -23,7 +23,7 @@ in {
         };
 
         secured = mkOption {
-          type = str;
+          type = bool;
           description = "Whether to use https instead of http.";
           default = !toplevel.config.fudo.metrics.prometheus.private-network;
         };

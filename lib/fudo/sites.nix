@@ -84,6 +84,12 @@ let
         default = null;
       };
 
+      local-gateway = mkOption {
+        type = nullOr str;
+        description = "Hostname of the local gateway, if any.";
+        default = null;
+      };
+
       enable-ssh-backdoor = mkOption {
         type = bool;
         description =

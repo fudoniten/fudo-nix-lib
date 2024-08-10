@@ -84,24 +84,6 @@ let
           default = null;
         };
 
-        kubernetes = let
-          kubeOpts.options = {
-            masters = mkOption {
-              type = listOf str;
-              description = "Master Kubernetes hosts.";
-            };
-
-            nodes = mkOption {
-              type = listOf str;
-              description = "List of Kubernetes nodes.";
-            };
-          };
-        in mkOption {
-          type = nullOr (submodule kubeOpts);
-          description = "Kubernetes configuration.";
-          default = null;
-        };
-
         backplane = mkOption {
           type = nullOr (submodule {
             options = {

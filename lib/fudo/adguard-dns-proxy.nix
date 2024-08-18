@@ -4,7 +4,7 @@ with lib;
 let
   cfg = config.fudo.adguard-dns-proxy;
 
-  hostname = config.instance.hostname;
+  inherit (config.instance) hostname;
 
   get-basename = filename:
     head (builtins.match "^[a-zA-Z0-9]+-(.+)$" (baseNameOf filename));
@@ -41,7 +41,12 @@ let
   };
 
   generate-config = { dns, http, filters, verbose, upstream-dns, bootstrap-dns
-    , blocked-hosts, enable-dnssec, local-domain-name, ... }: {
+    , blocked-hosts, enable-dnssec, domain-upstreams, local-domain-name, ... }:
+    let
+      upstreamDnsEntries = mapAttrsToList (_: opts:
+        let domainClause = concatStringsSep "/" opts.domains;
+        in "[/${domainClause}/]${opts.upstream}") domain-upstreams;
+    in {
       bind_host = http.listen-ip;
       bind_port = http.listen-port;
       users = [{
@@ -55,7 +60,7 @@ let
       dns = {
         bind_hosts = dns.listen-ips;
         port = dns.listen-port;
-        upstream_dns = upstream-dns;
+        upstream_dns = upstream-dns ++ upstreamDnsEntries;
         bootstrap_dns = bootstrap-dns;
         enable_dnssec = enable-dnssec;
         local_domain_name = local-domain-name;
@@ -69,14 +74,14 @@ let
         local_ptr_upstreams = cfg.dns.reverse-dns;
       };
       tls.enabled = false;
-      filters = imap1 (i: filter: {
-        enabled = true;
-        name = filter.name;
-        url = filter.url;
-      }) filters;
+      filters = imap1 (i:
+        { name, url, ... }: {
+          enabled = true;
+          inherit name url;
+        }) filters;
       dhcp.enabled = false;
       clients = [ ];
-      verbose = verbose;
+      inherit verbose;
       schema_version = 10;
     };
 
@@ -120,6 +125,24 @@ in {
         description = "Port on which to listen for incoming HTTP queries.";
         default = 8053;
       };
+    };
+
+    domain-upstreams = mkOption {
+      type = attrsOf (submodule ({ name, ... }: {
+        options = {
+          domains = mkOption {
+            type = listOf str;
+            description =
+              "List of domains to route to a specific upstream DNS target.";
+            default = [ name ];
+          };
+
+          upstream = mkOption {
+            type = str;
+            description = "Upstream DNS target, in {ip}:{port} format.";
+          };
+        };
+      }));
     };
 
     filters = mkOption {

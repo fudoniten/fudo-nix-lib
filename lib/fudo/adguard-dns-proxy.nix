@@ -143,6 +143,7 @@ in {
           };
         };
       }));
+      default = { };
     };
 
     filters = mkOption {

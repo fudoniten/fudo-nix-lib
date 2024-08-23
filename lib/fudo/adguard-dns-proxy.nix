@@ -265,18 +265,18 @@ in {
         after = [ "network.target" ];
         requires = [ "network.target" ];
         serviceConfig = {
-          ExecStartPre = ''
-            cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml
-          '';
-          ExecStart = concatStringsSep " " [
-            "${pkgs.adguardhome}/bin/adguardhome"
-            "--no-check-update"
-            "--work-dir /var/lib/adguard-dns-proxy"
-            "--pidfile /run/adguard-dns-proxy.pid"
-            "--host ${cfg.http.listen-ip}"
-            "--port ${toString cfg.http.listen-port}"
-            "--config $RUNTIME_DIRECTORY/config.yaml"
-          ];
+          ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh"
+            "cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml";
+          ExecStart = pkgs.writeShellScript "adguardProxyStart.sh"
+            (concatStringsSep " " [
+              "${pkgs.adguardhome}/bin/adguardhome"
+              "--no-check-update"
+              "--work-dir /var/lib/adguard-dns-proxy"
+              "--pidfile /run/adguard-dns-proxy.pid"
+              "--host ${cfg.http.listen-ip}"
+              "--port ${toString cfg.http.listen-port}"
+              "--config $RUNTIME_DIRECTORY/config.yaml"
+            ]);
           AmbientCapabilities = optional
             (cfg.dns.listen-port <= 1024 || cfg.http.listen-port <= 1024)
             [ "CAP_NET_BIND_SERVICE" ];

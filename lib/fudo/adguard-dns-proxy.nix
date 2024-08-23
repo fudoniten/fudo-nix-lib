@@ -72,6 +72,7 @@ let
         safesearch_enabled = false;
         use_private_ptr_resolvers = cfg.dns.reverse-dns != [ ];
         local_ptr_upstreams = cfg.dns.reverse-dns;
+        hostsfile_enabled = false;
       };
       tls.enabled = false;
       filters = imap1 (i:

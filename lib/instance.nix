@@ -19,7 +19,8 @@ in {
 
     build-timestamp = mkOption {
       type = int;
-      description = "Timestamp associated with the build. Used for e.g. DNS serials.";
+      description =
+        "Timestamp associated with the build. Used for e.g. DNS serials.";
     };
 
     local-domain = mkOption {
@@ -45,7 +46,8 @@ in {
 
     local-admins = mkOption {
       type = listOf str;
-      description = "List of users who should have admin access to the local host.";
+      description =
+        "List of users who should have admin access to the local host.";
     };
 
     local-groups = mkOption {
@@ -55,7 +57,8 @@ in {
 
     local-hosts = mkOption {
       type = attrsOf (submodule host.hostOpts);
-      description = "List of hosts that should be considered local to the current host.";
+      description =
+        "List of hosts that should be considered local to the current host.";
     };
 
     local-users = mkOption {
@@ -65,7 +68,8 @@ in {
 
     local-networks = mkOption {
       type = listOf str;
-      description = "Networks which are considered local to this host, site, or domain.";
+      description =
+        "Networks which are considered local to this host, site, or domain.";
     };
 
     service-home = mkOption {
@@ -81,8 +85,7 @@ in {
   };
 
   config = {
-    systemd.tmpfiles.rules = [
-      "d ${config.instance.service-home} 755 root root - -"
-    ];
+    systemd.tmpfiles.rules =
+      [ "d ${config.instance.service-home} 755 root root - -" ];
   };
 }

@@ -262,8 +262,8 @@ in {
       in {
         description = "DNS proxy for ad filtering and DNS-over-HTTPS lookups.";
         wantedBy = [ "default.target" ];
-        after = [ "syslog.target" "network.target" ];
-        requires = [ "syslog.target" "network.target" ];
+        after = [ "network.target" ];
+        requires = [ "network.target" ];
         serviceConfig = {
           ExecStartPre = ''
             cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml

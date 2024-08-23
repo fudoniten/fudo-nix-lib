@@ -267,40 +267,67 @@ in {
         };
       };
 
-      system.services.adguard-dns-proxy =
-        let cfg-path = "/run/adguard-dns-proxy/config.yaml";
+      systemd.services.adguard-dns-proxy =
+        let configFile = "/run/adguard-dns-proxy/config.yaml";
         in {
           description =
-            "DNS Proxy for ad filtering and DNS-over-HTTPS lookups.";
+            "DNS proxy for ad filtering and DNS-over-HTTPS lookups.";
           wantedBy = [ "default.target" ];
-          after = [ "syslog.target" ];
-          requires = [ "network.target" ];
-          privateNetwork = false;
-          requiredCapabilities = optional upgrade-perms "CAP_NET_BIND_SERVICE";
-          restartWhen = "always";
-          addressFamilies = null;
-          networkWhitelist = cfg.allowed-networks;
-          user = mkIf upgrade-perms cfg.user;
-          runtimeDirectory = "adguard-dns-proxy";
-          stateDirectory = "adguard-dns-proxy";
-          preStart = ''
-            cp ${generate-config-file cfg} ${cfg-path};
-            chown $USER ${cfg-path};
-            chmod u+w ${cfg-path};
-          '';
-
-          execStart = let
-            args = [
+          after = [ "syslog.target" "network.target" ];
+          requires = [ "syslog.target" "network.target" ];
+          serviceConfig = {
+            ExecStartPre = ''
+              cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml
+            '';
+            ExecStart = concatStringsSep " " [
+              "${pkgs.adguardhome}/bin/adguardhome"
               "--no-check-update"
               "--work-dir /var/lib/adguard-dns-proxy"
-              "--pidfile /run/adguard-dns-proxy/adguard-dns-proxy.pid"
+              "--pidfile /run/adguard-dns-proxy.pid"
               "--host ${cfg.http.listen-ip}"
               "--port ${toString cfg.http.listen-port}"
-              "--config ${cfg-path}"
+              "--config $RUNTIME_DIRECTORY/config.yaml"
             ];
-            arg-string = concatStringsSep " " args;
-          in "${pkgs.adguardhome}/bin/adguardhome ${arg-string}";
+            AmbientCapabilities = [ "CAP_NET_BIND_SERVICE" ];
+            DynamicUser = true;
+            RuntimeDirectory = "adguard-dns-proxy";
+          };
         };
+
+      # system.services.adguard-dns-proxy =
+      #   let cfg-path = "/run/adguard-dns-proxy/config.yaml";
+      #   in {
+      #     description =
+      #       "DNS Proxy for ad filtering and DNS-over-HTTPS lookups.";
+      #     wantedBy = [ "default.target" ];
+      #     after = [ "syslog.target" ];
+      #     requires = [ "network.target" ];
+      #     privateNetwork = false;
+      #     requiredCapabilities = optional upgrade-perms "CAP_NET_BIND_SERVICE";
+      #     restartWhen = "always";
+      #     addressFamilies = null;
+      #     networkWhitelist = cfg.allowed-networks;
+      #     user = mkIf upgrade-perms cfg.user;
+      #     runtimeDirectory = "adguard-dns-proxy";
+      #     stateDirectory = "adguard-dns-proxy";
+      #     preStart = ''
+      #       cp ${generate-config-file cfg} ${cfg-path};
+      #       chown $USER ${cfg-path};
+      #       chmod u+w ${cfg-path};
+      #     '';
+
+      #     execStart = let
+      #       args = [
+      #         "--no-check-update"
+      #         "--work-dir /var/lib/adguard-dns-proxy"
+      #         "--pidfile /run/adguard-dns-proxy/adguard-dns-proxy.pid"
+      #         "--host ${cfg.http.listen-ip}"
+      #         "--port ${toString cfg.http.listen-port}"
+      #         "--config ${cfg-path}"
+      #       ];
+      #       arg-string = concatStringsSep " " args;
+      #     in "${pkgs.adguardhome}/bin/adguardhome ${arg-string}";
+      #   };
     };
   });
 }

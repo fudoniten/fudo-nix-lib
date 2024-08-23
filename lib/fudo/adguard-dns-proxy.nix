@@ -282,6 +282,7 @@ in {
             [ "CAP_NET_BIND_SERVICE" ];
           DynamicUser = true;
           RuntimeDirectory = "adguard-dns-proxy";
+          StateDirectory = "adguard-dns-proxy";
         };
       };
 

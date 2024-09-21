@@ -290,91 +290,17 @@ in rec {
           default = false;
         };
 
-        wireguard = let
-          clientOpts = {
-            options = {
-              ip = mkOption {
-                type = nullOr str;
-                description =
-                  "IP address assigned to this host in the WireGuard network.";
-              };
-
-              bound = mkOption {
-                type = bool;
-                description = "Whether to route all traffic from this host.";
-                default = false;
-              };
-            };
-          };
-
-          wireguardOpts = {
-            options = {
-              private-key-file = mkOption {
-                type = str;
-                description = "WireGuard private key file of the host.";
-              };
-
-              public-key = mkOption {
-                type = str;
-                description = "WireGuard public key.";
-              };
-
-              client = mkOption {
-                type = nullOr (submodule clientOpts);
-                default = null;
-              };
-            };
-          };
-        in mkOption {
-          type = nullOr (submodule wireguardOpts);
-          default = null;
-        };
-
-        initrd-network = let
-          keypair-type = { ... }: {
-            options = {
-              public-key = mkOption {
-                type = str;
-                description = "SSH public key.";
-              };
-
-              private-key-file = mkOption {
-                type = str;
-                description = "Path to SSH private key (on the local host!).";
-              };
-            };
-          };
-
-          initrd-network-config = { ... }: {
-            options = {
-              ip = mkOption {
-                type = str;
-                description =
-                  "IP to assign to the initrd image, allowing access to host during bootup.";
-              };
-              keypair = mkOption {
-                type = (submodule keypair-type);
-                description = "SSH host key pair to use for initrd.";
-              };
-              interface = mkOption {
-                type = str;
-                description =
-                  "Name of interface on which to listen for connections.";
-              };
-            };
-          };
-
-        in mkOption {
-          type = nullOr (submodule initrd-network-config);
-          description =
-            "Configuration parameters to set up initrd SSH network.";
-          default = null;
-        };
-
         backplane-password-file = mkOption {
           type = path;
           description =
             "File containing the password used by this host to connect to the backplane.";
+        };
+
+        initrd-ssh-key = mkOption {
+          type = nullOr str;
+          description =
+            "Path on the local filesystem to a host SSH key for initrd, if any.";
+          default = null;
         };
       };
     };

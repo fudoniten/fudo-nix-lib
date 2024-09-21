@@ -22,7 +22,6 @@ with lib; {
     ./grafana.nix
     ./hosts.nix
     ./host-filesystems.nix
-    ./initrd-network.nix
     ./ipfs.nix
     ./jabber.nix
     # ./kdc.nix

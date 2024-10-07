@@ -258,6 +258,11 @@ in {
       };
     };
 
+    networking.firewall = {
+      allowedTCPPorts = [ cfg.dns.listen-port ];
+      allowedUDPPorts = [ cfg.dns.listen-port ];
+    };
+
     systemd.services.adguard-dns-proxy =
       let configFile = "/run/adguard-dns-proxy/config.yaml";
       in {

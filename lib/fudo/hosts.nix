@@ -111,5 +111,7 @@ in {
       mkIf host-cfg.android-dev { members = config.instance.local-admins; };
 
     boot.tmp.useTmpfs = host-cfg.tmp-on-tmpfs;
+
+    udev.packages = optional host-cfg.android-dev pkgs.android-udev-rules;
   };
 }

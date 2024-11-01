@@ -122,6 +122,7 @@ in rec {
           type = str;
           description =
             "Primary domain to which the host belongs, in the form of a domain name.";
+          default = "fudo.org";
         };
 
         extra-domains = mkOption {

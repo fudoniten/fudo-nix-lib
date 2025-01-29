@@ -311,9 +311,12 @@ in {
 
     systemd = {
 
-      tmpfiles.rules = optional (cfg.state-directory != null)
+      tmpfiles.rules = optionals (cfg.state-directory != null)
         (let user = config.systemd.services.postgresql.serviceConfig.User;
-        in "d ${cfg.state-directory} 0700 ${user} - - -");
+        in [
+          "d ${cfg.state-directory} 0700 ${user} - - -"
+          "d /run/postgresql 0755 ${user} - - -"
+        ]);
 
       targets.${strip-ext cfg.systemd-target} = {
         description = "Postgresql and associated systemd services.";

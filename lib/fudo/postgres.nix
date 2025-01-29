@@ -208,23 +208,23 @@ in {
       default = { };
     };
 
-    socket-directory = mkOption {
-      type = str;
-      description = "Directory in which to place unix sockets.";
-      default = "/run/postgresql";
-    };
+    # socket-directory = mkOption {
+    #   type = str;
+    #   description = "Directory in which to place unix sockets.";
+    #   default = "/run/postgresql";
+    # };
 
-    socket-group = mkOption {
-      type = str;
-      description = "Group for accessing sockets.";
-      default = "postgres_local";
-    };
+    # socket-group = mkOption {
+    #   type = str;
+    #   description = "Group for accessing sockets.";
+    #   default = "postgres_local";
+    # };
 
-    local-users = mkOption {
-      type = listOf str;
-      description = "Users able to access the server via local socket.";
-      default = [ ];
-    };
+    # local-users = mkOption {
+    #   type = listOf str;
+    #   description = "Users able to access the server via local socket.";
+    #   default = [ ];
+    # };
 
     required-services = mkOption {
       type = listOf str;
@@ -258,9 +258,9 @@ in {
 
     environment.systemPackages = with pkgs; [ cfg.package ];
 
-    users.groups = {
-      ${cfg.socket-group} = { members = [ "postgres" ] ++ cfg.local-users; };
-    };
+    # users.groups = {
+    #   ${cfg.socket-group} = { members = [ "postgres" ] ++ cfg.local-users; };
+    # };
 
     services.postgresql = {
       enable = true;
@@ -288,9 +288,9 @@ in {
         ssl_cert_file = mkIf ssl-enabled cfg.ssl-certificate;
         ssl_key_file = mkIf ssl-enabled cfg.ssl-private-key;
 
-        unix_socket_directories = cfg.socket-directory;
-        unix_socket_group = cfg.socket-group;
-        unix_socket_permissions = "0777";
+        # unix_socket_directories = cfg.socket-directory;
+        # unix_socket_group = cfg.socket-group;
+        # unix_socket_permissions = "0777";
 
         log_min_error_statement = "DEBUG3";
       };
@@ -395,7 +395,7 @@ in {
 
           # Wait a bit before starting dependent services, to let postgres finish initializing
           serviceConfig = {
-            ReadWritePaths = [ cfg.socket-directory ];
+            # ReadWritePaths = [ cfg.socket-directory ];
             ExecStartPost = mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
           };
 
@@ -435,7 +435,7 @@ in {
               ${pkgs.postgresql}/bin/psql --port ${
                 toString config.services.postgresql.port
               } -d postgres -f ${extra-settings-sql}
-              chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
+              # chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
             '';
           };
         };

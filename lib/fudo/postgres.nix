@@ -291,6 +291,8 @@ in {
         unix_socket_directories = cfg.socket-directory;
         unix_socket_group = cfg.socket-group;
         unix_socket_permissions = "0777";
+
+        log_min_error_statement = "DEBUG3";
       };
 
       authentication = lib.mkForce ''

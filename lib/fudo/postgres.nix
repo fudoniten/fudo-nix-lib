@@ -435,7 +435,6 @@ in {
               ${pkgs.postgresql}/bin/psql --port ${
                 toString config.services.postgresql.port
               } -d postgres -f ${extra-settings-sql}
-              # chgrp ${cfg.socket-group} ${cfg.socket-directory}/.s.PGSQL*
             '';
           };
         };

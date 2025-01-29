@@ -395,7 +395,7 @@ in {
           serviceConfig = {
             ReadWritePaths = [ cfg.socket-directory ];
             ExecStartPre = mkBefore [
-              "mkdir ${cfg.socket-directory} && chown ${config.services.postgresql.superUser} ${cfg.socket-directory}"
+              "${pkgs.coreutils}/bin/mkdir ${cfg.socket-directory} && ${pkgs.coreutils}/bin/chown ${config.services.postgresql.superUser} ${cfg.socket-directory}"
             ];
             ExecStartPost = mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
           };

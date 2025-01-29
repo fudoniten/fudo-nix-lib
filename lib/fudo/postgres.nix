@@ -313,10 +313,7 @@ in {
 
       tmpfiles.rules = optionals (cfg.state-directory != null)
         (let user = config.systemd.services.postgresql.serviceConfig.User;
-        in [
-          "d ${cfg.state-directory} 0700 ${user} - - -"
-          "d /run/postgresql 0755 ${user} - - -"
-        ]);
+        in [ "d ${cfg.state-directory} 0700 ${user} - - -" ]);
 
       targets.${strip-ext cfg.systemd-target} = {
         description = "Postgresql and associated systemd services.";
@@ -395,8 +392,10 @@ in {
           # '';
 
           # Wait a bit before starting dependent services, to let postgres finish initializing
-          serviceConfig.ExecStartPost =
-            mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
+          serviceConfig = {
+            ReadWritePaths = [ cfg.socket-directory ];
+            ExecStartPost = mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
+          };
 
           postStop = joinLines cfg.cleanup-tasks;
         };

@@ -208,8 +208,8 @@ in {
         # These 11 addrs send the network, so the response can prefer closer answers
         "https://9.9.9.11/dns-query"
         "https://149.112.112.11/dns-query"
-        "https://2620:fe::11/dns-query"
-        "https://2620:fe::fe:11/dns-query"
+        # "https://2620:fe::11/dns-query"
+        # "https://2620:fe::fe:11/dns-query"
       ];
     };
 

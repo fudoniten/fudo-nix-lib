@@ -394,6 +394,9 @@ in {
           # Wait a bit before starting dependent services, to let postgres finish initializing
           serviceConfig = {
             ReadWritePaths = [ cfg.socket-directory ];
+            ExecStartPre = mkBefore [
+              "mkdir ${cfg.socket-directory} && chown ${config.services.postgresql.superUser} ${cfg.socket-directory}"
+            ];
             ExecStartPost = mkAfter [ "${pkgs.coreutils}/bin/sleep 10" ];
           };
 

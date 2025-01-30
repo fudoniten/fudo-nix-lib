@@ -161,6 +161,7 @@ in {
           }
         ];
         subnet4 = [{
+          id = 1;
           pools = [{
             pool = let
               minIp = networkMinIp cfg.dhcp-dynamic-network;

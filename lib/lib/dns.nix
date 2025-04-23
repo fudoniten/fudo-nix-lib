@@ -153,13 +153,13 @@ let
 
       ${join-lines (mapAttrsToList makeMetricRecords zone.metric-records)}
 
-      $TTL ${zone.host-record-ttl}
-
-      ${join-lines (mapAttrsToList hostRecords zone.hosts)}
-
       ${join-lines (mapAttrsToList cnameRecord zone.aliases)}
 
       ${join-lines zone.verbatim-dns-records}
+
+      $TTL ${zone.host-record-ttl}
+
+      ${join-lines (mapAttrsToList hostRecords zone.hosts)}
 
       ${join-lines (mapAttrsToList
         (subdom: subdomCfg: domain-records "${subdom}.${dom}" subdomCfg)

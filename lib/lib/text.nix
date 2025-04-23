@@ -13,4 +13,7 @@ let
       installPhase = "python -mjson.tool ${filename} > $out";
     };
 
-in { inherit format-json-file; }
+  writeEnv = name: vars:
+    pkgs.writeText name (mapAttrsToList (var: val: "${var}=${val}") vars);
+
+in { inherit format-json-file writeEnv; }

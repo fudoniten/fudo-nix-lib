@@ -306,7 +306,7 @@ in rec {
         deploy = {
           enable = mkEnableOption "Enable deploy-rs deployments.";
 
-          sshOptions = mkOption {
+          ssh-options = mkOption {
             type = listOf str;
             description = "List of SSH options to use when deploying.";
             default = [ ];

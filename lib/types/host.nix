@@ -92,7 +92,7 @@ in rec {
       };
     };
 
-  masterKeyOpts = { ... }: {
+  masterKeyOpts = _: {
     options = with types; {
       key-path = mkOption {
         type = str;
@@ -301,6 +301,16 @@ in rec {
           description =
             "Path on the local filesystem to a host SSH key for initrd, if any.";
           default = null;
+        };
+
+        deploy = {
+          enable = mkEnableOption "Enable deploy-rs deployments.";
+
+          sshOptions = mkOption {
+            type = listOf str;
+            description = "List of SSH options to use when deploying.";
+            default = [ ];
+          };
         };
       };
     };

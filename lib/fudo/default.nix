@@ -7,6 +7,7 @@ with lib; {
     ./backplane-service/dns.nix
 
     ./acme-certs.nix
+    ./adguard-dns-proxy.nix
     ./authentication.nix
     ./backplane.nix
     ./chat.nix

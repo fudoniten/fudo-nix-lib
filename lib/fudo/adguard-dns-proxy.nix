@@ -275,7 +275,7 @@ in {
             "cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml";
           ExecStart = pkgs.writeShellScript "adguardProxyStart.sh"
             (concatStringsSep " " [
-              "${pkgs.adguardhome}/bin/adguardhome"
+              "${pkgs.adguardhome}/bin/AdGuardHome"
               "--no-check-update"
               "--work-dir /var/lib/adguard-dns-proxy"
               "--pidfile /run/adguard-dns-proxy.pid"

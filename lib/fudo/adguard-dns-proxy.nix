@@ -273,8 +273,8 @@ in {
         serviceConfig = {
           ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh"
             "cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml";
-          ExecStart = let
-            command = concatStringsSep " " [
+          ExecStart = pkgs.writeShellScript "adguardProxyStart.sh"
+            (concatStringsSep " " [
               "${pkgs.adguardhome}/bin/AdGuardHome"
               "--no-check-update"
               "--work-dir /var/lib/adguard-dns-proxy"
@@ -282,9 +282,7 @@ in {
               "--host ${cfg.http.listen-ip}"
               "--port ${toString cfg.http.listen-port}"
               "--config $RUNTIME_DIRECTORY/config.yaml"
-            ];
-          in pkgs.writeShellScript "adguardProxyStart.sh"
-          (trace "COMMAND WILL BE: ${command}" command);
+            ]);
           AmbientCapabilities = optional
             (cfg.dns.listen-port <= 1024 || cfg.http.listen-port <= 1024)
             [ "CAP_NET_BIND_SERVICE" ];

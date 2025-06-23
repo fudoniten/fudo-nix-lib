@@ -311,6 +311,9 @@ in rec {
             description = "List of SSH options to use when deploying.";
             default = [ ];
           };
+
+          master = mkEnableOption
+            "Designate this host as a deployment master host, adding deployment scripts and so on. ";
         };
       };
     };

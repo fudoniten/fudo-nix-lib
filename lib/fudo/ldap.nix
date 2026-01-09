@@ -394,8 +394,6 @@ in {
               objectClass = [ "olcDatabaseConfig" "olcMdbConfig" ];
               olcDatabase = "{1}mdb";
               olcSuffix = cfg.base;
-              # olcRootDN = "cn=admin,${cfg.base}";
-              # olcRootPW = FIXME; # NOTE: this should be hashed...
               olcDbDirectory = "/var/lib/openldap/database";
               olcDbIndex = [ "objectClass eq" "uid pres,eq" "memberUid eq" ];
               olcAccess = makeAccess {

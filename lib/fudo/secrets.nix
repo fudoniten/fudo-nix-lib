@@ -24,7 +24,8 @@ let
       chmod ${permissions} ${target-file}
       # NOTE: silly hack because sometimes age leaves a blank line
       # Only include lines with at least one non-space character
-      SRC=$(mktemp fudo-secret-${target-host}-${secret-name}.XXXXXXXX)
+      SRC=$(mktemp -p /run fudo-secret-${target-host}-${secret-name}.XXXXXXXX)
+      trap 'rm -f "$SRC"' EXIT
       cat ${
         encrypt-on-disk {
           inherit secret-name source-file target-host;
@@ -32,7 +33,6 @@ let
         }
       } | grep "[^ ]" > $SRC
       age -d -i ${host-master-key.key-path} -o ${target-file} $SRC
-      rm -f $SRC
     '';
 
   secret-service = target-host: secret-name:
@@ -126,7 +126,7 @@ let
     pkgs.stdenv.mkDerivation {
       name = "${name}-generated-passwd";
 
-      phases = [ "installPhase" ];
+      phases = [ "buildPhase" "installPhase" ];
 
       buildInputs = with pkgs; [ pwgen ];
 

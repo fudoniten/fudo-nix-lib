@@ -3,7 +3,7 @@
 let realm = config.fudo.auth.kerberos.realm;
 
 in {
-  imports = [ ];
+  imports = [ ./kdc.nix ];
 
   config = {
     security.krb5 = {

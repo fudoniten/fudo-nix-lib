@@ -290,12 +290,6 @@ in rec {
           default = false;
         };
 
-        backplane-password-file = mkOption {
-          type = path;
-          description =
-            "File containing the password used by this host to connect to the backplane.";
-        };
-
         initrd-ssh-key = mkOption {
           type = nullOr str;
           description =

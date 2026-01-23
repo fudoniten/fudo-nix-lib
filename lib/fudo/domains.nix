@@ -84,32 +84,6 @@ let
           default = null;
         };
 
-        backplane = mkOption {
-          type = nullOr (submodule {
-            options = {
-              nameserver = mkOption {
-                type = nullOr str;
-                description = "Host acting as backplane dynamic DNS server.";
-                default = null;
-              };
-
-              dns-service = mkOption {
-                type = nullOr str;
-                description = "DNS backplane service host.";
-                default = null;
-              };
-
-              domain = mkOption {
-                type = str;
-                description =
-                  "Domain name of the dynamic zone served by this server.";
-              };
-            };
-          });
-          description = "Backplane configuration.";
-          default = null;
-        };
-
         wireguard = {
           gateway = mkOption {
             type = str;

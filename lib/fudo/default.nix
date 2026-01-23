@@ -8,14 +8,12 @@ with lib; {
     ./adguard-dns-proxy.nix
     ./authentication.nix
     ./deploy.nix
-    ./dns.nix
     ./domains.nix
     ./git.nix
     ./global.nix
     ./grafana.nix
     ./hosts.nix
     ./host-filesystems.nix
-    ./local-network.nix
     ./mail.nix
     ./mail-container.nix
     ./minecraft-clj.nix

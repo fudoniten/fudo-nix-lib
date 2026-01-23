@@ -209,12 +209,16 @@ in {
     };
   };
 
+  # DEPRECATED: These mail module imports are obsolete and replaced by the
+  # standalone mail-server flake. Keeping the options defined above for
+  # backwards compatibility, but the actual service configurations are now
+  # provided by the mail-server flake input.
   imports = [
-    ./mail/dkim.nix
-    ./mail/dovecot.nix
-    ./mail/postfix.nix
-    ./mail/rspamd.nix
-    ./mail/clamav.nix
+    # ./mail/dkim.nix
+    # ./mail/dovecot.nix
+    # ./mail/postfix.nix
+    # ./mail/rspamd.nix
+    # ./mail/clamav.nix
   ];
 
   config = mkIf cfg.enable {

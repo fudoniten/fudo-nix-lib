@@ -132,6 +132,8 @@ in {
 
   config = mkIf cfg.enable {
 
+    environment.systemPackages = with pkgs; [ dovecot_pigeonhole ];
+
     services.prometheus.exporters.dovecot = mkIf cfg.monitoring.enable {
       enable = true;
       scopes = [ "user" "global" ];
@@ -156,7 +158,6 @@ in {
       sslServerCert = cfg.dovecot.ssl-certificate;
       sslServerKey = cfg.dovecot.ssl-private-key;
 
-      modules = [ pkgs.dovecot_pigeonhole ];
       protocols = [ "sieve" ];
 
       sieveScripts = {
@@ -174,6 +175,9 @@ in {
 
       extraConfig = ''
         #Extra Config
+
+        # Add plugin directory for dovecot_pigeonhole
+        mail_plugin_dir = ${pkgs.dovecot}/lib/dovecot:${pkgs.dovecot_pigeonhole}/lib/dovecot
 
         ${optionalString cfg.monitoring.enable ''
           # The prometheus exporter still expects an older style of metrics

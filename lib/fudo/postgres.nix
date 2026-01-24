@@ -248,7 +248,7 @@ in {
     systemd-target = mkOption {
       type = str;
       description = "Name of the systemd target for postgresql";
-      default = "postgresql.target";
+      default = "postgresql-running.target";
     };
   };
 

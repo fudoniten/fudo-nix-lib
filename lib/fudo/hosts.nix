@@ -98,7 +98,6 @@ in {
     services = {
       cron.mailto = domain.admin-email;
       fail2ban.ignoreIP = config.instance.local-networks;
-      udev.packages = optional host-cfg.android-dev pkgs.android-udev-rules;
     };
 
     virtualisation.docker = mkIf (host-cfg.docker-server) {

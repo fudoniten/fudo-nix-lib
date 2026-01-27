@@ -149,6 +149,13 @@ let
           default = [ ];
         };
 
+        kerberos-use-dns-lookup = mkOption {
+          type = bool;
+          description =
+            "Whether to use DNS SRV records for KDC discovery. If false, KDC IP addresses will be hardcoded in krb5.conf at build time.";
+          default = false;
+        };
+
         ldap-servers = mkOption {
           type = listOf str;
           description =

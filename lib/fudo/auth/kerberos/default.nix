@@ -9,10 +9,7 @@ in {
   imports = [ ./kdc.nix ];
 
   options.fudo.auth.kerberos = {
-    realm = mkOption {
-      type = types.str;
-      description = "Kerberos realm name";
-    };
+    # Note: 'realm' option is declared in kdc.nix
 
     kdc-servers = mkOption {
       type = types.nullOr (types.listOf types.str);

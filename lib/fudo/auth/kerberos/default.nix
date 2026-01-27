@@ -23,12 +23,6 @@ in {
       description = "Explicit admin server address";
       default = null;
     };
-
-    use-dns-lookup = mkOption {
-      type = types.bool;
-      description = "Whether to use DNS SRV records to find KDC servers";
-      default = true;
-    };
   };
 
   config = {
@@ -53,14 +47,15 @@ in {
         };
 
         # Per-realm configuration
+        # Note: dns_lookup_kdc and dns_lookup_realm are configured at the domain
+        # level in nixos-config/config/profile-config/host/kerberos.nix based on
+        # fudo.domains.<domain>.kerberos-use-dns-lookup
         realms = mkIf (cfg.kdc-servers != null || cfg.admin-server != null) {
           ${realm} = mkMerge [
             (mkIf (cfg.kdc-servers != null) { kdc = cfg.kdc-servers; })
             (mkIf (cfg.admin-server != null) {
               admin_server = cfg.admin-server;
             })
-            # If use-dns-lookup is true, add dns_lookup_kdc for this realm
-            (mkIf cfg.use-dns-lookup { dns_lookup = "srv"; })
           ];
         };
       };

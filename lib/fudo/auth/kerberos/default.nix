@@ -33,9 +33,6 @@ in {
         libdefaults = {
           default_realm = realm;
           allow_weak_crypto = false;
-          # Disable global DNS lookups - configure per-realm below
-          dns_lookup_kdc = false;
-          dns_lookup_realm = false;
           forwardable = true;
           proxiable = true;
         };

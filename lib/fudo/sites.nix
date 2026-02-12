@@ -66,6 +66,13 @@ let
         default = [ ];
       };
 
+      log-access-users = mkOption {
+        type = listOf str;
+        description =
+          "List of users who should have access to systemd journal logs on all hosts at this site.";
+        default = [ ];
+      };
+
       nameservers = mkOption {
         type = listOf str;
         description = "List of nameservers to be used by hosts at this site.";

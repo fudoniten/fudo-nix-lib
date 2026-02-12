@@ -36,6 +36,13 @@ let
           default = [ ];
         };
 
+        log-access-users = mkOption {
+          type = listOf str;
+          description =
+            "A list of users who should have access to systemd journal logs on _all_ hosts in this domain.";
+          default = [ ];
+        };
+
         local-groups = mkOption {
           type = listOf str;
           description = "List of groups which should exist within this domain.";

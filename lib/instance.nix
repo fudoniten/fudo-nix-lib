@@ -66,6 +66,12 @@ in {
       description = "List of users who should have access to the local host";
     };
 
+    local-log-access-users = mkOption {
+      type = listOf str;
+      description = "List of user who should have access to journald logs.";
+      default = [ ];
+    };
+
     local-networks = mkOption {
       type = listOf str;
       description =

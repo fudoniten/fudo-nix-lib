@@ -183,6 +183,13 @@ in rec {
           default = [ ];
         };
 
+        log-access-users = mkOption {
+          type = listOf str;
+          description =
+            "List of users who should have access to systemd journal logs on this host.";
+          default = [ ];
+        };
+
         local-groups = mkOption {
           type = listOf str;
           description = "List of groups which should exist on this host.";

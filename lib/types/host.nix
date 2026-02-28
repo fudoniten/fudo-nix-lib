@@ -118,6 +118,15 @@ in rec {
             "Public key for the host master key, used by the host to decrypt secrets.";
         };
 
+        aegis = {
+          master-key = mkOption {
+            type = nullOr str;
+            description =
+              "Path on the host to Aegis master key, for decrypting secrets.";
+            default = null;
+          };
+        };
+
         domain = mkOption {
           type = str;
           description =

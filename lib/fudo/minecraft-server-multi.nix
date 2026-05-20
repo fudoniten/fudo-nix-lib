@@ -47,6 +47,12 @@ let
         default = pkgs.minecraft-current;
       };
 
+      jre-package = mkOption {
+        type = package;
+        description = "JRE to use for running the server.";
+        default = pkgs.jre_headless;
+      };
+
       world-name = mkOption {
         type = str;
         description = "Name of the server world (used in saves etc).";
@@ -221,6 +227,7 @@ in {
           wantedBy = [ "multi-user.target" ];
           after = [ "network-online.target" ];
           requires = [ "network-online.target" ];
+          environment.PATH = "${serverConf.jre-package}/bin";
           serviceConfig = {
             User = cfg.user;
             Group = cfg.group;

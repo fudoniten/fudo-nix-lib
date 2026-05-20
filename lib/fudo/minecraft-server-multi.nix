@@ -214,12 +214,13 @@ in {
 
           startScript =
             let
+              pkg = serverConf.package.override { jre_headless = serverConf.jre-package; };
               mem = "${toString serverConf.allocated-memory}G";
               flags = commonFlags
                 ++ [ "-Xms${mem}" "-Xmx${mem}" ]
                 ++ optionals (serverConf.allocated-memory >= 12) highMemFlags;
             in pkgs.writeShellScript "mc-start-${safeName}.sh"
-              "${serverConf.package}/bin/minecraft-server ${concatStringsSep " " flags}";
+              "${pkg}/bin/minecraft-server ${concatStringsSep " " flags}";
 
         in nameValuePair svcName {
           enable = serverConf.enable;
@@ -227,7 +228,6 @@ in {
           wantedBy = [ "multi-user.target" ];
           after = [ "network-online.target" ];
           requires = [ "network-online.target" ];
-          environment.PATH = "${serverConf.jre-package}/bin";
           serviceConfig = {
             User = cfg.user;
             Group = cfg.group;

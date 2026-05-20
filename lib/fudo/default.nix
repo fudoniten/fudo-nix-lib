@@ -18,6 +18,7 @@ with lib; {
     ./mail-container.nix
     ./minecraft-clj.nix
     ./minecraft-server.nix
+    ./minecraft-server-multi.nix
     ./nexus.nix
     ./node-exporter.nix
     ./password.nix

@@ -73,11 +73,19 @@ let
 
       allow-cheats = mkOption {
         type = bool;
+        description = "Whether to allow cheat/operator commands on the server.";
         default = false;
       };
 
       allow-pvp = mkOption {
         type = bool;
+        description = "Whether players can attack each other (PvP).";
+        default = false;
+      };
+
+      keep-inventory = mkOption {
+        type = bool;
+        description = "Whether players keep their inventory on death (keepInventory gamerule).";
         default = false;
       };
 
@@ -103,6 +111,12 @@ let
         type = port;
         description = "Port for remote commands.";
         default = 25567;
+      };
+
+      rcon-password = mkOption {
+        type = str;
+        description = "Password for the RCON remote console. Used to apply server-side gamerules (e.g. keepInventory). Change this from the default!";
+        default = "changeme";
       };
 
       world-seed = mkOption {
@@ -138,6 +152,8 @@ let
         "query.port" = serverConf.query-port;
         enable-query = true;
         "rcon.port" = serverConf.rcon-port;
+        "rcon.password" = serverConf.rcon-password;
+        enable-rcon = true;
         pvp = serverConf.allow-pvp;
       } // seedAttr;
     in pkgs.writeText "mc-${sanitizeName name}.properties" (toProps props);
@@ -215,6 +231,27 @@ in {
             in pkgs.writeShellScript "mc-start-${safeName}.sh"
               "${serverConf.package}/bin/minecraft-server ${concatStringsSep " " flags}";
 
+          # Polls until RCON is ready, then syncs gamerules declared in config.
+          postStartScript = pkgs.writeShellScript "mc-post-${safeName}.sh" ''
+            for attempt in $(seq 1 60); do
+              if ${pkgs.mcrcon}/bin/mcrcon \
+                  -H 127.0.0.1 \
+                  -P ${toString serverConf.rcon-port} \
+                  -p ${escapeShellArg serverConf.rcon-password} \
+                  "list" >/dev/null 2>&1
+              then
+                ${pkgs.mcrcon}/bin/mcrcon \
+                  -H 127.0.0.1 \
+                  -P ${toString serverConf.rcon-port} \
+                  -p ${escapeShellArg serverConf.rcon-password} \
+                  "gamerule keepInventory ${if serverConf.keep-inventory then "true" else "false"}"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "Warning: timed out waiting for RCON; gamerules may not be applied." >&2
+          '';
+
         in nameValuePair svcName {
           enable = serverConf.enable;
           description = "${name} Minecraft Server";
@@ -227,6 +264,7 @@ in {
             WorkingDirectory = stateDir;
             ExecStartPre = "${preStartScript}";
             ExecStart = "${startScript}";
+            ExecStartPost = "${postStartScript}";
             Restart = "always";
             NoNewPrivileges = true;
             PrivateDevices = true;

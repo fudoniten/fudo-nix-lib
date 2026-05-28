@@ -218,9 +218,19 @@ in {
       groups."${cfg.group}" = { members = [ cfg.user ]; };
     };
 
-    # Only the game port is opened externally. RCON and query are localhost-only
-    # and must not be reachable from the internet.
+    # Game port: TCP, open to everyone.
     networking.firewall.allowedTCPPorts = map (s: s.port)
+      (filter (s: s.enable) (attrValues cfg.servers));
+
+    # Query port: UDP (GS4 protocol), open to everyone — read-only server status.
+    networking.firewall.allowedUDPPorts = map (s: s.query-port)
+      (filter (s: s.enable) (attrValues cfg.servers));
+
+    # RCON port: TCP, Tailscale interface only. The RCON protocol has no
+    # encryption so it must not be exposed on public interfaces. Restricting to
+    # tailscale0 works regardless of the node's Tailscale IP; the rule is a
+    # no-op on machines without Tailscale.
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = map (s: s.rcon-port)
       (filter (s: s.enable) (attrValues cfg.servers));
 
     systemd =

@@ -218,8 +218,9 @@ in {
       groups."${cfg.group}" = { members = [ cfg.user ]; };
     };
 
-    networking.firewall.allowedTCPPorts = concatMap
-      (s: [ s.port s.query-port s.rcon-port ])
+    # Only the game port is opened externally. RCON and query are localhost-only
+    # and must not be reachable from the internet.
+    networking.firewall.allowedTCPPorts = map (s: s.port)
       (filter (s: s.enable) (attrValues cfg.servers));
 
     systemd =
@@ -247,7 +248,15 @@ in {
             startScript =
               let
                 mem = "${toString serverConf.allocated-memory}G";
-                flags = commonFlags
+                flags =
+                  # Required by JNA (used by OSHI for hardware telemetry). Without
+                  # this, newer JVMs will block native access entirely.
+                  [ "--enable-native-access=ALL-UNNAMED"
+                  # JNA extracts a native .so to a tmpdir before loading it. The
+                  # state directory is typically noexec, so we redirect JNA to the
+                  # service's runtime directory (/run/...) which is always exec.
+                    "-Djna.tmpdir=/run/${svcName}" ]
+                  ++ commonFlags
                   ++ [ "-Xms${mem}" "-Xmx${mem}" ]
                   ++ optionals (serverConf.allocated-memory >= 12) highMemFlags;
               in pkgs.writeShellScript "mc-start-${safeName}.sh"
@@ -290,6 +299,7 @@ in {
               ExecStartPost = "${postStartScript}";
               # On-demand servers are restarted by socket activation, not by systemd.
               Restart = if serverConf.on-demand then "no" else "always";
+              RuntimeDirectory = svcName;
               NoNewPrivileges = true;
               PrivateDevices = true;
               ProtectSystem = "strict";

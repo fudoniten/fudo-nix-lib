@@ -275,7 +275,7 @@ in {
                     -H 127.0.0.1 \
                     -P ${toString serverConf.rcon-port} \
                     -p ${escapeShellArg serverConf.rcon-password} \
-                    "gamerule keepInventory ${if serverConf.keep-inventory then "true" else "false"}"
+                    "gamerule minecraft:keep_inventory ${if serverConf.keep-inventory then "true" else "false"}"
                   exit 0
                 fi
                 sleep 5

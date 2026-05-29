@@ -77,6 +77,12 @@ let
         default = false;
       };
 
+      ops = mkOption {
+        type = listOf str;
+        description = "List of player names to grant operator status on the server.";
+        default = [];
+      };
+
       allow-pvp = mkOption {
         type = bool;
         description = "Whether players can attack each other (PvP).";
@@ -286,7 +292,13 @@ in {
                     -P ${toString serverConf.rcon-port} \
                     -p ${escapeShellArg serverConf.rcon-password} \
                     "gamerule minecraft:keep_inventory ${if serverConf.keep-inventory then "true" else "false"}"
-                  exit 0
+                  ${concatMapStrings (op: ''
+                  ${pkgs.mcrcon}/bin/mcrcon \
+                    -H 127.0.0.1 \
+                    -P ${toString serverConf.rcon-port} \
+                    -p ${escapeShellArg serverConf.rcon-password} \
+                    "op ${op}"
+                  '') serverConf.ops}exit 0
                 fi
                 sleep 5
               done

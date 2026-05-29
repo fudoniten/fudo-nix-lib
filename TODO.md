@@ -66,8 +66,8 @@ This document tracks obsolete modules and code that should be removed from fudo-
 - Superseded by `nixos-config/config/service/local-network/`
 
 **Modules to remove**:
-- [ ] `lib/fudo/hosts/local-network.nix` (~144 lines)
-- [ ] `lib/fudo/hosts/` directory (if empty after removal)
+- [x] `lib/fudo/hosts/local-network.nix` (~144 lines)
+- [x] `lib/fudo/hosts/` directory (if empty after removal)
 
 **Estimated impact**: ~144 lines removed
 

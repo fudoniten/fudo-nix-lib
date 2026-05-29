@@ -32,7 +32,6 @@ with lib; {
     ./system.nix
     ./system-networking.nix
     ./users.nix
-    ./vpn.nix
     ./webmail.nix
     ./wireless-networks.nix
     ./zones.nix

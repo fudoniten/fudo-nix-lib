@@ -46,10 +46,10 @@ This document tracks obsolete modules and code that should be removed from fudo-
 **Evidence**: No references to `fudo.vpn` anywhere in nixos-config
 
 **Modules to remove**:
-- [ ] `lib/fudo/vpn.nix` (~200 lines) - WireGuard VPN configuration
+- [x] `lib/fudo/vpn.nix` (~200 lines) - WireGuard VPN configuration
 
 **Update imports**:
-- [ ] `lib/fudo/default.nix` - Remove `./vpn.nix` import
+- [x] `lib/fudo/default.nix` - Remove `./vpn.nix` import
 
 **Estimated impact**: ~200 lines removed
 

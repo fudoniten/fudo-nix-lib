@@ -80,10 +80,10 @@ This document tracks obsolete modules and code that should be removed from fudo-
 **Status**: Empty placeholder module with no functionality
 
 **Modules to remove**:
-- [ ] `lib/fudo/common.nix` (4 lines) - Empty module with just comments and empty attribute set
+- [x] `lib/fudo/common.nix` (4 lines) - Empty module with just comments and empty attribute set
 
 **Update imports**:
-- [ ] `lib/fudo/default.nix` - Remove `./common.nix` import
+- [x] `lib/fudo/default.nix` - Not imported (no change needed)
 
 **Estimated impact**: Minimal, but reduces clutter
 

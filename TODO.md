@@ -16,24 +16,24 @@ This document tracks obsolete modules and code that should be removed from fudo-
 **Prerequisites**: 
 1. ✅ Fix `nixos-config/config/aliases.nix` to use `fudo.mail.aliases.alias-users`
 2. ✅ Test mail configuration works correctly
-3. ⏸️ Remove modules after confirmation
+3. ✅ Remove modules after confirmation
 
 **Modules to remove**:
-- [ ] `lib/fudo/mail.nix` (~200 lines) - Main mail server orchestration
-- [ ] `lib/fudo/mail-container.nix` (~400 lines) - Containerized mail setup
-- [ ] `lib/fudo/mail/` - Entire mail subdirectory:
-  - [ ] `mail/postfix.nix` (~300 lines)
-  - [ ] `mail/dovecot.nix` (~250 lines)
-  - [ ] `mail/rspamd.nix` (~150 lines)
-  - [ ] `mail/clamav.nix` (~100 lines)
-  - [ ] `mail/dkim.nix` (~80 lines)
-  - [ ] `mail/dovecot/imap_sieve/report-ham.sieve`
-  - [ ] `mail/dovecot/imap_sieve/report-spam.sieve`
-  - [ ] `mail/dovecot/pipe_bin/sa-learn-ham.sh`
-  - [ ] `mail/dovecot/pipe_bin/sa-learn-spam.sh`
+- [x] `lib/fudo/mail.nix` (~200 lines) - Main mail server orchestration
+- [x] `lib/fudo/mail-container.nix` (~400 lines) - Containerized mail setup
+- [x] `lib/fudo/mail/` - Entire mail subdirectory:
+  - [x] `mail/postfix.nix` (~300 lines)
+  - [x] `mail/dovecot.nix` (~250 lines)
+  - [x] `mail/rspamd.nix` (~150 lines)
+  - [x] `mail/clamav.nix` (~100 lines)
+  - [x] `mail/dkim.nix` (~80 lines)
+  - [x] `mail/dovecot/imap_sieve/report-ham.sieve`
+  - [x] `mail/dovecot/imap_sieve/report-spam.sieve`
+  - [x] `mail/dovecot/pipe_bin/sa-learn-ham.sh`
+  - [x] `mail/dovecot/pipe_bin/sa-learn-spam.sh`
 
 **Update imports**:
-- [ ] `lib/fudo/default.nix` - Remove `./mail.nix` and `./mail-container.nix` imports
+- [x] `lib/fudo/default.nix` - Remove `./mail.nix` and `./mail-container.nix` imports
 
 **Estimated impact**: ~1,500 lines removed
 

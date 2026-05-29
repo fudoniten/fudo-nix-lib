@@ -14,8 +14,6 @@ with lib; {
     ./grafana.nix
     ./hosts.nix
     ./host-filesystems.nix
-    ./mail.nix
-    ./mail-container.nix
     ./minecraft-clj.nix
     ./minecraft-server.nix
     ./minecraft-server-multi.nix

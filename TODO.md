@@ -16,24 +16,24 @@ This document tracks obsolete modules and code that should be removed from fudo-
 **Prerequisites**: 
 1. ✅ Fix `nixos-config/config/aliases.nix` to use `fudo.mail.aliases.alias-users`
 2. ✅ Test mail configuration works correctly
-3. ⏸️ Remove modules after confirmation
+3. ✅ Remove modules after confirmation
 
 **Modules to remove**:
-- [ ] `lib/fudo/mail.nix` (~200 lines) - Main mail server orchestration
-- [ ] `lib/fudo/mail-container.nix` (~400 lines) - Containerized mail setup
-- [ ] `lib/fudo/mail/` - Entire mail subdirectory:
-  - [ ] `mail/postfix.nix` (~300 lines)
-  - [ ] `mail/dovecot.nix` (~250 lines)
-  - [ ] `mail/rspamd.nix` (~150 lines)
-  - [ ] `mail/clamav.nix` (~100 lines)
-  - [ ] `mail/dkim.nix` (~80 lines)
-  - [ ] `mail/dovecot/imap_sieve/report-ham.sieve`
-  - [ ] `mail/dovecot/imap_sieve/report-spam.sieve`
-  - [ ] `mail/dovecot/pipe_bin/sa-learn-ham.sh`
-  - [ ] `mail/dovecot/pipe_bin/sa-learn-spam.sh`
+- [x] `lib/fudo/mail.nix` (~200 lines) - Main mail server orchestration
+- [x] `lib/fudo/mail-container.nix` (~400 lines) - Containerized mail setup
+- [x] `lib/fudo/mail/` - Entire mail subdirectory:
+  - [x] `mail/postfix.nix` (~300 lines)
+  - [x] `mail/dovecot.nix` (~250 lines)
+  - [x] `mail/rspamd.nix` (~150 lines)
+  - [x] `mail/clamav.nix` (~100 lines)
+  - [x] `mail/dkim.nix` (~80 lines)
+  - [x] `mail/dovecot/imap_sieve/report-ham.sieve`
+  - [x] `mail/dovecot/imap_sieve/report-spam.sieve`
+  - [x] `mail/dovecot/pipe_bin/sa-learn-ham.sh`
+  - [x] `mail/dovecot/pipe_bin/sa-learn-spam.sh`
 
 **Update imports**:
-- [ ] `lib/fudo/default.nix` - Remove `./mail.nix` and `./mail-container.nix` imports
+- [x] `lib/fudo/default.nix` - Remove `./mail.nix` and `./mail-container.nix` imports
 
 **Estimated impact**: ~1,500 lines removed
 
@@ -46,10 +46,10 @@ This document tracks obsolete modules and code that should be removed from fudo-
 **Evidence**: No references to `fudo.vpn` anywhere in nixos-config
 
 **Modules to remove**:
-- [ ] `lib/fudo/vpn.nix` (~200 lines) - WireGuard VPN configuration
+- [x] `lib/fudo/vpn.nix` (~200 lines) - WireGuard VPN configuration
 
 **Update imports**:
-- [ ] `lib/fudo/default.nix` - Remove `./vpn.nix` import
+- [x] `lib/fudo/default.nix` - Remove `./vpn.nix` import
 
 **Estimated impact**: ~200 lines removed
 
@@ -66,8 +66,8 @@ This document tracks obsolete modules and code that should be removed from fudo-
 - Superseded by `nixos-config/config/service/local-network/`
 
 **Modules to remove**:
-- [ ] `lib/fudo/hosts/local-network.nix` (~144 lines)
-- [ ] `lib/fudo/hosts/` directory (if empty after removal)
+- [x] `lib/fudo/hosts/local-network.nix` (~144 lines)
+- [x] `lib/fudo/hosts/` directory (if empty after removal)
 
 **Estimated impact**: ~144 lines removed
 
@@ -80,10 +80,10 @@ This document tracks obsolete modules and code that should be removed from fudo-
 **Status**: Empty placeholder module with no functionality
 
 **Modules to remove**:
-- [ ] `lib/fudo/common.nix` (4 lines) - Empty module with just comments and empty attribute set
+- [x] `lib/fudo/common.nix` (4 lines) - Empty module with just comments and empty attribute set
 
 **Update imports**:
-- [ ] `lib/fudo/default.nix` - Remove `./common.nix` import
+- [x] `lib/fudo/default.nix` - Not imported (no change needed)
 
 **Estimated impact**: Minimal, but reduces clutter
 

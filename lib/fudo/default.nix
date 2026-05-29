@@ -14,8 +14,6 @@ with lib; {
     ./grafana.nix
     ./hosts.nix
     ./host-filesystems.nix
-    ./mail.nix
-    ./mail-container.nix
     ./minecraft-clj.nix
     ./minecraft-server.nix
     ./minecraft-server-multi.nix
@@ -32,7 +30,6 @@ with lib; {
     ./system.nix
     ./system-networking.nix
     ./users.nix
-    ./vpn.nix
     ./webmail.nix
     ./wireless-networks.nix
     ./zones.nix

@@ -281,6 +281,37 @@ in {
             concatStringsSep " " flags
           }";
 
+          # Polls until RCON is ready, then syncs gamerules declared in config.
+          postStartScript = pkgs.writeShellScript "mc-post-${safeName}.sh" ''
+            for attempt in $(seq 1 60); do
+              if ${pkgs.mcrcon}/bin/mcrcon \
+                  -H 127.0.0.1 \
+                  -P ${toString serverConf.rcon-port} \
+                  -p ${escapeShellArg serverConf.rcon-password} \
+                  "list" >/dev/null 2>&1
+              then
+                ${pkgs.mcrcon}/bin/mcrcon \
+                  -H 127.0.0.1 \
+                  -P ${toString serverConf.rcon-port} \
+                  -p ${escapeShellArg serverConf.rcon-password} \
+                  "gamerule minecraft:keep_inventory ${
+                    if serverConf.keep-inventory then "true" else "false"
+                  }"
+                ${
+                  concatMapStrings (op: ''
+                    ${pkgs.mcrcon}/bin/mcrcon \
+                      -H 127.0.0.1 \
+                      -P ${toString serverConf.rcon-port} \
+                      -p ${escapeShellArg serverConf.rcon-password} \
+                      "op ${op}"
+                  '') serverConf.ops
+                }exit 0
+              fi
+              sleep 5
+            done
+            echo "Warning: timed out waiting for RCON; gamerules may not be applied." >&2
+          '';
+
         in nameValuePair svcName {
           description = "${name} Minecraft Server";
           wantedBy = optionals (!serverConf.on-demand) [ "multi-user.target" ];

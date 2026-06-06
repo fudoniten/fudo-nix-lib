@@ -40,12 +40,22 @@ let
     };
   };
 
+  # upstream_mode as a string key was introduced in AdGuard Home v0.107.44.
+  # Older versions use the legacy all_servers / fastest_addr booleans instead.
+  useUpstreamModeKey =
+    lib.versionAtLeast pkgs.adguardhome.version "0.107.44";
+
   generate-config = { dns, http, filters, verbose, upstream-dns, bootstrap-dns
     , blocked-hosts, enable-dnssec, domain-upstreams, local-domain-name, ... }:
     let
       upstreamDnsEntries = mapAttrsToList (_: opts:
         let domainClause = concatStringsSep "/" opts.domains;
         in "[/${domainClause}/]${opts.upstream}") domain-upstreams;
+      upstreamModeAttrs = if useUpstreamModeKey
+        then { upstream_mode = cfg.upstream-mode; }
+        else if cfg.upstream-mode == "parallel" then { all_servers = true; }
+        else if cfg.upstream-mode == "fastest_addr" then { fastest_addr = true; }
+        else { };
     in {
       bind_host = http.listen-ip;
       bind_port = http.listen-port;
@@ -73,7 +83,9 @@ let
         use_private_ptr_resolvers = cfg.dns.reverse-dns != [ ];
         local_ptr_upstreams = cfg.dns.reverse-dns;
         hostsfile_enabled = false;
-      };
+      } // upstreamModeAttrs
+        // optionalAttrs (cfg.fallback-dns != [ ]) { fallback_dns = cfg.fallback-dns; }
+        // optionalAttrs (cfg.upstream-timeout != null) { upstream_timeout = cfg.upstream-timeout; };
       tls.enabled = false;
       filters = imap1 (i:
         { name, url, ... }: {
@@ -245,6 +257,49 @@ in {
     };
 
     verbose = mkEnableOption "Keep verbose logs.";
+
+    upstream-mode = mkOption {
+      type = enum [ "load_balance" "parallel" "fastest_addr" ];
+      default = "load_balance";
+      description = ''
+        How AdGuard Home selects among multiple upstream-dns entries.
+
+        load_balance: weighted-random favouring upstreams with fewer failures /
+          lower latency. One query → one upstream. Health-aware, but a newly-dead
+          upstream can still incur a per-query timeout until its weight drops.
+
+        parallel: sends every query to all upstreams simultaneously and uses the
+          first response. Best failover (a dead node costs almost nothing) at the
+          cost of N× upstream traffic.
+
+        fastest_addr: queries all upstreams, then returns the answer whose
+          resolved IP has the lowest ping latency. Niche use-case.
+      '';
+    };
+
+    fallback-dns = mkOption {
+      type = listOf str;
+      default = [ ];
+      description = ''
+        Resolvers used only when all primary upstream-dns servers fail to respond
+        (timeout / network error). Does NOT trigger on SERVFAIL or empty answers.
+        Omitted from the generated config when the list is empty.
+
+        Entry syntax is the same as upstream-dns: plain ip, ip:port, or an
+        encrypted scheme (tls://, https://, quic://). Per-domain routing prefixes
+        ([/domain/]) are also valid.
+      '';
+    };
+
+    upstream-timeout = mkOption {
+      type = nullOr str;
+      default = null;
+      description = ''
+        AdGuard upstream_timeout duration (e.g. "10s"). When fallback-dns is set
+        and all primary upstreams are down, each query stalls for this duration
+        before fallback answers. Omitted when null (AdGuard default applies).
+      '';
+    };
   };
 
   config = mkIf cfg.enable {

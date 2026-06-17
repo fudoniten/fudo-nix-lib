@@ -97,6 +97,16 @@ let
         default = false;
       };
 
+      spawn-protection = mkOption {
+        type = bool;
+        description = ''
+          Whether to protect the area around the world spawn from being
+          modified by non-operator players. When disabled (the default), the
+          spawn-protection radius is set to 0.
+        '';
+        default = false;
+      };
+
       allocated-memory = mkOption {
         type = int;
         description = "Memory (in GB) to allocate to the Minecraft server.";
@@ -185,6 +195,8 @@ let
         "rcon.password" = serverConf.rcon-password;
         enable-rcon = true;
         pvp = serverConf.allow-pvp;
+        # spawn-protection is a radius in blocks; 0 disables it entirely.
+        spawn-protection = if serverConf.spawn-protection then 16 else 0;
       } // seedAttr;
     in pkgs.writeText "mc-${sanitizeName name}.properties" (toProps props);
 

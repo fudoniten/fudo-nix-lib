@@ -106,10 +106,6 @@ in {
       autoPrune.enable = true;
     };
 
-    programs.adb.enable = host-cfg.android-dev;
-    users.groups.adbusers =
-      mkIf host-cfg.android-dev { members = config.instance.local-admins; };
-
     boot.tmp.useTmpfs = host-cfg.tmp-on-tmpfs;
   };
 }

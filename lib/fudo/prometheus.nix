@@ -110,6 +110,7 @@ in {
         ${state-dir} = {
           device = cfg.state-directory;
           options = [ "bind" ];
+          fsType = "none";
         };
       };
 

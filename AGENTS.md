@@ -14,9 +14,13 @@ config. It is consumed by `nixos-config` (as the `fudo-lib` input) and, in
 principle, by any flake that wants the `fudo.*` modules or the `pkgs.lib.*`
 utility functions.
 
-**Status:** a monorepo being gradually decomposed into focused flakes. Several
-modules are marked as extraction candidates or pending removal — see `TODO.md`
-before adding to or refactoring them.
+**Status:** legacy, and **being deliberately shrunk**. This grab-bag got
+unwieldy, and the maintainer is decomposing it into smaller, reusable,
+special-purpose flakes. The preferred direction is to pull concerns *out* into
+focused flakes, not to add more here. Several modules are already extraction
+candidates or pending removal — see `TODO.md` before adding to or refactoring
+them. Adding a brand-new concern to this repo should be the exception; default
+to a new focused flake instead.
 
 ## The three-repo family
 
@@ -28,7 +32,9 @@ before adding to or refactoring them.
 
 This repo sits at the bottom of the stack: it depends on none of the others,
 and both of the others (directly or indirectly) depend on it. A change here can
-ripple into every host, so prefer additive, opt-in options.
+ripple into every host, so when you *do* touch it, prefer additive, opt-in
+options over changing existing behavior — but prefer extracting a concern into
+its own flake over adding to this one at all (see Status above).
 
 Host/site/domain *data* is **not** here — it lives in the private
 `fudo-entities` flake. This repo defines the *schemas* (`lib/types/`) and the

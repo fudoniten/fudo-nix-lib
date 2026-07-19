@@ -10,11 +10,13 @@ Personal NixOS module and utility library for managing infrastructure across dom
 
 ## Quick Stats
 
-- **~6,500 lines** of Nix code
-- **33 modules** in fudo namespace
+- **~7,300 lines** of Nix code
+- **33 modules** in the `fudo.*` / `informis.*` namespaces
 - **6 utility libraries** (pure functions)
 - **4 type definitions** (configuration schemas)
-- **~1,850 lines** identified for removal (see [TODO.md](./TODO.md))
+- The obsolete mail/VPN/local-network/placeholder modules (~1,850 lines) have
+  now been removed — see [TODO.md](./TODO.md) for history and the remaining
+  extraction plan.
 
 ---
 
@@ -23,71 +25,37 @@ Personal NixOS module and utility library for managing infrastructure across dom
 ```
 lib/
 ├── fudo/              # Infrastructure modules (fudo.* namespace)
-│   ├── auth/          # Authentication (Kerberos)
-│   ├── hosts/         # Host-specific utilities
-│   ├── include/       # Included configurations
-│   └── mail/          # Mail server components (OBSOLETE - see below)
-├── informis/          # Personal/experimental modules
+│   ├── auth/          # Authentication (Kerberos client + KDC)
+│   ├── include/       # Included configuration fragments (e.g. rainloop)
+│   └── *.nix          # Service/infra modules (postgres, git, grafana, …)
+├── informis/          # Personal/experimental modules (informis.* namespace)
 ├── lib/               # Utility libraries (pure functions)
 ├── types/             # Type definitions for configuration
 ├── default.nix        # Module aggregator
 └── instance.nix       # Per-instance configuration
 
 flake.nix              # Flake interface
-lib.nix                # Library function exports
+lib.nix                # Library function exports (→ pkgs.lib.*)
 module.nix             # NixOS module entry point
 overlay.nix            # Nixpkgs overlay
 ```
 
 ---
 
-## ⚠️ Pending Removal After Testing
+## ✅ Removed (formerly obsolete)
 
-**IMPORTANT**: These modules are verified obsolete and should be removed after mail configuration testing completes.
+The following modules were verified obsolete and have now been **removed** from
+the tree. They are listed here so old references make sense; see
+[TODO.md](./TODO.md) for the full history.
 
-See [TODO.md](./TODO.md) for detailed removal plan.
-
-### Mail Stack (~1,500 lines) - Superseded by mail-server flake
-
-**Replacement**: `github:fudoniten/nix-mail-server` (provides `fudo.mail.*`)
-
-**Prerequisites before removal**:
-- ✅ Fixed nixos-config to use new option paths
-- ⏸️ Test mail aliases work correctly in production
-- ⏸️ Verify no configuration conflicts
-
-**Modules to remove**:
-```
-lib/fudo/mail.nix                      # Main orchestration
-lib/fudo/mail-container.nix            # Container setup
-lib/fudo/mail/postfix.nix              # SMTP
-lib/fudo/mail/dovecot.nix              # IMAP
-lib/fudo/mail/rspamd.nix               # Spam filter
-lib/fudo/mail/clamav.nix               # Antivirus
-lib/fudo/mail/dkim.nix                 # DKIM signing
-lib/fudo/mail/dovecot/imap_sieve/      # Sieve scripts
-lib/fudo/mail/dovecot/pipe_bin/        # SpamAssassin scripts
-```
-
-### VPN Module (~200 lines) - Never used
-
-```
-lib/fudo/vpn.nix                       # WireGuard VPN config
-```
-
-### Local Network Module (~144 lines) - Superseded
-
-**Replacement**: `nixos-config/config/service/local-network/`
-
-```
-lib/fudo/hosts/local-network.nix       # DHCP/DNS for home network
-```
-
-### Empty Placeholder (4 lines)
-
-```
-lib/fudo/common.nix                    # Empty module
-```
+- **Mail stack (~1,500 lines)** – superseded by the `mail-server` flake
+  (`github:fudoniten/nix-mail-server`, which provides `fudo.mail.*`). This was
+  `lib/fudo/mail.nix`, `lib/fudo/mail-container.nix`, and the entire
+  `lib/fudo/mail/` subdirectory (postfix, dovecot, rspamd, clamav, dkim, sieve).
+- **VPN module (~200 lines)** – `lib/fudo/vpn.nix` (WireGuard); never used.
+- **Local network module (~144 lines)** – `lib/fudo/hosts/local-network.nix`;
+  superseded by `nixos-config/config/service/local-network/`.
+- **Empty placeholder** – `lib/fudo/common.nix`.
 
 ---
 
@@ -274,6 +242,11 @@ Java-based Minecraft server.
 
 **Use case**: Personal Minecraft server.
 
+#### `minecraft-server-multi.nix` - Multi-Instance Minecraft
+Run multiple Minecraft server instances from one host.
+
+**Use case**: Host several Minecraft worlds/servers side by side.
+
 #### `minecraft-clj.nix` - Clojure Minecraft Tools
 Clojure-based Minecraft utilities.
 
@@ -356,6 +329,16 @@ Centralized ACME certificate management.
 Inject deployment SSH keys into root account.
 
 **Use case**: Enable deploy-rs deployments.
+
+#### `ssh.nix` - SSH / fail2ban Integration
+Populates `programs.ssh.knownHosts` from the `fudo.hosts` inventory and wires
+fail2ban (IP whitelisting via `fudo.ssh.whitelistIPs`, stricter retry limits on
+hardened hosts).
+
+**Options**: `fudo.ssh.whitelistIPs`
+
+**Use case**: Fleet-wide known-hosts and brute-force protection driven by the
+host inventory.
 
 #### `host-filesystems.nix` - Encrypted Filesystem Management
 LUKS-encrypted filesystem mounting with key management.

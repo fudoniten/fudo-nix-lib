@@ -14,25 +14,56 @@ let
       '';
     };
 
+  # The secret is installed by renaming a fully written file over the target,
+  # never by writing the target in place.  Writing in place -- `rm -f`,
+  # `touch`, then decrypt onto the target -- leaves a window on every restart
+  # in which the target is first absent and then zero length, and readers do
+  # not know to wait: NixOS's sshd-keygen.service sampled exactly that window,
+  # concluded the host key it found was missing, and raced this script to
+  # generate a replacement over a key that was about to land.  A rename within
+  # one filesystem is atomic, so a reader sees the old contents or the new
+  # ones and nothing in between.
+  #
+  # Failing without touching the target matters as much: a decrypt that dies
+  # half way now leaves the previous secret in place and fails the unit, where
+  # before it left an empty file behind and called that success.
   decrypt-script = { secret-name, source-file, target-host, target-file
     , host-master-key, user, group, permissions }:
-    pkgs.writeShellScript
+    let
+      encrypted-file = encrypt-on-disk {
+        inherit secret-name source-file target-host;
+        target-pubkey = host-master-key.public-key;
+      };
+    in pkgs.writeShellScript
     "decrypt-fudo-secret-${target-host}-${secret-name}.sh" ''
-      rm -f ${target-file}
-      touch ${target-file}
-      chown ${user}:${group} ${target-file}
-      chmod ${permissions} ${target-file}
+      set -euo pipefail
+
+      # Armed before either file exists, so that a mktemp that fails part way
+      # through still cleans up after the one that succeeded.  `rm -f ""` is a
+      # no-op, and under `set -u` both names have to be defined for the trap
+      # to run at all.
+      SRC=""
+      TMP=""
+      trap 'rm -f "$SRC" "$TMP"' EXIT
+
       # NOTE: silly hack because sometimes age leaves a blank line
       # Only include lines with at least one non-space character
       SRC=$(mktemp -p /run fudo-secret-${target-host}-${secret-name}.XXXXXXXX)
-      trap 'rm -f "$SRC"' EXIT
-      cat ${
-        encrypt-on-disk {
-          inherit secret-name source-file target-host;
-          target-pubkey = host-master-key.public-key;
-        }
-      } | grep "[^ ]" > $SRC
-      age -d -i ${host-master-key.key-path} -o ${target-file} $SRC
+
+      # Staged beside the target so the install below is a rename within a
+      # single filesystem.  mktemp creates it 0600, so the plaintext is never
+      # readable by anyone but root, even briefly.
+      TMP=$(mktemp "${dirOf target-file}/.${secret-name}.XXXXXXXX")
+
+      grep "[^ ]" "${encrypted-file}" > "$SRC"
+
+      # Decrypt to stdout rather than with `-o`: the staging file already
+      # exists, and this way its permissions are the ones mktemp chose.
+      age -d -i ${host-master-key.key-path} "$SRC" > "$TMP"
+
+      chown ${user}:${group} "$TMP"
+      chmod ${permissions} "$TMP"
+      mv -f "$TMP" "${target-file}"
     '';
 
   secret-service = target-host: secret-name:
@@ -45,6 +76,11 @@ let
       before = [ cfg.secret-target ];
       after = [ "local-fs.target" ];
       restartIfChanged = true;
+      # A changed unit is restarted in one step rather than stopped in the old
+      # configuration and started in the new one, so the secret is replaced by
+      # the single rename in the decrypt script instead of disappearing for
+      # the length of an activation.
+      stopIfChanged = false;
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
@@ -64,8 +100,12 @@ let
             inherit secret-name source-file target-host target-file
               host-master-key user group permissions;
           };
-        ExecStop = pkgs.writeShellScript "fudo-remove-${secret-name}-secret.sh"
-          "rm -f ${target-file}";
+        # No ExecStop removing the target.  It deleted the live secret on the
+        # way through every restart, and if the new configuration then failed
+        # to start, nothing put it back -- so a bad deploy took the secret
+        # with it rather than leaving the working one in place.  The decrypt
+        # script replaces the file atomically, which is what the removal was
+        # standing in for.
       };
       path = [ pkgs.age ];
     };

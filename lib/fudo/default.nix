@@ -17,6 +17,7 @@ with lib; {
     ./minecraft-clj.nix
     ./minecraft-server.nix
     ./minecraft-server-multi.nix
+    ./nebula.nix
     ./nexus.nix
     ./node-exporter.nix
     ./password.nix

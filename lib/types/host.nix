@@ -108,6 +108,58 @@ in rec {
     };
   };
 
+  nebulaNetworkOpts = _: {
+    options = with types; {
+      network = mkOption {
+        type = str;
+        description = ''
+          Name of the Nebula overlay network this host belongs to.
+
+          Names the tun device (nebula.<network>) and the service user
+          (nebula-<network>) on the host, so keep it short and free of dots.
+          The network's own settings -- address range, port, DNS zone -- live
+          with the network, not here.
+        '';
+        example = "fudo";
+      };
+
+      lighthouse = mkOption {
+        type = bool;
+        description = ''
+          Whether this host is a lighthouse (and relay) for the network.
+
+          A lighthouse is how every other host discovers the mesh, so it needs
+          a stable, publicly routable address and inbound UDP on the network's
+          port. A host behind NAT cannot be one.
+        '';
+        default = false;
+      };
+
+      local-key = mkOption {
+        type = bool;
+        description = ''
+          Whether this host generates and keeps its own Nebula private key,
+          rather than being issued one centrally.
+
+          The key never leaves the host and exists in no repository; the host
+          sends only its public key to be signed. Right for machines whose
+          disk you do not control, and for machines you cannot deploy to yet,
+          since enrolment then needs no deploy.
+        '';
+        default = false;
+      };
+
+      groups = mkOption {
+        type = listOf str;
+        description = ''
+          Extra certificate groups for this host, beyond those derived from
+          its site, domain and profile. Nebula firewall rules match on these.
+        '';
+        default = [ ];
+      };
+    };
+  };
+
   hostOpts = { name, ... }:
     let hostname = name;
     in {
@@ -124,6 +176,23 @@ in rec {
             description =
               "Path on the host to Aegis master key, for decrypting secrets.";
             default = null;
+          };
+        };
+
+        nebula-network = mkOption {
+          type = nullOr (submodule nebulaNetworkOpts);
+          description = ''
+            Nebula overlay network this host joins, if any.
+
+            Membership only: the host's overlay address is assigned in the
+            network's DNS zone, and a host with no address there does not join.
+            That keeps addresses beside every other address rather than in a
+            second place of their own.
+          '';
+          default = null;
+          example = {
+            network = "fudo";
+            lighthouse = true;
           };
         };
 

@@ -346,7 +346,7 @@ in {
       requires = [ "network.target" ];
       serviceConfig = {
         ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh" ''
-          ADMIN_PASSWD_HASH=$(${bcrypt-file-cmd admin-passw-file})
+          ADMIN_PASSWD_HASH=$(${bcrypt-file-cmd admin-passwd-file})
           ${pkgs.gnused}/bin/sed "s|@ADMIN_PASSWD_HASH@|$ADMIN_PASSWD_HASH|" \
             ${generate-config-file cfg} > $RUNTIME_DIRECTORY/config.yaml";
         '';

@@ -26,6 +26,13 @@ let
   else
     default-passwd-file;
 
+  bcrypt-file-cmd = file: ''
+    cat ${file} |
+      ${pkgs.apacheHttpd}/bin/htpasswd -bnBC 10 "" |
+      tr -d ':\n' |
+      sed 's/$2y/$2a'
+  '';
+
   filterOpts = {
     options = with types; {
       enable = mkOption {
@@ -68,8 +75,7 @@ let
       bind_port = http.listen-port;
       users = [{
         name = "admin";
-        password = pkgs.lib.passwd.bcrypt-passwd "adguard-dns-proxy-admin"
-          admin-passwd-file;
+        password = "@ADMIN_PASSWD_HASH@";
       }];
       auth_attempts = 5;
       block_auth_min = 30;
@@ -339,8 +345,11 @@ in {
       after = [ "network.target" ];
       requires = [ "network.target" ];
       serviceConfig = {
-        ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh"
-          "cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml";
+        ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh" ''
+          ADMIN_PASSWD_HASH=$(${bcrypt-file-cmd admin-passw-file})
+          ${pkgs.gnused}/bin/sed "s|@ADMIN_PASSWD_HASH@|$ADMIN_PASSWD_HASH|" \
+            ${generate-config-file cfg} > $RUNTIME_DIRECTORY/config.yaml";
+        '';
         ExecStart = pkgs.writeShellScript "adguardProxyStart.sh"
           (concatStringsSep " " [
             "${pkgs.adguardhome}/bin/AdGuardHome"

@@ -17,9 +17,14 @@ let
       installPhase = "python -mjson.tool ${filename} > $out";
     };
 
-  admin-passwd-file =
+  default-passwd-file =
     pkgs.lib.passwd.stablerandom-passwd-file "adguard-dns-proxy-admin"
     config.instance.build-seed;
+
+  admin-passwd-file = if (cfg.admin-password-file != null) then
+    cfg.admin-password-file
+  else
+    default-passwd-file;
 
   filterOpts = {
     options = with types; {
@@ -42,8 +47,7 @@ let
 
   # upstream_mode as a string key was introduced in AdGuard Home v0.107.44.
   # Older versions use the legacy all_servers / fastest_addr booleans instead.
-  useUpstreamModeKey =
-    lib.versionAtLeast pkgs.adguardhome.version "0.107.44";
+  useUpstreamModeKey = lib.versionAtLeast pkgs.adguardhome.version "0.107.44";
 
   generate-config = { dns, http, filters, verbose, upstream-dns, bootstrap-dns
     , blocked-hosts, enable-dnssec, domain-upstreams, local-domain-name, ... }:
@@ -51,11 +55,14 @@ let
       upstreamDnsEntries = mapAttrsToList (_: opts:
         let domainClause = concatStringsSep "/" opts.domains;
         in "[/${domainClause}/]${opts.upstream}") domain-upstreams;
-      upstreamModeAttrs = if useUpstreamModeKey
-        then { upstream_mode = cfg.upstream-mode; }
-        else if cfg.upstream-mode == "parallel" then { all_servers = true; }
-        else if cfg.upstream-mode == "fastest_addr" then { fastest_addr = true; }
-        else { };
+      upstreamModeAttrs = if useUpstreamModeKey then {
+        upstream_mode = cfg.upstream-mode;
+      } else if cfg.upstream-mode == "parallel" then {
+        all_servers = true;
+      } else if cfg.upstream-mode == "fastest_addr" then {
+        fastest_addr = true;
+      } else
+        { };
     in {
       bind_host = http.listen-ip;
       bind_port = http.listen-port;
@@ -83,9 +90,11 @@ let
         use_private_ptr_resolvers = cfg.dns.reverse-dns != [ ];
         local_ptr_upstreams = cfg.dns.reverse-dns;
         hostsfile_enabled = false;
-      } // upstreamModeAttrs
-        // optionalAttrs (cfg.fallback-dns != [ ]) { fallback_dns = cfg.fallback-dns; }
-        // optionalAttrs (cfg.upstream-timeout != null) { upstream_timeout = cfg.upstream-timeout; };
+      } // upstreamModeAttrs // optionalAttrs (cfg.fallback-dns != [ ]) {
+        fallback_dns = cfg.fallback-dns;
+      } // optionalAttrs (cfg.upstream-timeout != null) {
+        upstream_timeout = cfg.upstream-timeout;
+      };
       tls.enabled = false;
       filters = imap1 (i:
         { name, url, ... }: {
@@ -105,6 +114,12 @@ let
 in {
   options.fudo.adguard-dns-proxy = with types; {
     enable = mkEnableOption "Enable AdGuardHome DNS proxy.";
+
+    admin-password-file = mkOption {
+      type = nullOr str;
+      description = "Path to password file (on target host).";
+      default = null;
+    };
 
     dns = {
       listen-ips = mkOption {
@@ -318,34 +333,32 @@ in {
       allowedUDPPorts = [ cfg.dns.listen-port ];
     };
 
-    systemd.services.adguard-dns-proxy =
-      let configFile = "/run/adguard-dns-proxy/config.yaml";
-      in {
-        description = "DNS proxy for ad filtering and DNS-over-HTTPS lookups.";
-        wantedBy = [ "default.target" ];
-        after = [ "network.target" ];
-        requires = [ "network.target" ];
-        serviceConfig = {
-          ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh"
-            "cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml";
-          ExecStart = pkgs.writeShellScript "adguardProxyStart.sh"
-            (concatStringsSep " " [
-              "${pkgs.adguardhome}/bin/AdGuardHome"
-              "--no-check-update"
-              "--work-dir /var/lib/adguard-dns-proxy"
-              "--pidfile /run/adguard-dns-proxy.pid"
-              "--host ${cfg.http.listen-ip}"
-              "--port ${toString cfg.http.listen-port}"
-              "--config $RUNTIME_DIRECTORY/config.yaml"
-            ]);
-          AmbientCapabilities = optional
-            (cfg.dns.listen-port <= 1024 || cfg.http.listen-port <= 1024)
-            [ "CAP_NET_BIND_SERVICE" ];
-          DynamicUser = true;
-          RuntimeDirectory = "adguard-dns-proxy";
-          StateDirectory = "adguard-dns-proxy";
-        };
+    systemd.services.adguard-dns-proxy = {
+      description = "DNS proxy for ad filtering and DNS-over-HTTPS lookups.";
+      wantedBy = [ "default.target" ];
+      after = [ "network.target" ];
+      requires = [ "network.target" ];
+      serviceConfig = {
+        ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh"
+          "cp ${generate-config-file cfg} $RUNTIME_DIRECTORY/config.yaml";
+        ExecStart = pkgs.writeShellScript "adguardProxyStart.sh"
+          (concatStringsSep " " [
+            "${pkgs.adguardhome}/bin/AdGuardHome"
+            "--no-check-update"
+            "--work-dir /var/lib/adguard-dns-proxy"
+            "--pidfile /run/adguard-dns-proxy.pid"
+            "--host ${cfg.http.listen-ip}"
+            "--port ${toString cfg.http.listen-port}"
+            "--config $RUNTIME_DIRECTORY/config.yaml"
+          ]);
+        AmbientCapabilities =
+          optional (cfg.dns.listen-port <= 1024 || cfg.http.listen-port <= 1024)
+          [ "CAP_NET_BIND_SERVICE" ];
+        DynamicUser = true;
+        RuntimeDirectory = "adguard-dns-proxy";
+        StateDirectory = "adguard-dns-proxy";
       };
+    };
 
     # system.services.adguard-dns-proxy =
     #   let cfg-path = "/run/adguard-dns-proxy/config.yaml";

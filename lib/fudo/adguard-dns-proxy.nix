@@ -26,16 +26,19 @@ let
   else
     default-passwd-file;
 
-  # `-i` reads the password from stdin; `-b` takes it as an argv, so piping
-  # into it leaves htpasswd with no password at all.  Reading stdin also keeps
-  # the plaintext off the process table, which `-b "$(cat ...)"` would not.
+  # Reads the password on stdin and prints its bcrypt hash. Takes no path: the
+  # source is a systemd credential whose location is only known at runtime, so
+  # the caller pipes it in.
+  #
+  # `-i` reads stdin; `-b` takes the password as an argv, so piping into it
+  # leaves htpasswd with no password at all. Reading stdin also keeps the
+  # plaintext off the process table, which `-b "$(cat ...)"` would not.
   #
   # AdGuardHome rejects the `$2y$` prefix htpasswd emits, hence the rewrite to
   # `$2a$` -- the same substitution lib/lib/passwd.nix makes, and it needs its
   # closing delimiter or sed dies with "unterminated `s' command".
-  bcrypt-file-cmd = file: ''
-    cat ${file} |
-      ${pkgs.apacheHttpd}/bin/htpasswd -niBC 10 "" |
+  bcrypt-stdin-cmd = ''
+    ${pkgs.apacheHttpd}/bin/htpasswd -niBC 10 "" |
       tr -d ':\n' |
       sed 's/$2y/$2a/'
   '';
@@ -136,6 +139,12 @@ in {
         A runtime path, deliberately typed `str` rather than `path`: a `path`
         would be copied into the store at evaluation, which is the opposite of
         the point. It is read at service start, never at build time.
+
+        It needs to be readable by root and nothing more. The service runs as
+        a DynamicUser and reads the password through a systemd credential, so
+        do not try to give that account ownership of the file: the account is
+        transient and does not exist when the secret is decrypted, so the
+        chown would fail at boot. Root-owned 0400 is right.
 
         Null means generate one from the build seed, as this module always
         did. Anything else -- a secret placed by Aegis, say -- takes over, and
@@ -390,18 +399,40 @@ in {
       after = [ "network.target" ] ++ cfg.admin-password-units;
       requires = [ "network.target" ] ++ cfg.admin-password-units;
       serviceConfig = {
+        # This service runs as a DynamicUser, so it cannot read a root-owned
+        # 0400 secret -- and it cannot be given ownership of one either: the
+        # account is transient, allocated when the unit starts, so it does not
+        # exist at the point the secret is decrypted. Chowning the secret to
+        # it would fail at boot, before the service ever ran.
+        #
+        # LoadCredential is the mechanism for exactly this. PID 1 opens the
+        # source as root, copies the contents into a per-unit tmpfs, and
+        # exposes it at $CREDENTIALS_DIRECTORY owned by the service user and
+        # readable by nobody else. It is torn down when the unit stops, so no
+        # copy outlives the service.
+        #
+        # It also fails closed: a source that is missing or unreadable stops
+        # the unit rather than starting it without a password.
+        LoadCredential = [ "admin-passwd:${admin-passwd-file}" ];
+
         # The hash is substituted here rather than baked into the generated
         # config, so the store copy carries a placeholder and the real hash
         # only ever exists under /run.
         #
-        # `set -euo pipefail` is load-bearing: without it a missing or
-        # unreadable password file leaves ADMIN_PASSWD_HASH empty and the
-        # service starts with an empty admin hash, which is worse than not
-        # starting.
+        # No `+` prefix: this runs as the service user, which is what makes
+        # the config.yaml it writes readable by the service without a chown.
+        # Reading the password is the only thing that needed privilege, and
+        # the credential has already dealt with that.
+        #
+        # `set -euo pipefail` is load-bearing: without it a failure here
+        # leaves ADMIN_PASSWD_HASH empty and the service starts with an empty
+        # admin hash, which is worse than not starting.
         ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh" ''
           set -euo pipefail
 
-          ADMIN_PASSWD_HASH=$(${bcrypt-file-cmd admin-passwd-file})
+          ADMIN_PASSWD_HASH=$(
+            cat "$CREDENTIALS_DIRECTORY/admin-passwd" | ${bcrypt-stdin-cmd}
+          )
           ${pkgs.gnused}/bin/sed "s|@ADMIN_PASSWD_HASH@|$ADMIN_PASSWD_HASH|" \
             ${generate-config-file cfg} > $RUNTIME_DIRECTORY/config.yaml
         '';

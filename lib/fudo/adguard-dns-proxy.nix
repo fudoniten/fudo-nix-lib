@@ -26,11 +26,18 @@ let
   else
     default-passwd-file;
 
+  # `-i` reads the password from stdin; `-b` takes it as an argv, so piping
+  # into it leaves htpasswd with no password at all.  Reading stdin also keeps
+  # the plaintext off the process table, which `-b "$(cat ...)"` would not.
+  #
+  # AdGuardHome rejects the `$2y$` prefix htpasswd emits, hence the rewrite to
+  # `$2a$` -- the same substitution lib/lib/passwd.nix makes, and it needs its
+  # closing delimiter or sed dies with "unterminated `s' command".
   bcrypt-file-cmd = file: ''
     cat ${file} |
-      ${pkgs.apacheHttpd}/bin/htpasswd -bnBC 10 "" |
+      ${pkgs.apacheHttpd}/bin/htpasswd -niBC 10 "" |
       tr -d ':\n' |
-      sed 's/$2y/$2a'
+      sed 's/$2y/$2a/'
   '';
 
   filterOpts = {
@@ -123,8 +130,38 @@ in {
 
     admin-password-file = mkOption {
       type = nullOr str;
-      description = "Path to password file (on target host).";
+      description = ''
+        Path, on the target host, to a file holding the admin password.
+
+        A runtime path, deliberately typed `str` rather than `path`: a `path`
+        would be copied into the store at evaluation, which is the opposite of
+        the point. It is read at service start, never at build time.
+
+        Null means generate one from the build seed, as this module always
+        did. Anything else -- a secret placed by Aegis, say -- takes over, and
+        the legacy `fudo.secrets` copy is not declared at all: two pipelines
+        deploying one secret is how you get a value that depends on which unit
+        won.
+      '';
       default = null;
+      example = "/run/aegis/secrets/adguard.passwd";
+    };
+
+    admin-password-units = mkOption {
+      type = listOf str;
+      description = ''
+        Units that must have completed before `admin-password-file` exists.
+
+        Named rather than inferred, because this module has no idea what put
+        the file there. Order against the specific unit that writes it, not a
+        target that merely contains it: a target activates even when a member
+        failed, and the service would then start and read nothing.
+
+        Ignored when `admin-password-file` is null -- the generated password
+        is a store path and is there from the start.
+      '';
+      default = [ ];
+      example = [ "aegis-secret-adguard.passwd.service" ];
     };
 
     dns = {
@@ -324,10 +361,18 @@ in {
   };
 
   config = mkIf cfg.enable {
-    fudo = {
+    # Only when this module owns the password. `fudo.secrets` encrypts
+    # `source-file` in a derivation -- `age -a -r <key> -o $out <source-file>`
+    # -- so it is read on the *builder*. Handing it a path under /run made
+    # every build fail with "failed to open input file", because that file
+    # exists only on the target host, only after something has written it.
+    #
+    # Whoever supplies `admin-password-file` supplies the delivery too, so
+    # there is nothing for the legacy pipeline to do here.
+    fudo = mkIf (cfg.admin-password-file == null) {
       secrets.host-secrets.${hostname} = {
         adguard-dns-proxy-admin-password = {
-          source-file = admin-passwd-file;
+          source-file = default-passwd-file;
           target-file = "/run/adguard-dns-proxy/admin.passwd";
           user = "root";
         };
@@ -342,13 +387,23 @@ in {
     systemd.services.adguard-dns-proxy = {
       description = "DNS proxy for ad filtering and DNS-over-HTTPS lookups.";
       wantedBy = [ "default.target" ];
-      after = [ "network.target" ];
-      requires = [ "network.target" ];
+      after = [ "network.target" ] ++ cfg.admin-password-units;
+      requires = [ "network.target" ] ++ cfg.admin-password-units;
       serviceConfig = {
+        # The hash is substituted here rather than baked into the generated
+        # config, so the store copy carries a placeholder and the real hash
+        # only ever exists under /run.
+        #
+        # `set -euo pipefail` is load-bearing: without it a missing or
+        # unreadable password file leaves ADMIN_PASSWD_HASH empty and the
+        # service starts with an empty admin hash, which is worse than not
+        # starting.
         ExecStartPre = pkgs.writeShellScript "adguardsProxyPrestart.sh" ''
+          set -euo pipefail
+
           ADMIN_PASSWD_HASH=$(${bcrypt-file-cmd admin-passwd-file})
           ${pkgs.gnused}/bin/sed "s|@ADMIN_PASSWD_HASH@|$ADMIN_PASSWD_HASH|" \
-            ${generate-config-file cfg} > $RUNTIME_DIRECTORY/config.yaml";
+            ${generate-config-file cfg} > $RUNTIME_DIRECTORY/config.yaml
         '';
         ExecStart = pkgs.writeShellScript "adguardProxyStart.sh"
           (concatStringsSep " " [

@@ -98,6 +98,15 @@ let
                 SecureBits = "keep-caps";
                 ExecStartPre = let
                   chownScript = pkgs.writeShellScript "kerberos-chown.sh" ''
+                    # The KDC creates its log file on first start, which is
+                    # after this runs, so on a realm that has never started
+                    # there is nothing here to chown yet. The script has no
+                    # `set -e`, but its exit status is the last command's, so
+                    # that missing file failed ExecStartPre and took the unit
+                    # with it -- a new KDC could not start at all. touch first:
+                    # it creates the log when missing and leaves the contents of
+                    # an existing one alone.
+                    ${pkgs.coreutils}/bin/touch ${cfg.kdc.state-directory}/kerberos.log
                     ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
                     ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
                   '';
@@ -298,6 +307,15 @@ let
                 SecureBits = "keep-caps";
                 ExecStartPre = let
                   chownScript = pkgs.writeShellScript "kerberos-chown.sh" ''
+                    # The KDC creates its log file on first start, which is
+                    # after this runs, so on a realm that has never started
+                    # there is nothing here to chown yet. The script has no
+                    # `set -e`, but its exit status is the last command's, so
+                    # that missing file failed ExecStartPre and took the unit
+                    # with it -- a new KDC could not start at all. touch first:
+                    # it creates the log when missing and leaves the contents of
+                    # an existing one alone.
+                    ${pkgs.coreutils}/bin/touch ${cfg.kdc.state-directory}/kerberos.log
                     ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.database}
                     ${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.group} ${cfg.kdc.state-directory}/kerberos.log
                   '';

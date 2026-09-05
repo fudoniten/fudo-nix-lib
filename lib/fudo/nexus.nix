@@ -29,6 +29,26 @@ let
         default = [ ];
       };
 
+      challenge-public-keys = mkOption {
+        type = attrsOf str;
+        description = ''
+          Map of challenge-client name to Ed25519 public key, passed
+          straight through to this domain's Nexus server as
+          `services.nexus.server.challenge-public-keys` (upstream
+          `fudoniten/nexus`, /api/v3).
+
+          A challenge client authenticates ACME DNS-01 requests with a
+          keypair rather than the legacy shared HMAC secret. The public
+          half is not sensitive -- it is meant to sit in a plaintext data
+          file like this one, the same way a host's `ssh-pubkeys` does --
+          so it belongs here rather than behind Aegis or any other secrets
+          pipeline.  Generate the keypair with `nexus-generate-key
+          --keypair`; put the private half wherever the client (currently
+          only Kubernetes) reads its own secrets from.
+        '';
+        default = { };
+      };
+
       records = let
         recordOpts = { name, ... }: {
           options = {

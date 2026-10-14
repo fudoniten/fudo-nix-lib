@@ -110,6 +110,8 @@ let
         fallback_dns = cfg.fallback-dns;
       } // optionalAttrs (cfg.upstream-timeout != null) {
         upstream_timeout = cfg.upstream-timeout;
+      } // optionalAttrs (cfg.ratelimit != null) {
+        inherit (cfg) ratelimit;
       };
       tls.enabled = false;
       filters = imap1 (i:
@@ -355,6 +357,24 @@ in {
         Entry syntax is the same as upstream-dns: plain ip, ip:port, or an
         encrypted scheme (tls://, https://, quic://). Per-domain routing prefixes
         ([/domain/]) are also valid.
+      '';
+    };
+
+    ratelimit = mkOption {
+      type = nullOr ints.unsigned;
+      default = null;
+      example = 1000;
+      description = ''
+        Queries per second AdGuard Home answers for one client before it starts
+        dropping them; 0 disables the limit. Omitted from the generated config
+        when null, leaving AdGuard's own default of 20.
+
+        Note that "one client" is a whole subnet: AdGuard counts IPv4 clients
+        per /24 (`ratelimit_subnet_len_ipv4`). Every host on a LAN segment
+        shares the one allowance, and so does everything behind a NAT -- a
+        Kubernetes cluster's pods, say, all arriving as their nodes'
+        addresses. Over the limit, queries are dropped silently, which reads
+        as timeouts rather than as anything pointing here.
       '';
     };
 

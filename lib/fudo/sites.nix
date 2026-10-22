@@ -1,10 +1,9 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
 with lib;
 let
   hostname = config.instance.hostname;
   site-name = config.fudo.hosts.${hostname}.site;
-  site-cfg = config.fudo.sites.${site-name};
 
   site-hosts = filterAttrs (hostname: hostOpts: hostOpts.site == site-name)
     config.fudo.hosts;
@@ -87,33 +86,9 @@ let
 
       deploy-pubkeys = mkOption {
         type = nullOr (listOf str);
-        description = "SSH pubkey of site deploy key. Used by dropbear daemon.";
-        default = null;
-      };
-
-      enable-ssh-backdoor = mkOption {
-        type = bool;
         description =
-          "Enable a backup SSH server in case of failures of the primary.";
-        default = true;
-      };
-
-      dropbear-rsa-key-path = mkOption {
-        type = str;
-        description = "Location of Dropbear RSA key.";
-        default = "/etc/dropbear/host_rsa_key";
-      };
-
-      dropbear-ecdsa-key-path = mkOption {
-        type = str;
-        description = "Location of Dropbear ECDSA key.";
-        default = "/etc/dropbear/host_ecdsa_key";
-      };
-
-      dropbear-ssh-port = mkOption {
-        type = port;
-        description = "Port to be used for the backup SSH server.";
-        default = 2112;
+          "SSH pubkeys authorized for unattended deployment as root across this site.";
+        default = null;
       };
 
       enable-distributed-builds =
@@ -222,56 +197,5 @@ in {
     default = { };
   };
 
-  config = {
-    networking.firewall.allowedTCPPorts =
-      mkIf site-cfg.enable-ssh-backdoor [ site-cfg.dropbear-ssh-port ];
-
-    systemd = mkIf site-cfg.enable-ssh-backdoor {
-      sockets = {
-        dropbear-deploy = {
-          wantedBy = [ "sockets.target" ];
-          socketConfig = {
-            ListenStream = "0.0.0.0:${toString site-cfg.dropbear-ssh-port}";
-            Accept = true;
-          };
-        };
-      };
-
-      services = {
-        dropbear-deploy-init = {
-          wantedBy = [ "multi-user.target" ];
-          script = ''
-            if [ ! -d /etc/dropbear ]; then
-              mkdir /etc/dropbear
-              chmod 700 /etc/dropbear
-            fi
-
-            if [ ! -f ${site-cfg.dropbear-rsa-key-path} ]; then
-              ${pkgs.dropbear}/bin/dropbearkey -t rsa -f ${site-cfg.dropbear-rsa-key-path}
-              ${pkgs.coreutils}/bin/chmod 0400 ${site-cfg.dropbear-rsa-key-path}
-            fi
-
-            if [ ! -f ${site-cfg.dropbear-ecdsa-key-path} ]; then
-              ${pkgs.dropbear}/bin/dropbearkey -t ecdsa -f ${site-cfg.dropbear-ecdsa-key-path}
-              ${pkgs.coreutils}/bin/chmod 0400 ${site-cfg.dropbear-ecdsa-key-path}
-            fi
-          '';
-        };
-
-        "dropbear-deploy@" = {
-          description =
-            "Per-connection service for deployment, using dropbear.";
-          requires = [ "dropbear-deploy-init.service" ];
-          after = [ "network.target" ];
-          serviceConfig = {
-            Type = "simple";
-            ExecStart =
-              "${pkgs.dropbear}/bin/dropbear -F -i -w -m -j -k -r ${site-cfg.dropbear-rsa-key-path} -r ${site-cfg.dropbear-ecdsa-key-path}";
-            ExecReload = "${pkgs.utillinux}/bin/kill -HUP $MAINPID";
-            StandardInput = "socket";
-          };
-        };
-      };
-    };
-  };
+  config = { };
 }

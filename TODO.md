@@ -1,187 +1,111 @@
 # Cleanup TODO
 
-This document tracks obsolete modules and code that should be removed from fudo-nix-lib. These items have been verified as unused or superseded by separate flakes.
+Inventory of what is left in fudo-nix-lib, who still uses it, and where each
+piece should go when the repo is broken up. Last audited 2026-11-02 against
+nixos-config `26.05-aegis`, fudo-entities, fudo-nix-home, sea-build, and every
+flake nixos-config takes as an input that is public (aegis, nexus,
+nix-mail-server, matrix-module, authoritative-dns-module, kubernetes-cluster,
+the `*-container` flakes). Not checked: the private `fudo-secrets` flake
+(`path:/secrets`), `paris-container` and `summarizer`.
 
-## High Priority - Verified Obsolete
+"Used" below means a consumer sets the module's options or reads its config,
+found by searching those repos. The removals were checked by evaluating the
+module set against the real fudo-entities data, but only the full eval on
+forge covers every host.
 
-### Mail Modules (Replaced by `mail-server` flake)
+## Removed (2026-11)
 
-**Status**: Obsolete - replaced by github:fudoniten/nix-mail-server
+| What | Why |
+|---|---|
+| `lib/fudo/postgres.nix` (`fudo.postgresql`) | Shared site-wide servers retired (nixos-config #216). Its one remaining user, the nexus server's database on legatus, now carries a copy in nixos-config as `fudo.services.postgresql`. |
+| `lib/fudo/git.nix` (`fudo.git`) | No consumer. Gitea runs from nixos-config's `gitea-container.nix`. |
+| `lib/fudo/grafana.nix` (`fudo.metrics.grafana`) | No consumer. Grafana runs in Kubernetes. |
+| `lib/fudo/minecraft-clj.nix` | No consumer. |
+| `lib/fudo/authentication.nix` (`fudo.authentication`, LDAP NSS) | No consumer. |
+| `lib/fudo/global.nix` | Empty module. |
+| `lib/informis/` (`informis.chute`, `informis.cl-gemini`) | No consumer. `cl-gemini` is only a commented-out block on legatus; `chute` went with informis.land. |
+| `lib/lib/lisp.nix` (`pkgs.lib.lisp`) | Only `cl-gemini` used it. |
+| `lib/lib/text.nix` (`pkgs.lib.text`) | No callers. |
+| `fudo.domains.<d>.postgresql-server`, `chat-server`, `wireguard.*` | Never read. `postgresql-server` was dropped from fudo-entities in #34; `wireguard` went with `vpn.nix`. |
 
-**Evidence**: 
-- nixos-config imports the new mail-server flake which provides `fudo.mail.*` options
-- Old modules provide `fudo.mail-server.*` options (different namespace)
-- Only lingering reference is in `nixos-config/config/aliases.nix` using wrong option path (to be fixed)
+Earlier removals (mail stack, `vpn.nix`, `hosts/local-network.nix`,
+`common.nix`) are in git history.
 
-**Prerequisites**: 
-1. ✅ Fix `nixos-config/config/aliases.nix` to use `fudo.mail.aliases.alias-users`
-2. ✅ Test mail configuration works correctly
-3. ✅ Remove modules after confirmation
+## Dead, but removing it changes hosts
 
-**Modules to remove**:
-- [x] `lib/fudo/mail.nix` (~200 lines) - Main mail server orchestration
-- [x] `lib/fudo/mail-container.nix` (~400 lines) - Containerized mail setup
-- [x] `lib/fudo/mail/` - Entire mail subdirectory:
-  - [x] `mail/postfix.nix` (~300 lines)
-  - [x] `mail/dovecot.nix` (~250 lines)
-  - [x] `mail/rspamd.nix` (~150 lines)
-  - [x] `mail/clamav.nix` (~100 lines)
-  - [x] `mail/dkim.nix` (~80 lines)
-  - [x] `mail/dovecot/imap_sieve/report-ham.sieve`
-  - [x] `mail/dovecot/imap_sieve/report-spam.sieve`
-  - [x] `mail/dovecot/pipe_bin/sa-learn-ham.sh`
-  - [x] `mail/dovecot/pipe_bin/sa-learn-spam.sh`
+These have no consumer for their options, but the module does something on
+every host regardless, so removing it is a behavior change that needs an eval
+diff on forge first.
 
-**Update imports**:
-- [x] `lib/fudo/default.nix` - Remove `./mail.nix` and `./mail-container.nix` imports
+- **`acme-certs.nix` (`fudo.acme`)**: nothing sets `fudo.acme.host-domains`,
+  so the nginx and cert-copy logic never runs. But its `config` block is
+  unconditional, and it opens **TCP 80 and 443 on every host**. Before
+  deleting it, find the hosts that serve HTTP(S) and rely on this instead of
+  opening the ports themselves (nginx's `enableACME` does not open them).
+- **`domains.<d>.metrics.grafana-host`**: nothing reads it since Grafana moved
+  to Kubernetes, but it has no default and fudo-entities sets it for
+  `sea.fudo.org` and `fudo.org`. Give it a default (or drop it from
+  fudo-entities first), then remove it.
+- **`password.nix` (`fudo.password.file-generator`)**: no consumer generates
+  files with it, but it defines `fudo-passwords.target`, which nixos-config's
+  `services/nexus.nix` orders the nexus database on. It can go once nexus's
+  database passwords come only from Aegis (`aegisManagesDbPasswds`).
+- **`ssh.nix`**: `fudo.ssh.whitelistIPs` is never set, but the module sets
+  fail2ban's ignore list and `programs.ssh.knownHosts` on every host, so it is
+  live. Only the option is dead.
 
-**Estimated impact**: ~1,500 lines removed
+## Still live
 
----
+| Module | Used by | Where it should go |
+|---|---|---|
+| `instance.nix`, `domains.nix`, `hosts.nix`, `sites.nix`, `zones.nix`, `nebula.nix`, `nexus.nix`, `users.nix`, `types/` | Everything. fudo-entities fills these in, nixos-config reads them. `nebula.nix` and `nexus.nix` are schemas only; fudo-entities supplies the data. | The inventory schema. Best as a small public flake of its own (fudo-entities imports it; nixos-config gets it through fudo-entities), so the schema stays public while the data stays private. |
+| `secrets.nix` (`fudo.secrets`) | ~22 files in nixos-config, plus nexus.nix | Goes away with the fudo-secrets → Aegis migration, not extracted. |
+| `password.nix` | `fudo-passwords.target` (nexus) | Goes away with Aegis (see above). |
+| `auth/kerberos/` (client and KDC) | `services/fudo-auth.nix`, `services/kdc-aegis.nix` | Next to the Aegis KDC (`aegis.nixosModules.kdc`) or into nixos-config `services/`. |
+| `adguard-dns-proxy.nix` | `services/local-network/recursor.nix`, sea/burg domain configs | nixos-config `services/local-network/`, its only user. |
+| `secure-dns-proxy.nix` | legatus | nixos-config, or merge with adguard into one DNS-proxy flake. |
+| `system.nix` (`fudo.system.services`) | Only `secure-dns-proxy.nix`. Also defines `fudo-init.target`. | Inline into `secure-dns-proxy.nix` and delete. |
+| `system-networking.nix` (`fudo.system.hostfile-entries`) | `services/local-network/gateway.nix`, `profiles/host/ssh.nix` | nixos-config. |
+| `prometheus.nix`, `node-exporter.nix` (`fudo.metrics.*`) | nixos-config `services/metrics.nix`, `profiles/common.nix` | nixos-config `services/metrics.nix`, which is already their only driver. |
+| `webmail.nix` + `include/rainloop.nix` | fudo.org (`webmail.fudo.org` on france) | Retire if webmail is no longer wanted; otherwise nixos-config or the mail-server flake. |
+| `minecraft-server.nix` (`fudo.minecraft-server`) | nostromo | Fold into `minecraft-server-multi.nix` and move both to a minecraft flake or nixos-config. |
+| `minecraft-server-multi.nix` (`fudo.services.minecraft.server`) | arx | Same as above. |
+| `slynk.nix` | atom, system7 | fudo-nix-home (it's a dev tool) or nixos-config. |
+| `wireless-networks.nix` | `profiles/laptop.nix`, `system/wireless-networks.nix` | nixos-config. |
+| `deploy.nix` | Every host: root's `authorized_keys` from each site's `deploy-pubkeys` (forge deploys) | nixos-config `profiles/host/deploy-user.nix`. |
+| `host-filesystems.nix` | lambda, nostromo (`encrypted-filesystems`) | nixos-config. |
+| `acme-certs.nix` | See "Dead, but removing it changes hosts". | Delete after the port check. |
 
-### VPN Module (Never used)
+## Utility functions (`pkgs.lib.*`)
 
-**Status**: Completely unused
+| Library | Called from outside this repo | Not called anywhere |
+|---|---|---|
+| `fs` | `import-by-basename` (fudo-entities) | `matches-ext`, `get-ext`, `hostname-from-file`, `ext-files`, `basename-to-file-map`, `list-nix-files` |
+| `ip` | `maskFromV32Network`, `networkMinIp`, `networkMaxIp`, `ipv4OnNetwork`, `getNetworkMask`, `getNetworkBase` (nixos-config, authoritative-dns-module) | `networkMaxButOneIp`, `reverseIpv4`, plus helpers only used internally |
+| `network` | `host-ipv4`, `host-ipv6`, `generate-mac-address` (nixos-config) | `host-ips`, `site-gateway` |
+| `passwd` | `stablerandom-passwd-file` (nixos-config, nix-mail-server, authentik and nextcloud containers, adguard) | `hash-ldap-passwd`, `bcrypt-passwd`, `generate-random-passwd`, `random-passwd-file` |
 
-**Evidence**: No references to `fudo.vpn` anywhere in nixos-config
+These are pure and have no module dependencies, so they can move as one small
+public flake. The `passwd` helpers derive passwords from `build-seed` and go
+away with the Aegis migration.
 
-**Modules to remove**:
-- [x] `lib/fudo/vpn.nix` (~200 lines) - WireGuard VPN configuration
+## Suggested order for breaking the repo up
 
-**Update imports**:
-- [x] `lib/fudo/default.nix` - Remove `./vpn.nix` import
+1. Move each single-consumer service module into nixos-config `services/`
+   (adguard, secure-dns-proxy with `system.nix` inlined, prometheus and
+   node-exporter, wireless-networks, host-filesystems, deploy,
+   system-networking). Each is a move plus an option rename, the same
+   pattern as postgres.
+2. Settle webmail (retire or move), minecraft (merge the two modules) and
+   slynk.
+3. Split out the pure utilities as a flake, keeping only the functions that
+   have callers.
+4. Split out the inventory schema as a flake and point fudo-entities at it.
+5. Delete `secrets.nix`, `password.nix` and the `passwd` helpers when the
+   Aegis migration finishes.
 
-**Estimated impact**: ~200 lines removed
+## Code-quality notes on live modules
 
----
-
-### Local Network Module (Replaced by nixos-config implementation)
-
-**Status**: Obsolete (file itself says "THROW THIS AWAY, NOT USED")
-
-**Evidence**:
-- File header comment: "# THROW THIS AWAY, NOT USED"
-- FIXME comment on line 9: "# FIXME: this isn't used, is it?"
-- No references to `fudo.hosts.local-network` in nixos-config
-- Superseded by `nixos-config/config/service/local-network/`
-
-**Modules to remove**:
-- [x] `lib/fudo/hosts/local-network.nix` (~144 lines)
-- [x] `lib/fudo/hosts/` directory (if empty after removal)
-
-**Estimated impact**: ~144 lines removed
-
----
-
-## Low Priority - Cleanup Opportunities
-
-### Empty Module
-
-**Status**: Empty placeholder module with no functionality
-
-**Modules to remove**:
-- [x] `lib/fudo/common.nix` (4 lines) - Empty module with just comments and empty attribute set
-
-**Update imports**:
-- [x] `lib/fudo/default.nix` - Not imported (no change needed)
-
-**Estimated impact**: Minimal, but reduces clutter
-
----
-
-### Code Quality Improvements
-
-These items have TODOs/FIXMEs but are actively used. Address when time permits:
-
-**lib/fudo/webmail.nix:345**
-```nix
-# TODO: make this a fudo service
-systemd.services = { ... }
-```
-→ Consider refactoring to use fudo.system.services abstraction
-
-**lib/fudo/grafana.nix:217**
-```nix
-# TODO: create system user as necessary
-```
-→ Ensure user creation is handled properly
-
-**lib/fudo/mail/postfix.nix:121**
-```nix
-# TODO: enable!
-```
-→ Review what needs to be enabled (may be obsolete with mail-server flake)
-
-**lib/fudo/acme-certs.nix:140**
-```nix
-# THIS IS A HACK. Getting redundant paths. So if {domain} is configured
-```
-→ Review certificate path handling logic
-
----
-
-## Summary Statistics
-
-**Immediate cleanup potential**:
-- ~1,850 lines of obsolete code
-- 3 obsolete module directories
-- 1 empty placeholder file
-
-**Active modules remaining**: ~30 modules (~4,000 lines)
-
-**Module categories to preserve**:
-- ✅ Core infrastructure (domains, hosts, sites, zones, instance, types)
-- ✅ Authentication (Kerberos, LDAP)
-- ✅ Secrets management
-- ✅ Monitoring (Prometheus, Grafana, node-exporter)
-- ✅ Services (PostgreSQL, Git, Slynk, Minecraft, Webmail)
-- ✅ Networking (Nexus, secure-dns-proxy, wireless)
-- ✅ System utilities (acme-certs, deploy, system, users)
-- ✅ Utility libraries (ip, network, lisp, passwd, text, filesystem)
-- ✅ Informis namespace (chute, cl-gemini)
-
----
-
-## Execution Plan
-
-1. **Phase 1**: Fix nixos-config mail configuration (safe, testable)
-   - Update aliases.nix option path
-   - Remove defensive mail-server.enable
-   - Test thoroughly
-
-2. **Phase 2**: Remove obsolete modules from fudo-nix-lib
-   - Remove mail modules
-   - Remove vpn module
-   - Remove local-network module
-   - Remove common.nix
-   - Update all import statements
-
-3. **Phase 3**: Verify and document
-   - Verify no broken references
-   - Update README.md with current module list
-   - Consider extraction candidates for separate flakes
-
----
-
-## Future Extraction Candidates
-
-These modules are good candidates for extraction into separate, reusable flakes:
-
-**High reusability**:
-- secrets.nix - Generic age-based secret management
-- lib/ip.nix, lib/network.nix, lib/passwd.nix - Pure utility functions
-- acme-certs.nix - Let's Encrypt automation
-- system.nix - Systemd service helpers
-
-**Medium reusability** (need minor cleanup):
-- postgres.nix - Database management
-- prometheus.nix / grafana.nix - Monitoring stack
-- node-exporter.nix - Metrics exporter
-- webmail.nix - Rainloop webmail server
-- auth/kerberos - Kerberos setup
-
-**Fudo-specific** (keep here):
-- domains.nix, hosts.nix, sites.nix - Infrastructure model
-- zones.nix - DNS zone definitions
-- nexus.nix - Nexus DDNS integration
-- informis/* - Personal experiments
+- `webmail.nix`: `# TODO: make this a fudo service` on its systemd services.
+- `acme-certs.nix`: the "THIS IS A HACK" redundant-path comment. Moot if the
+  module is deleted.

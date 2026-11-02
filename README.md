@@ -10,9 +10,9 @@ Personal NixOS module and utility library for managing infrastructure across dom
 
 ## Quick Stats
 
-- **~7,300 lines** of Nix code
-- **33 modules** in the `fudo.*` / `informis.*` namespaces
-- **6 utility libraries** (pure functions)
+- **~6,100 lines** of Nix code
+- **26 modules** in the `fudo.*` namespace (the `informis.*` namespace is gone)
+- **4 utility libraries** (pure functions)
 - **4 type definitions** (configuration schemas)
 - The obsolete mail/VPN/local-network/placeholder modules (~1,850 lines) have
   now been removed — see [TODO.md](./TODO.md) for history and the remaining
@@ -27,8 +27,7 @@ lib/
 ├── fudo/              # Infrastructure modules (fudo.* namespace)
 │   ├── auth/          # Authentication (Kerberos client + KDC)
 │   ├── include/       # Included configuration fragments (e.g. rainloop)
-│   └── *.nix          # Service/infra modules (postgres, git, grafana, …)
-├── informis/          # Personal/experimental modules (informis.* namespace)
+│   └── *.nix          # Service/infra modules (prometheus, webmail, minecraft, …)
 ├── lib/               # Utility libraries (pure functions)
 ├── types/             # Type definitions for configuration
 ├── default.nix        # Module aggregator
@@ -56,6 +55,17 @@ the tree. They are listed here so old references make sense; see
 - **Local network module (~144 lines)** – `lib/fudo/hosts/local-network.nix`;
   superseded by `nixos-config/config/service/local-network/`.
 - **Empty placeholder** – `lib/fudo/common.nix`.
+- **PostgreSQL (`fudo.postgresql`)** – the shared site-wide servers were
+  retired; the one remaining user (the nexus server's database on legatus)
+  carries the module in nixos-config as `fudo.services.postgresql`.
+- **Unused service modules** – `git.nix` (Gitea), `grafana.nix` (Grafana now
+  runs in Kubernetes), `minecraft-clj.nix`, `authentication.nix` (LDAP NSS),
+  the empty `global.nix`, and the whole `informis/` namespace (`chute`,
+  `cl-gemini`). None had a consumer.
+- **Unused utilities** – `lib/lisp.nix` (only `cl-gemini` used it) and
+  `lib/text.nix` (no callers), so `pkgs.lib.lisp` and `pkgs.lib.text` are gone.
+- **Unused domain options** – `fudo.domains.<d>.postgresql-server`,
+  `chat-server` and `wireguard.*`.
 
 ---
 
@@ -80,9 +90,9 @@ Organizational domains with their infrastructure services.
 
 **Options**: `fudo.domains.<domain>.*`
 - Network trust: `local-networks`, `local-users`, `local-admins`
-- Services: `postgresql-server`, `chat-server`, `metrics`, `log-aggregator`
+- Services: `metrics`, `log-aggregator`
 - Auth: `gssapi-realm`, `kerberos-master`, `ldap-servers`
-- Network: `wireguard`, `nexus` (DDNS domains)
+- Network: `nexus` (DDNS domains)
 - DNS: `primary-nameserver`, `secondary-nameservers`
 - Mail: `primary-mailserver`, `xmpp-servers`
 
@@ -125,15 +135,6 @@ DNS zone data used by authoritative DNS servers.
 ---
 
 ### Authentication & Authorization
-
-#### `authentication.nix` - LDAP Integration
-Configure system to authenticate users via LDAP.
-
-**Options**: `fudo.authentication.*`
-- LDAP connection: `ldap-url`, `ssl-ca-certificate`, `base`
-- Credentials: `bind-passwd-file`
-
-**Use case**: Connect hosts to centralized LDAP user directory.
 
 #### `auth/kerberos/default.nix` - Kerberos Client
 Heimdal Kerberos client configuration.
@@ -200,29 +201,6 @@ PHP-based webmail interface using Rainloop Community.
 
 **Extraction candidate**: Could be separate flake (MEDIUM priority).
 
-#### `postgres.nix` - PostgreSQL Database Server
-PostgreSQL with user/database management.
-
-**Options**: `fudo.postgres.*`
-- `enable`, `listen-addresses`, `port`
-- `users.<name>`: Create users with passwords
-- `databases.<name>`: Create databases with access control
-- `monitoring`: Prometheus metrics
-
-**Use case**: Centralized database server.
-
-**Extraction candidate**: Generic PostgreSQL module (MEDIUM priority).
-
-#### `git.nix` - Git Server (Gitea)
-Gitea instance with PostgreSQL backend.
-
-**Options**: `fudo.git.*`
-- `enable`, `domain`, `listen-port`
-- `database`: PostgreSQL connection
-- `state-directory`
-
-**Use case**: Self-hosted Git repositories.
-
 #### `slynk.nix` - Common Lisp REPL Server
 Slynk (Swank successor) for remote Lisp development.
 
@@ -247,13 +225,6 @@ Run multiple Minecraft server instances from one host.
 
 **Use case**: Host several Minecraft worlds/servers side by side.
 
-#### `minecraft-clj.nix` - Clojure Minecraft Tools
-Clojure-based Minecraft utilities.
-
-**Use case**: Custom Minecraft automation.
-
----
-
 ### Monitoring & Observability
 
 #### `prometheus.nix` - Metrics Collection
@@ -265,18 +236,7 @@ Prometheus time-series database with scraper configuration.
 
 **Use case**: Collect metrics from infrastructure.
 
-**Extraction candidate**: Prometheus + Grafana stack (MEDIUM priority).
-
-#### `grafana.nix` - Metrics Visualization
-Grafana with OAuth support and datasources.
-
-**Options**: `fudo.metrics.grafana.*`
-- `oauth`: Authentik SSO integration
-- `datasources`: Prometheus, Loki
-- `listen-address`, `listen-port`
-- `database`: PostgreSQL backend
-
-**Use case**: Metrics dashboards and visualization.
+**Extraction candidate**: Prometheus stack (MEDIUM priority).
 
 #### `node-exporter.nix` - System Metrics
 Export system metrics for Prometheus.
@@ -381,37 +341,6 @@ Manage WiFi network configurations.
 
 **Use case**: Laptop WiFi setup.
 
-#### `global.nix` - Global Configuration Options
-Top-level configuration flags.
-
-**Use case**: Feature flags and global settings.
-
----
-
-### Informis Namespace
-
-Personal/experimental modules (probably won't extract).
-
-#### `informis/chute.nix` - Cryptocurrency Parachute
-Automated crypto sell-off when prices drop.
-
-**Options**: `informis.chute.*`
-- `stages.<name>.currencies`: Track currencies
-- Stop-loss automation
-- Jabber notifications
-
-**Use case**: Personal finance automation experiment.
-
-#### `informis/cl-gemini.nix` - Gemini Protocol Server
-Common Lisp Gemini protocol server.
-
-**Options**: `informis.cl-gemini.*`
-- `feeds`: RSS-like feeds for Gemini
-
-**Use case**: Personal Gemini capsule.
-
----
-
 ## Utility Libraries
 
 Pure functions with no NixOS module dependencies. **Excellent extraction candidates.**
@@ -432,25 +361,12 @@ Pure functions with no NixOS module dependencies. **Excellent extraction candida
 
 **Extraction priority**: HIGH - Generic utility.
 
-### `lib/lisp.nix` - Common Lisp Utilities
-**Functions**:
-- `gather-dependencies`: Collect transitive dependencies
-- `lisp-source-registry`: Build CL_SOURCE_REGISTRY path
-
-**Extraction priority**: MEDIUM - Useful for Lisp projects.
-
 ### `lib/passwd.nix` - Password Utilities
 **Functions**:
 - `stablerandom-passwd-file`: Generate stable passwords from seed
 - `hash-password`: bcrypt hashing
 
 **Extraction priority**: HIGH - Security utilities.
-
-### `lib/text.nix` - Text Manipulation
-**Functions**:
-- String processing utilities
-
-**Extraction priority**: LOW - Check if duplicates nixpkgs.lib.
 
 ### `lib/filesystem.nix` - Filesystem Utilities
 **Functions**:
@@ -513,9 +429,7 @@ Recursive zone definition with hosts, records, subdomains.
   
   # Password utilities
   pkgs.lib.passwd.stablerandom-passwd-file "my-service" "seed123"
-  
-  # Lisp utilities
-  pkgs.lib.lisp.lisp-source-registry myLispPackage
+
 }
 ```
 
@@ -523,33 +437,9 @@ Recursive zone definition with hosts, records, subdomains.
 
 ## Extraction Strategy
 
-See [TODO.md](./TODO.md) for detailed removal plan.
-
-### Phase 1: Remove Obsolete Code (~1,850 lines)
-After testing mail configuration:
-1. Remove mail stack modules
-2. Remove VPN module
-3. Remove local-network module
-4. Remove common.nix placeholder
-
-### Phase 2: Extract High-Value Utilities
-Priority order:
-1. **Secrets management** - Generic, secure, useful
-2. **IP/Network utilities** - Pure functions, widely applicable
-3. **ACME certificates** - Generic TLS automation
-4. **System helpers** - Reduce systemd boilerplate
-
-### Phase 3: Extract Service Modules
-As needed:
-- PostgreSQL module
-- Monitoring stack (Prometheus + Grafana)
-- Webmail server
-
-### Phase 4: Keep Infrastructure Core
-These are specific to personal infrastructure:
-- domains/hosts/sites/zones model
-- Nexus integration
-- Informis namespace
+[TODO.md](./TODO.md) has the current inventory: what is still live, who uses
+it, what is dead but has side effects, and where each piece should go when the
+repo is broken up.
 
 ---
 

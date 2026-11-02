@@ -26,7 +26,7 @@ to a new focused flake instead.
 
 | Repo | Role | Namespace |
 |------|------|-----------|
-| **fudo-nix-lib** (here) | Reusable infra modules + pure utilities + shared types | `fudo.*`, `informis.*`, `pkgs.lib.*` |
+| **fudo-nix-lib** (here) | Reusable infra modules + pure utilities + shared types | `fudo.*`, `pkgs.lib.*` |
 | **fudo-nix-home** | Per-user Home Manager configs + custom HM modules | `fudo.home-manager.*` |
 | **nixos-config** | Top-level flake; assembles per-host `nixosConfigurations` and consumes both libraries | (consumer) |
 
@@ -45,7 +45,7 @@ Host/site/domain *data* is **not** here — it lives in the private
 From `flake.nix`:
 
 - `nixosModules.default` (alias `fudo`) → `module.nix`, which imports `lib/`.
-  This is what gives a system all the `fudo.*` (and `informis.*`) options.
+  This is what gives a system all the `fudo.*` options.
 - `nixosModules.lib` → a tiny module that just registers the overlay.
 - `overlays.default` (alias `lib`) → `overlay.nix`, which merges the utility
   functions into `pkgs.lib` (so consumers get `pkgs.lib.ip.*`, `pkgs.lib.passwd.*`,
@@ -64,7 +64,7 @@ module.nix         # NixOS module entry → imports ./lib
 lib.nix            # utility function exports (→ pkgs.lib.*)
 overlay.nix        # nixpkgs overlay that injects lib.nix into pkgs.lib
 lib/
-├── default.nix    # module aggregator: imports instance.nix, fudo/, informis/
+├── default.nix    # module aggregator: imports instance.nix, fudo/
 ├── instance.nix   # per-host identity/context (instance.* options)
 ├── fudo/          # the infrastructure modules (fudo.* namespace)
 │   ├── default.nix    # imports every module in this dir
@@ -72,11 +72,10 @@ lib/
 │   ├── include/       # included/shared config fragments
 │   ├── domains.nix hosts.nix sites.nix zones.nix   # the core inventory model
 │   ├── secrets.nix    # age-based secret management
-│   ├── postgres.nix git.nix grafana.nix prometheus.nix …   # services
+│   ├── prometheus.nix webmail.nix minecraft-server.nix …   # services
 │   └── …
-├── informis/      # personal/experimental modules (informis.* — unlikely to extract)
 ├── lib/           # PURE utility functions (no module deps)
-│   ├── ip.nix network.nix passwd.nix lisp.nix text.nix filesystem.nix
+│   ├── ip.nix network.nix passwd.nix filesystem.nix
 └── types/         # shared configuration schemas
     └── host.nix user.nix network-host.nix zone-definition.nix
 ```
@@ -101,19 +100,17 @@ The `types/` schemas define the shape of these attribute sets.
 
 ## Key patterns & conventions
 
-- **Two clean layers.** Keep infra logic (`fudo.*` / `informis.*` modules under
-  `lib/fudo` and `lib/informis`) separate from pure utilities (`lib/lib`). A
+- **Two clean layers.** Keep infra logic (`fudo.*` modules under
+  `lib/fudo`) separate from pure utilities (`lib/lib`). A
   function in `lib/lib` must not depend on NixOS module machinery — that's what
   makes it an extraction candidate.
 - **Register new modules** by adding the file under `lib/fudo/` and adding it to
   `lib/fudo/default.nix`'s imports. New pure utilities go in `lib/lib/<name>.nix`
   and get exported from `lib.nix`.
-- **Options live under `fudo.<module>.*`** (or `informis.*`). Follow the existing
+- **Options live under `fudo.<module>.*`**. Follow the existing
   option-declaration style (typed `mkOption`, `with lib;`).
 - **No TODOs/FIXMEs in module code** — record cleanup in `TODO.md` instead
   (house rule from README).
-- **`informis.*`** is the personal/experimental namespace (chute, cl-gemini) and
-  is not intended for extraction.
 
 ## Working on this repo
 

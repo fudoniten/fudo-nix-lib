@@ -5,7 +5,5 @@
     ./instance.nix
 
     ./fudo
-
-    ./informis
   ];
 }

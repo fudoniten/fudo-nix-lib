@@ -6,15 +6,10 @@ with lib; {
 
     ./acme-certs.nix
     ./adguard-dns-proxy.nix
-    ./authentication.nix
     ./deploy.nix
     ./domains.nix
-    ./git.nix
-    ./global.nix
-    ./grafana.nix
     ./hosts.nix
     ./host-filesystems.nix
-    ./minecraft-clj.nix
     ./minecraft-server.nix
     ./minecraft-server-multi.nix
     ./nebula.nix

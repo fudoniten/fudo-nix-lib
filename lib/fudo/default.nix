@@ -21,7 +21,6 @@ with lib; {
     ./nexus.nix
     ./node-exporter.nix
     ./password.nix
-    ./postgres.nix
     ./prometheus.nix
     ./secrets.nix
     ./secure-dns-proxy.nix

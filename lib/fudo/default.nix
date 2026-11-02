@@ -4,7 +4,6 @@ with lib; {
   imports = [
     ./auth
 
-    ./acme-certs.nix
     ./adguard-dns-proxy.nix
     ./deploy.nix
     ./domains.nix
@@ -15,7 +14,6 @@ with lib; {
     ./nebula.nix
     ./nexus.nix
     ./node-exporter.nix
-    ./password.nix
     ./prometheus.nix
     ./secrets.nix
     ./secure-dns-proxy.nix

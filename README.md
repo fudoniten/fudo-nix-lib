@@ -10,8 +10,8 @@ Personal NixOS module and utility library for managing infrastructure across dom
 
 ## Quick Stats
 
-- **~6,100 lines** of Nix code
-- **26 modules** in the `fudo.*` namespace (the `informis.*` namespace is gone)
+- **~5,700 lines** of Nix code
+- **24 modules** in the `fudo.*` namespace (the `informis.*` namespace is gone)
 - **4 utility libraries** (pure functions)
 - **4 type definitions** (configuration schemas)
 - The obsolete mail/VPN/local-network/placeholder modules (~1,850 lines) have
@@ -62,6 +62,10 @@ the tree. They are listed here so old references make sense; see
   runs in Kubernetes), `minecraft-clj.nix`, `authentication.nix` (LDAP NSS),
   the empty `global.nix`, and the whole `informis/` namespace (`chute`,
   `cl-gemini`). None had a consumer.
+- **`acme-certs.nix` and `password.nix`** – `fudo.acme` and
+  `fudo.password.file-generator` had no users. acme-certs also opened 80/443 on
+  every host; nixos-config now opens them wherever nginx runs. Nexus's
+  dependency on `fudo-passwords.target` went with its legacy password fallback.
 - **Unused utilities** – `lib/lisp.nix` (only `cl-gemini` used it) and
   `lib/text.nix` (no callers), so `pkgs.lib.lisp` and `pkgs.lib.text` are gone.
 - **Unused domain options** – `fudo.domains.<d>.postgresql-server`,
@@ -274,17 +278,6 @@ DNS-based ad/tracker blocking.
 
 ### Infrastructure Utilities
 
-#### `acme-certs.nix` - Let's Encrypt Automation
-Centralized ACME certificate management.
-
-**Options**: `fudo.acme-certs.*`
-- `enable`, `certs.<domain>`
-- `state-directory`, `redirect-target`
-
-**Use case**: Automated TLS certificate provisioning.
-
-**Extraction candidate**: Generic ACME automation (HIGH priority).
-
 #### `deploy.nix` - Deployment Key Management
 Inject deployment SSH keys into root account.
 
@@ -328,11 +321,6 @@ Network setup based on host configuration.
 Create users and groups from configuration.
 
 **Use case**: Centralized user management across hosts.
-
-#### `password.nix` - Password Utilities
-Password hashing and generation.
-
-**Use case**: Generate stable passwords from seeds.
 
 #### `wireless-networks.nix` - WiFi Configuration
 Manage WiFi network configurations.
@@ -438,7 +426,7 @@ Recursive zone definition with hosts, records, subdomains.
 ## Extraction Strategy
 
 [TODO.md](./TODO.md) has the current inventory: what is still live, who uses
-it, what is dead but has side effects, and where each piece should go when the
+it, what is dead but needs a step before it can go, and where each piece should go when the
 repo is broken up.
 
 ---

@@ -26,30 +26,19 @@ forge covers every host.
 | `lib/informis/` (`informis.chute`, `informis.cl-gemini`) | No consumer. `cl-gemini` is only a commented-out block on legatus; `chute` went with informis.land. |
 | `lib/lib/lisp.nix` (`pkgs.lib.lisp`) | Only `cl-gemini` used it. |
 | `lib/lib/text.nix` (`pkgs.lib.text`) | No callers. |
+| `lib/fudo/acme-certs.nix` (`fudo.acme`) | Nothing set `host-domains`. Its unconditional `allowedTCPPorts = [ 80 443 ]` on every host is replaced in nixos-config by opening them wherever nginx runs (`system/common.nix`). |
+| `lib/fudo/password.nix` (`fudo.password`) | No file generators. Nexus waited on its `fudo-passwords.target` only in the legacy build-seed password path, which nixos-config removed. |
 | `fudo.domains.<d>.postgresql-server`, `chat-server`, `wireguard.*` | Never read. `postgresql-server` was dropped from fudo-entities in #34; `wireguard` went with `vpn.nix`. |
 
 Earlier removals (mail stack, `vpn.nix`, `hosts/local-network.nix`,
 `common.nix`) are in git history.
 
-## Dead, but removing it changes hosts
+## Dead, but not a straight delete
 
-These have no consumer for their options, but the module does something on
-every host regardless, so removing it is a behavior change that needs an eval
-diff on forge first.
-
-- **`acme-certs.nix` (`fudo.acme`)**: nothing sets `fudo.acme.host-domains`,
-  so the nginx and cert-copy logic never runs. But its `config` block is
-  unconditional, and it opens **TCP 80 and 443 on every host**. Before
-  deleting it, find the hosts that serve HTTP(S) and rely on this instead of
-  opening the ports themselves (nginx's `enableACME` does not open them).
 - **`domains.<d>.metrics.grafana-host`**: nothing reads it since Grafana moved
   to Kubernetes, but it has no default and fudo-entities sets it for
   `sea.fudo.org` and `fudo.org`. Give it a default (or drop it from
   fudo-entities first), then remove it.
-- **`password.nix` (`fudo.password.file-generator`)**: no consumer generates
-  files with it, but it defines `fudo-passwords.target`, which nixos-config's
-  `services/nexus.nix` orders the nexus database on. It can go once nexus's
-  database passwords come only from Aegis (`aegisManagesDbPasswds`).
 - **`ssh.nix`**: `fudo.ssh.whitelistIPs` is never set, but the module sets
   fail2ban's ignore list and `programs.ssh.knownHosts` on every host, so it is
   live. Only the option is dead.
@@ -60,7 +49,6 @@ diff on forge first.
 |---|---|---|
 | `instance.nix`, `domains.nix`, `hosts.nix`, `sites.nix`, `zones.nix`, `nebula.nix`, `nexus.nix`, `users.nix`, `types/` | Everything. fudo-entities fills these in, nixos-config reads them. `nebula.nix` and `nexus.nix` are schemas only; fudo-entities supplies the data. | The inventory schema. Best as a small public flake of its own (fudo-entities imports it; nixos-config gets it through fudo-entities), so the schema stays public while the data stays private. |
 | `secrets.nix` (`fudo.secrets`) | ~22 files in nixos-config, plus nexus.nix | Goes away with the fudo-secrets → Aegis migration, not extracted. |
-| `password.nix` | `fudo-passwords.target` (nexus) | Goes away with Aegis (see above). |
 | `auth/kerberos/` (client and KDC) | `services/fudo-auth.nix`, `services/kdc-aegis.nix` | Next to the Aegis KDC (`aegis.nixosModules.kdc`) or into nixos-config `services/`. |
 | `adguard-dns-proxy.nix` | `services/local-network/recursor.nix`, sea/burg domain configs | nixos-config `services/local-network/`, its only user. |
 | `secure-dns-proxy.nix` | legatus | nixos-config, or merge with adguard into one DNS-proxy flake. |
@@ -74,7 +62,6 @@ diff on forge first.
 | `wireless-networks.nix` | `profiles/laptop.nix`, `system/wireless-networks.nix` | nixos-config. |
 | `deploy.nix` | Every host: root's `authorized_keys` from each site's `deploy-pubkeys` (forge deploys) | nixos-config `profiles/host/deploy-user.nix`. |
 | `host-filesystems.nix` | lambda, nostromo (`encrypted-filesystems`) | nixos-config. |
-| `acme-certs.nix` | See "Dead, but removing it changes hosts". | Delete after the port check. |
 
 ## Utility functions (`pkgs.lib.*`)
 
@@ -101,11 +88,9 @@ away with the Aegis migration.
 3. Split out the pure utilities as a flake, keeping only the functions that
    have callers.
 4. Split out the inventory schema as a flake and point fudo-entities at it.
-5. Delete `secrets.nix`, `password.nix` and the `passwd` helpers when the
+5. Delete `secrets.nix` and the `passwd` helpers when the
    Aegis migration finishes.
 
 ## Code-quality notes on live modules
 
 - `webmail.nix`: `# TODO: make this a fudo service` on its systemd services.
-- `acme-certs.nix`: the "THIS IS A HACK" redundant-path comment. Moot if the
-  module is deleted.

@@ -78,38 +78,6 @@ let
           default = null;
         };
 
-        postgresql-server = mkOption {
-          type = nullOr str;
-          description = "Hostname acting as the local PostgreSQL server.";
-          default = null;
-        };
-
-        chat-server = mkOption {
-          type = nullOr str;
-          description =
-            "Hostname acting as the domain chat server (using Mattermost).";
-          default = null;
-        };
-
-        wireguard = {
-          gateway = mkOption {
-            type = str;
-            description = "Host serving as WireGuard gateway for this domain.";
-          };
-
-          network = mkOption {
-            type = str;
-            description = "IP subnet used for WireGuard clients.";
-            default = "172.16.0.0/16";
-          };
-
-          routed-network = mkOption {
-            type = nullOr str;
-            description = "Subnet of larger network for which we NAT traffic.";
-            default = "172.16.16.0/20";
-          };
-        };
-
         gssapi-realm = mkOption {
           type = nullOr str;
           description = "GSSAPI (i.e. Kerberos) realm of this domain.";

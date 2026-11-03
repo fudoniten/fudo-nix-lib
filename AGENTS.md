@@ -36,9 +36,12 @@ ripple into every host, so when you *do* touch it, prefer additive, opt-in
 options over changing existing behavior — but prefer extracting a concern into
 its own flake over adding to this one at all (see Status above).
 
-Host/site/domain *data* is **not** here — it lives in the private
-`fudo-entities` flake. This repo defines the *schemas* (`lib/types/`) and the
-*modules* that consume such data; the data itself lives elsewhere.
+Host/site/domain/zone data **and its schema** are **not** here. Both live in
+the private `fudo-entities` flake (schema under `schema/`, moved there in
+2026-11), and `instance.*` and the `fudo.users`/`groups` schema live in
+nixos-config. The modules here *read* `config.fudo.hosts`, `instance.*` and so
+on, so they only evaluate in a configuration that also imports
+`fudo-entities.nixosModules.default` and nixos-config's `system/`.
 
 ## Flake outputs (the public surface)
 
@@ -64,39 +67,25 @@ module.nix         # NixOS module entry → imports ./lib
 lib.nix            # utility function exports (→ pkgs.lib.*)
 overlay.nix        # nixpkgs overlay that injects lib.nix into pkgs.lib
 lib/
-├── default.nix    # module aggregator: imports instance.nix, fudo/
-├── instance.nix   # per-host identity/context (instance.* options)
+├── default.nix    # module aggregator: imports fudo/
 ├── fudo/          # the infrastructure modules (fudo.* namespace)
 │   ├── default.nix    # imports every module in this dir
 │   ├── auth/          # Kerberos client + KDC
 │   ├── include/       # included/shared config fragments
-│   ├── domains.nix hosts.nix sites.nix zones.nix   # the core inventory model
 │   ├── secrets.nix    # age-based secret management
 │   ├── prometheus.nix webmail.nix minecraft-server.nix …   # services
 │   └── …
-├── lib/           # PURE utility functions (no module deps)
-│   ├── ip.nix network.nix passwd.nix filesystem.nix
-└── types/         # shared configuration schemas
-    └── host.nix user.nix network-host.nix zone-definition.nix
+└── lib/           # PURE utility functions (no module deps)
+    └── ip.nix network.nix passwd.nix filesystem.nix
 ```
 
-## The core model: instance / domains / hosts / sites / zones
+## The core model lives elsewhere
 
-The heart of the library is a small set of modules that model infrastructure at
-increasing scope. Most other modules read from these:
-
-- **`instance.nix`** — *this* host's identity (`instance.hostname`,
-  `local-domain`, `local-networks`, `build-seed`, …). Every other module adapts
-  to the current host through `instance.*`.
-- **`fudo.domains.<domain>`** — domain-wide services and policy (auth realms,
-  mail/DNS servers, trusted networks).
-- **`fudo.hosts.<hostname>`** — the host inventory: identity, network, access,
-  services, deploy flags. Hosts can query each other.
-- **`fudo.sites.<site>`** — physical/logical site grouping (network, gateway).
-- **`fudo.zones.<zone>`** — DNS zone data, rendered to zonefiles by the
-  authoritative-dns flake.
-
-The `types/` schemas define the shape of these attribute sets.
+The inventory model (`fudo.domains`, `fudo.hosts`, `fudo.sites`,
+`fudo.zones`, `fudo.nebula`, `fudo.nexus` and their types) is declared in
+fudo-entities, next to the data. `instance.*` (this host's identity) and
+`fudo.users`/`groups`/`system-users` are declared in nixos-config, which sets
+them. Most modules here read those, so they stay coupled to that pair.
 
 ## Key patterns & conventions
 

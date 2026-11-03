@@ -10,10 +10,9 @@ Personal NixOS module and utility library for managing infrastructure across dom
 
 ## Quick Stats
 
-- **~5,700 lines** of Nix code
-- **24 modules** in the `fudo.*` namespace (the `informis.*` namespace is gone)
+- **~4,000 lines** of Nix code
+- **15 modules** in the `fudo.*` namespace (the `informis.*` namespace is gone)
 - **4 utility libraries** (pure functions)
-- **4 type definitions** (configuration schemas)
 - The obsolete mail/VPN/local-network/placeholder modules (~1,850 lines) have
   now been removed — see [TODO.md](./TODO.md) for history and the remaining
   extraction plan.
@@ -29,9 +28,7 @@ lib/
 │   ├── include/       # Included configuration fragments (e.g. rainloop)
 │   └── *.nix          # Service/infra modules (prometheus, webmail, minecraft, …)
 ├── lib/               # Utility libraries (pure functions)
-├── types/             # Type definitions for configuration
-├── default.nix        # Module aggregator
-└── instance.nix       # Per-instance configuration
+└── default.nix        # Module aggregator
 
 flake.nix              # Flake interface
 lib.nix                # Library function exports (→ pkgs.lib.*)
@@ -77,64 +74,13 @@ the tree. They are listed here so old references make sense; see
 
 ### Core Infrastructure
 
-Configuration models for multi-level infrastructure organization.
-
-#### `instance.nix` - Per-Host Instance Configuration
-Defines the current host's identity and context.
-
-**Options**: `instance.*`
-- `hostname`, `host-fqdn`, `local-domain`, `local-site`, `local-zone`
-- `local-admins`, `local-groups`, `local-hosts`, `local-users`
-- `local-networks`, `build-timestamp`, `build-seed`
-
-**Use case**: Provides context for all other modules to adapt to current host.
-
-#### `domains.nix` - Domain-Level Configuration
-Organizational domains with their infrastructure services.
-
-**Options**: `fudo.domains.<domain>.*`
-- Network trust: `local-networks`, `local-users`, `local-admins`
-- Services: `metrics`, `log-aggregator`
-- Auth: `gssapi-realm`, `kerberos-master`, `ldap-servers`
-- Network: `nexus` (DDNS domains)
-- DNS: `primary-nameserver`, `secondary-nameservers`
-- Mail: `primary-mailserver`, `xmpp-servers`
-
-**Use case**: Define domain-wide services and policies. Example: "fudo.org domain uses these Kerberos servers and mail server."
-
-#### `hosts.nix` - Host Inventory
-Attributes and configuration for all known hosts.
-
-**Options**: `fudo.hosts.<hostname>.*`
-- Identity: `domain`, `site`, `description`, `aliases`
-- Network: `local-networks`, `external-interfaces`
-- Access: `local-users`, `local-admins`, `ssh-pubkeys`
-- Services: `kerberos-services`, `docker-server`
-- Deploy: `deploy.enable`, `deploy.ssh-options`
-- Security: `hardened`, `encrypted-filesystems`
-
-**Use case**: Central inventory of all infrastructure hosts. Each host references itself and can query other hosts.
-
-#### `sites.nix` - Physical Site Definitions
-Geographic or logical site groupings.
-
-**Options**: `fudo.sites.<site>.*`
-- Network: `network`, `gateway`, `local-gateway`
-- Deploy: `deploy-pubkeys`
-- Nexus: Public/private/tailscale domains
-
-**Use case**: Group hosts by physical location or network segment.
-
-#### `zones.nix` - DNS Zone Definitions
-DNS zone data used by authoritative DNS servers.
-
-**Options**: `fudo.zones.<zone>.*`
-- Hosts: `hosts` (with IPv4/IPv6/description/SSHFP)
-- Records: `nameservers`, `mx`, `srv-records`, `aliases`
-- DNSSEC: `gssapi-realm`, `dmarc-report-address`
-- Custom: `verbatim-dns-records`, `subdomains`
-
-**Use case**: Define DNS zones that get rendered to zonefiles by authoritative-dns flake.
+The inventory model (`fudo.domains`, `fudo.hosts`, `fudo.sites`,
+`fudo.zones`, `fudo.nebula`, `fudo.nexus` and the host/zone types) moved to
+**fudo-entities** (`schema/`) in 2026-11, next to the data that fills it.
+`instance.*` and the `fudo.users`/`groups`/`system-users` schema moved to
+**nixos-config** (`system/instance.nix`, `identity/schema.nix`), and the
+per-host behaviour `hosts.nix`/`sites.nix` carried went to nixos-config's
+`system/inventory.nix`. The modules below still *read* that model.
 
 ---
 
@@ -177,20 +123,6 @@ Encrypt secrets for specific hosts using age and their public keys.
 ---
 
 ### Service Modules
-
-#### `nexus.nix` - Nexus DDNS Configuration
-Define domains served by Nexus dynamic DNS system.
-
-**Options**: `fudo.nexus.domains.<domain>.*`
-- `server`: Primary Nexus server hostname
-- `secondary-dns-servers`: Secondary DNS for the domain
-- `gssapi-realm`: Kerberos realm (optional)
-- `trusted-networks`: Networks allowed AXFR
-- `records`: Static DNS records
-
-**Use case**: Configure Nexus domains. Works with separate nexus flake for client/server/DNS implementations.
-
-**Status**: KEEP - actively used, good separation from nexus flake.
 
 #### `webmail.nix` - Rainloop Webmail
 PHP-based webmail interface using Rainloop Community.
@@ -317,11 +249,6 @@ Network setup based on host configuration.
 
 **Use case**: Automatic network configuration from host inventory.
 
-#### `users.nix` - User Management
-Create users and groups from configuration.
-
-**Use case**: Centralized user management across hosts.
-
 #### `wireless-networks.nix` - WiFi Configuration
 Manage WiFi network configurations.
 
@@ -361,24 +288,6 @@ Pure functions with no NixOS module dependencies. **Excellent extraction candida
 - File operation helpers
 
 **Extraction priority**: LOW - Check if duplicates nixpkgs.lib.
-
----
-
-## Type Definitions
-
-Shared configuration schemas.
-
-### `types/host.nix` - Host Configuration Schema
-Complete host attribute definition.
-
-### `types/user.nix` - User/Group Schemas
-User and group configuration structures.
-
-### `types/network-host.nix` - Network Host Attributes
-IP addresses, MAC, SSH fingerprints, description.
-
-### `types/zone-definition.nix` - DNS Zone Structure
-Recursive zone definition with hosts, records, subdomains.
 
 ---
 

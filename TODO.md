@@ -70,7 +70,7 @@ Earlier removals (mail stack, `vpn.nix`, `hosts/local-network.nix`,
 | `fs` | `import-by-basename` (fudo-entities) | `matches-ext`, `get-ext`, `hostname-from-file`, `ext-files`, `basename-to-file-map`, `list-nix-files` |
 | `ip` | `maskFromV32Network`, `networkMinIp`, `networkMaxIp`, `ipv4OnNetwork`, `getNetworkMask`, `getNetworkBase` (nixos-config, authoritative-dns-module) | `networkMaxButOneIp`, `reverseIpv4`, plus helpers only used internally |
 | `network` | `host-ipv4`, `host-ipv6`, `generate-mac-address` (nixos-config) | `host-ips`, `site-gateway` |
-| `passwd` | `stablerandom-passwd-file` (nixos-config, nix-mail-server, authentik and nextcloud containers, adguard) | `hash-ldap-passwd`, `bcrypt-passwd`, `generate-random-passwd`, `random-passwd-file` |
+| `passwd` | `stablerandom-passwd-file` (nix-mail-server, authentik and nextcloud containers) | `hash-ldap-passwd`, `bcrypt-passwd`, `generate-random-passwd`, `random-passwd-file` |
 
 These are pure and have no module dependencies, so they can move as one small
 public flake. The `passwd` helpers derive passwords from `build-seed` and go

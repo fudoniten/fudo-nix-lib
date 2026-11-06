@@ -4,8 +4,6 @@ with lib;
 let
   cfg = config.fudo.adguard-dns-proxy;
 
-  inherit (config.instance) hostname;
-
   get-basename = filename:
     head (builtins.match "^[a-zA-Z0-9]+-(.+)$" (baseNameOf filename));
 
@@ -16,15 +14,6 @@ let
       buildInputs = with pkgs; [ python3 ];
       installPhase = "python -mjson.tool ${filename} > $out";
     };
-
-  default-passwd-file =
-    pkgs.lib.passwd.stablerandom-passwd-file "adguard-dns-proxy-admin"
-    config.instance.build-seed;
-
-  admin-passwd-file = if (cfg.admin-password-file != null) then
-    cfg.admin-password-file
-  else
-    default-passwd-file;
 
   # Reads the password on stdin and prints its bcrypt hash. Takes no path: the
   # source is a systemd credential whose location is only known at runtime, so
@@ -137,6 +126,9 @@ in {
       type = nullOr str;
       description = ''
         Path, on the target host, to a file holding the admin password.
+        Required when the proxy is enabled: there is no generated default any
+        more. (Typed nullable only so a domain-wide setting can be null on
+        hosts that never enable the proxy.)
 
         A runtime path, deliberately typed `str` rather than `path`: a `path`
         would be copied into the store at evaluation, which is the opposite of
@@ -148,11 +140,9 @@ in {
         transient and does not exist when the secret is decrypted, so the
         chown would fail at boot. Root-owned 0400 is right.
 
-        Null means generate one from the build seed, as this module always
-        did. Anything else -- a secret placed by Aegis, say -- takes over, and
-        the legacy `fudo.secrets` copy is not declared at all: two pipelines
-        deploying one secret is how you get a value that depends on which unit
-        won.
+        This used to default to a password derived from
+        `instance.build-seed` and deployed through `fudo.secrets`. That
+        fallback is gone; supply the file yourself, e.g. from Aegis.
       '';
       default = null;
       example = "/run/aegis/secrets/adguard.passwd";
@@ -168,8 +158,6 @@ in {
         target that merely contains it: a target activates even when a member
         failed, and the service would then start and read nothing.
 
-        Ignored when `admin-password-file` is null -- the generated password
-        is a store path and is there from the start.
       '';
       default = [ ];
       example = [ "aegis-secret-adguard.passwd.service" ];
@@ -390,23 +378,14 @@ in {
   };
 
   config = mkIf cfg.enable {
-    # Only when this module owns the password. `fudo.secrets` encrypts
-    # `source-file` in a derivation -- `age -a -r <key> -o $out <source-file>`
-    # -- so it is read on the *builder*. Handing it a path under /run made
-    # every build fail with "failed to open input file", because that file
-    # exists only on the target host, only after something has written it.
-    #
-    # Whoever supplies `admin-password-file` supplies the delivery too, so
-    # there is nothing for the legacy pipeline to do here.
-    fudo = mkIf (cfg.admin-password-file == null) {
-      secrets.host-secrets.${hostname} = {
-        adguard-dns-proxy-admin-password = {
-          source-file = default-passwd-file;
-          target-file = "/run/adguard-dns-proxy/admin.passwd";
-          user = "root";
-        };
-      };
-    };
+    assertions = [{
+      assertion = cfg.admin-password-file != null;
+      message = ''
+        fudo.adguard-dns-proxy is enabled on ${config.instance.hostname} but
+        admin-password-file is null. Point it at a runtime secret (e.g. one
+        placed by Aegis); the old build-seed-derived default is gone.
+      '';
+    }];
 
     networking.firewall = {
       allowedTCPPorts = [ cfg.dns.listen-port ];
@@ -433,7 +412,7 @@ in {
         #
         # It also fails closed: a source that is missing or unreadable stops
         # the unit rather than starting it without a password.
-        LoadCredential = [ "admin-passwd:${admin-passwd-file}" ];
+        LoadCredential = [ "admin-passwd:${cfg.admin-password-file}" ];
 
         # The hash is substituted here rather than baked into the generated
         # config, so the store copy carries a placeholder and the real hash

@@ -107,6 +107,16 @@ let
         default = false;
       };
 
+      white-list = mkOption {
+        type = bool;
+        description = ''
+          Whether only players on the server's whitelist may join. Set
+          explicitly because Minecraft 26.3 changed the default to true, and
+          server.properties is regenerated on every start.
+        '';
+        default = false;
+      };
+
       allocated-memory = mkOption {
         type = int;
         description = "Memory (in GB) to allocate to the Minecraft server.";
@@ -195,6 +205,7 @@ let
         "rcon.password" = serverConf.rcon-password;
         enable-rcon = true;
         pvp = serverConf.allow-pvp;
+        white-list = serverConf.white-list;
         # spawn-protection is a radius in blocks; 0 disables it entirely.
         spawn-protection = if serverConf.spawn-protection then 16 else 0;
       } // seedAttr;

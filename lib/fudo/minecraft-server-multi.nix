@@ -547,7 +547,11 @@ in {
       description = ''
         Units that provide secrets the servers read, such as the Aegis
         decrypt unit behind `rcon-password-file`. Every server unit starts
-        after and requires them.
+        after them and wants them. Deliberately not `requires`: a restart
+        of a required unit restarts its dependents, and an Aegis profile
+        deploy restarts every decrypt unit on the host, which would kick
+        players off for an unrelated secret rotation. The flip side is that
+        rotating the RCON password itself needs a server restart.
       '';
       default = [ ];
       example = [ "aegis-secret-minecraft-rcon-password.service" ];
@@ -711,11 +715,12 @@ in {
         in nameValuePair svcName {
           description = "${name} Minecraft Server";
           wantedBy = optionals (!serverConf.on-demand) [ "multi-user.target" ];
-          # Start the idle-check timer alongside this service (on-demand only).
-          wants =
-            optionals serverConf.on-demand [ "${svcName}-idle-check.timer" ];
+          # Start the idle-check timer alongside this service (on-demand
+          # only), and pull in the secret units.
           after = [ "network-online.target" ] ++ cfg.secret-units;
-          requires = [ "network-online.target" ] ++ cfg.secret-units;
+          requires = [ "network-online.target" ];
+          wants = optionals serverConf.on-demand
+            [ "${svcName}-idle-check.timer" ] ++ cfg.secret-units;
           serviceConfig = {
             User = cfg.user;
             Group = cfg.group;

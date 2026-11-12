@@ -159,6 +159,17 @@ Java-based Minecraft server.
 #### `minecraft-server-multi.nix` - Multi-Instance Minecraft
 Run multiple Minecraft server instances from one host.
 
+**Options**: `fudo.services.minecraft.server.*`
+- `servers.<name>.*`: per-world settings, including a declarative `whitelist`
+  synced over RCON after every start
+- `profile.*`: run the servers from a standalone profile
+  (`/nix/var/nix/profiles/minecraft`) so version bumps and settings deploy
+  without a system deploy; `profile.package` is what to install there, and its
+  `bin/minecraft-profile-activate` restarts only what changed and fails the
+  deploy if a server doesn't come back
+- `check.*`: a daily check that each server answers a status ping and runs
+  Mojang's latest release, with an `on-failure` hook for notifications
+
 **Use case**: Host several Minecraft worlds/servers side by side.
 
 ### Monitoring & Observability

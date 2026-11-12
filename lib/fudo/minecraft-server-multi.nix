@@ -33,7 +33,7 @@ let
     "-XX:MaxTenuringThreshold=1"
   ];
 
-  serverOpts = { name, ... }: {
+  serverOpts = { name, config, ... }: {
     options = with types; {
       enable = mkOption {
         type = bool;
@@ -110,12 +110,26 @@ let
       white-list = mkOption {
         type = bool;
         description = ''
-          Whether to restrict the server to players in whitelist.json. Minecraft
-          26.3 changed its own default to true; since this module has no
-          declarative allowlist, an enabled whitelist rejects everyone unless
-          whitelist.json is maintained by hand, so it defaults to off.
+          Whether to restrict the server to players on the whitelist. Minecraft
+          26.3 changed its own default to true, which rejects everyone unless
+          the whitelist is maintained, so this is on only when `whitelist`
+          declares one.
         '';
-        default = false;
+        default = config.whitelist != null;
+        defaultText = literalExpression "whitelist != null";
+      };
+
+      whitelist = mkOption {
+        type = nullOr (listOf str);
+        description = ''
+          Player names allowed on the server, or null to leave the whitelist
+          alone. When set, the server's whitelist is synced to exactly this
+          list over RCON after every start (and, in profile mode, on every
+          profile deploy, without a restart): missing players are added and
+          anyone else is removed. Names are matched case-insensitively.
+        '';
+        default = null;
+        example = [ "FudoNiten" ];
       };
 
       allocated-memory = mkOption {
@@ -212,6 +226,262 @@ let
       } // seedAttr;
     in pkgs.writeText "mc-${sanitizeName name}.properties" (toProps props);
 
+
+  enabledServers = filterAttrs (_: s: s.enable) cfg.servers;
+  onDemandServers = filterAttrs (_: s: s.on-demand) enabledServers;
+
+  boolStr = v: if v then "true" else "false";
+
+  eulaFile = pkgs.writeText "mc-eula.txt" "eula=true";
+
+  # How many 5-second attempts to give RCON to come up after a start.
+  rconAttempts = 60;
+
+  rconCmd = serverConf:
+    "${pkgs.mcrcon}/bin/mcrcon -c -H 127.0.0.1 -P ${
+      toString serverConf.rcon-port
+    } -p ${escapeShellArg serverConf.rcon-password}";
+
+  genStartScript = name: serverConf:
+    let
+      safeName = sanitizeName name;
+      svcName = "minecraft-${safeName}";
+      mem = "${toString serverConf.allocated-memory}G";
+      flags =
+        # Required by JNA (used by OSHI for hardware telemetry). Without
+        # this, newer JVMs will block native access entirely.
+        [
+          "--enable-native-access=ALL-UNNAMED"
+          # JNA extracts a native .so to a tmpdir before loading it. The
+          # state directory is typically noexec, so we redirect JNA to the
+          # service's runtime directory (/run/...) which is always exec.
+          "-Djna.tmpdir=/run/${svcName}"
+        ] ++ commonFlags ++ [ "-Xms${mem}" "-Xmx${mem}" ]
+        ++ optionals (serverConf.allocated-memory >= 12) highMemFlags;
+    in pkgs.writeShellScript "mc-start-${safeName}.sh"
+    "exec ${serverConf.package}/bin/minecraft-server ${
+      concatStringsSep " " flags
+    }";
+
+  # Everything that only takes effect on a restart: the jar (through the start
+  # script), the JVM flags and server.properties. In profile mode this is what
+  # a settings change or a version bump changes, and the system closure
+  # doesn't move.
+  genRuntime = name: serverConf:
+    let safeName = sanitizeName name;
+    in pkgs.runCommand "mc-${safeName}-runtime" { } ''
+      mkdir -p $out
+      ln -s ${genStartScript name serverConf} $out/start
+      ln -s ${genPropsFile name serverConf} $out/server.properties
+      ln -s ${eulaFile} $out/eula.txt
+      printf '%s' ${
+        escapeShellArg (serverConf.package.version or "unknown")
+      } > $out/version
+    '';
+
+  # Applies the settings a running server can take without a restart:
+  # gamerules, ops and the whitelist. Waits for RCON first. With --strict
+  # (profile deploys) RCON not answering is an error; without it
+  # (ExecStartPost) it is a warning, so a slow start doesn't fail the unit.
+  genSync = name: serverConf:
+    let
+      safeName = sanitizeName name;
+      rcon = rconCmd serverConf;
+      wanted = serverConf.whitelist;
+    in pkgs.writeShellScript "mc-sync-${safeName}.sh" ''
+      export PATH=${
+        makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.gnused ]
+      }:$PATH
+
+      strict=0
+      [ "''${1:-}" = "--strict" ] && strict=1
+
+      ready=0
+      for attempt in $(seq 1 ${toString rconAttempts}); do
+        if ${rcon} "list" >/dev/null 2>&1; then
+          ready=1
+          break
+        fi
+        sleep 5
+      done
+      if [ $ready = 0 ]; then
+        echo "${name}: timed out waiting for RCON; gamerules, ops and whitelist not applied." >&2
+        exit $strict
+      fi
+
+      ${rcon} "gamerule minecraft:keep_inventory ${
+        boolStr serverConf.keep-inventory
+      }"
+      ${concatMapStrings (op: ''
+        ${rcon} ${escapeShellArg "op ${op}"}
+      '') serverConf.ops}
+      ${optionalString (wanted != null) ''
+        wanted=${escapeShellArg (concatStringsSep "\n" wanted)}
+        lower() { printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+        # "There are 2 whitelisted player(s): alice, bob", or
+        # "There are no whitelisted players".
+        if ! listing=$(${rcon} "whitelist list"); then
+          echo "${name}: could not read the whitelist." >&2
+          exit $strict
+        fi
+        current=$(printf '%s\n' "$listing" \
+          | sed -n 's/^[^:]*: //p' | tr ',' '\n' \
+          | sed 's/^ *//; s/ *$//; /^$/d')
+
+        printf '%s\n' "$wanted" | while IFS= read -r player; do
+          [ -n "$player" ] || continue
+          if ! lower "$current" | grep -qxF "$(lower "$player")"; then
+            echo "${name}: adding $player to the whitelist"
+            ${rcon} "whitelist add $player"
+          fi
+        done
+        printf '%s\n' "$current" | while IFS= read -r player; do
+          [ -n "$player" ] || continue
+          if ! lower "$wanted" | grep -qxF "$(lower "$player")"; then
+            echo "${name}: removing $player from the whitelist"
+            ${rcon} "whitelist remove $player"
+          fi
+        done
+      ''}
+      exit 0
+    '';
+
+  genAccess = name: serverConf:
+    let safeName = sanitizeName name;
+    in pkgs.runCommand "mc-${safeName}-access" { } ''
+      mkdir -p $out
+      ln -s ${genSync name serverConf} $out/sync
+    '';
+
+  # Profile activation, run by deploy-rs after it links the profile. Per
+  # server: if the running server already uses this runtime, apply the access
+  # settings live; otherwise restart it and wait for it to answer. Any failure
+  # exits non-zero, so deploy-rs's autoRollback puts the previous profile back
+  # and re-runs its activation.
+  genActivateServer = name: serverConf:
+    let
+      safeName = sanitizeName name;
+      unit = "minecraft-${safeName}.service";
+      runtime = genRuntime name serverConf;
+      sync = genSync name serverConf;
+      rcon = rconCmd serverConf;
+    in ''
+      want=${runtime}
+      have=$(cat /run/minecraft-${safeName}/runtime 2>/dev/null || true)
+      if systemctl is-active --quiet ${unit} && [ "$have" = "$want" ]; then
+        echo "${name}: server unchanged; applying gamerules, ops and whitelist"
+        if ! ${sync} --strict; then
+          echo "${name}: could not apply settings" >&2
+          status=1
+        fi
+      ${
+        optionalString serverConf.on-demand ''
+          elif ! systemctl is-active --quiet ${unit}; then
+            echo "${name}: on-demand and stopped; changes apply on its next start"
+        ''
+      }else
+        if systemctl is-active --quiet ${unit} \
+           && ${rcon} "say Server restarting for an update. Back in a minute or two." >/dev/null 2>&1; then
+          sleep 10
+        fi
+        echo "${name}: restarting ${unit}"
+        healthy=0
+        if systemctl restart ${unit}; then
+          for attempt in $(seq 1 ${toString rconAttempts}); do
+            if systemctl is-active --quiet ${unit} && ${rcon} "list" >/dev/null 2>&1; then
+              healthy=1
+              break
+            fi
+            systemctl is-active --quiet ${unit} || break
+            sleep 5
+          done
+        fi
+        if [ $healthy = 1 ]; then
+          echo "${name}: up and answering RCON"
+          have=$(cat /run/minecraft-${safeName}/runtime 2>/dev/null || true)
+          if [ "$have" != "$want" ]; then
+            echo "${name}: warning: ${unit} is not running from this profile yet; deploy the system profile too." >&2
+          fi
+        else
+          echo "${name}: ${unit} did not come up" >&2
+          journalctl --unit ${unit} --lines 30 --no-pager >&2 || true
+          status=1
+        fi
+      fi
+    '';
+
+  activateScript = pkgs.writeShellScript "minecraft-profile-activate" ''
+    export PATH=/run/current-system/sw/bin:${
+      makeBinPath [ pkgs.coreutils ]
+    }:$PATH
+    status=0
+    ${concatStringsSep "\n" (mapAttrsToList genActivateServer enabledServers)}
+    exit $status
+  '';
+
+  profileBundle = pkgs.runCommand "minecraft-profile" { } ''
+    mkdir -p $out/bin
+    ${concatStrings (mapAttrsToList (name: serverConf:
+      let safeName = sanitizeName name;
+      in ''
+        mkdir -p $out/${safeName}
+        ln -s ${genRuntime name serverConf} $out/${safeName}/runtime
+        ln -s ${genAccess name serverConf} $out/${safeName}/access
+      '') enabledServers)}
+    ln -s ${activateScript} $out/bin/minecraft-profile-activate
+  '';
+
+  # Daily health check: each always-on server answers a status ping on its
+  # game port, and (optionally) runs Mojang's latest release, since a client
+  # that has updated past the server can't join.
+  checkScript = pkgs.writeShellScript "minecraft-check.sh" ''
+    export PATH=${
+      makeBinPath [
+        pkgs.coreutils
+        pkgs.curl
+        pkgs.jq
+        pkgs.python3Packages.mcstatus
+      ]
+    }
+    status=0
+    latest=""
+    ${optionalString cfg.check.version-drift ''
+      if ! latest=$(curl -fsS --max-time 30 \
+          https://piston-meta.mojang.com/mc/game/version_manifest_v2.json \
+          | jq -er .latest.release); then
+        echo "Could not read Mojang's version manifest."
+        latest=""
+        status=1
+      fi
+    ''}
+    ${concatStringsSep "\n" (mapAttrsToList (name: serverConf:
+      let
+        safeName = sanitizeName name;
+        port = toString serverConf.port;
+        versionExpr = if cfg.profile.enable then
+          "$(cat ${cfg.profile.path}/${safeName}/runtime/version 2>/dev/null || echo unknown)"
+        else
+          escapeShellArg (serverConf.package.version or "unknown");
+      in ''
+        version=${versionExpr}
+        ${optionalString (!serverConf.on-demand) ''
+          json=$(mcstatus 127.0.0.1:${port} json)
+          if [ "$(printf '%s' "$json" | jq -r .online)" = true ]; then
+            echo "${name}: up on port ${port}, version $(printf '%s' "$json" | jq -r '.status.version.name'), $(printf '%s' "$json" | jq -r '.status.players.online')/$(printf '%s' "$json" | jq -r '.status.players.max') players"
+          else
+            echo "${name}: not answering on port ${port}: $(printf '%s' "$json" | jq -r '.error // "unknown error"')"
+            status=1
+          fi
+        ''}
+        if [ -n "$latest" ] && [ "$version" != "$latest" ]; then
+          echo "${name}: runs $version, but Mojang's latest release is $latest. Bump it before clients update."
+          status=1
+        fi
+      '') enabledServers)}
+    exit $status
+  '';
+
 in {
   options.fudo.services.minecraft.server = with types; {
     enable = mkEnableOption "multi-instance vanilla Minecraft server";
@@ -238,9 +508,79 @@ in {
       description = "Minecraft server instances to run.";
       default = { };
     };
+
+    profile = {
+      enable = mkOption {
+        type = bool;
+        description = ''
+          Run the servers from a standalone profile at `profile.path` rather
+          than from the system closure, so a version bump or a settings change
+          deploys on its own (with deploy-rs, as a profile whose path is
+          `profile.package` and whose activation runs
+          `bin/minecraft-profile-activate` from it) instead of as a system
+          deploy.
+
+          The system keeps the user, firewall, ports, RCON password and the
+          units, which read everything else through the profile link, so
+          changing the rest never changes the system closure. The servers
+          refuse to start until the profile exists.
+        '';
+        default = false;
+      };
+
+      path = mkOption {
+        type = str;
+        description = "Profile the servers read their runtime from.";
+        default = "/nix/var/nix/profiles/minecraft";
+      };
+
+      package = mkOption {
+        type = package;
+        readOnly = true;
+        description = ''
+          The profile's contents: per server, `<name>/runtime` (start script,
+          server.properties, eula.txt, version) and `<name>/access` (the
+          gamerule/op/whitelist sync), plus `bin/minecraft-profile-activate`,
+          which applies the access settings live when the runtime is
+          unchanged, restarts the server otherwise, and fails if it doesn't
+          come back.
+        '';
+      };
+    };
+
+    check = {
+      enable = mkEnableOption
+        "a periodic check that each server answers and runs Mojang's latest release";
+
+      calendar = mkOption {
+        type = str;
+        description = "When to run the check (systemd OnCalendar).";
+        default = "daily";
+      };
+
+      version-drift = mkOption {
+        type = bool;
+        description = ''
+          Fail the check when a server's version isn't Mojang's latest
+          release: clients update themselves, and one that has updated past
+          the server can't join.
+        '';
+        default = true;
+      };
+
+      on-failure = mkOption {
+        type = listOf str;
+        description =
+          "Units to start when the check fails (e.g. a notifier).";
+        default = [ ];
+        example = [ "fudo-notify@%n.service" ];
+      };
+    };
   };
 
   config = mkIf cfg.enable {
+    fudo.services.minecraft.server.profile.package = profileBundle;
+
     users = {
       users."${cfg.user}" = {
         isSystemUser = true;
@@ -267,74 +607,46 @@ in {
       map (s: s.rcon-port) (filter (s: s.enable) (attrValues cfg.servers));
 
     systemd = let
-      enabledServers = filterAttrs (_: s: s.enable) cfg.servers;
-      onDemandServers = filterAttrs (_: s: s.on-demand) enabledServers;
 
       genMainService = name: serverConf:
         let
           safeName = sanitizeName name;
           svcName = "minecraft-${safeName}";
           stateDir = serverStateDir name;
+          runDir = "/run/${svcName}";
+          profileServer = "${cfg.profile.path}/${safeName}";
 
           propsFile = genPropsFile name serverConf;
-          eulaFile = pkgs.writeText "mc-${safeName}-eula.txt" "eula=true";
+
+          onDemandStamp = optionalString serverConf.on-demand
+            "date +%s > ${stateDir}/.last-player-time";
 
           preStartScript = pkgs.writeShellScript "mc-init-${safeName}.sh" ''
             cp -f ${propsFile} ${stateDir}/server.properties
             cp -f ${eulaFile} ${stateDir}/eula.txt
             chmod u+w ${stateDir}/server.properties
-            ${optionalString serverConf.on-demand
-            "date +%s > ${stateDir}/.last-player-time"}
+            ${onDemandStamp}
           '';
 
-          startScript = let
-            mem = "${toString serverConf.allocated-memory}G";
-            flags =
-              # Required by JNA (used by OSHI for hardware telemetry). Without
-              # this, newer JVMs will block native access entirely.
-              [
-                "--enable-native-access=ALL-UNNAMED"
-                # JNA extracts a native .so to a tmpdir before loading it. The
-                # state directory is typically noexec, so we redirect JNA to the
-                # service's runtime directory (/run/...) which is always exec.
-                "-Djna.tmpdir=/run/${svcName}"
-              ] ++ commonFlags ++ [ "-Xms${mem}" "-Xmx${mem}" ]
-              ++ optionals (serverConf.allocated-memory >= 12) highMemFlags;
-          in pkgs.writeShellScript "mc-start-${safeName}.sh"
-          "${serverConf.package}/bin/minecraft-server ${
-            concatStringsSep " " flags
-          }";
-
-          # Polls until RCON is ready, then syncs gamerules declared in config.
-          postStartScript = pkgs.writeShellScript "mc-post-${safeName}.sh" ''
-            for attempt in $(seq 1 60); do
-              if ${pkgs.mcrcon}/bin/mcrcon \
-                  -H 127.0.0.1 \
-                  -P ${toString serverConf.rcon-port} \
-                  -p ${escapeShellArg serverConf.rcon-password} \
-                  "list" >/dev/null 2>&1
-              then
-                ${pkgs.mcrcon}/bin/mcrcon \
-                  -H 127.0.0.1 \
-                  -P ${toString serverConf.rcon-port} \
-                  -p ${escapeShellArg serverConf.rcon-password} \
-                  "gamerule minecraft:keep_inventory ${
-                    if serverConf.keep-inventory then "true" else "false"
-                  }"
-                ${
-                  concatMapStrings (op: ''
-                    ${pkgs.mcrcon}/bin/mcrcon \
-                      -H 127.0.0.1 \
-                      -P ${toString serverConf.rcon-port} \
-                      -p ${escapeShellArg serverConf.rcon-password} \
-                      "op ${op}"
-                  '') serverConf.ops
-                }exit 0
+          # Profile mode: resolve the profile once, and record what this start
+          # used so ExecStart and the deploy-time activation agree on it.
+          profilePreStartScript =
+            pkgs.writeShellScript "mc-init-${safeName}.sh" ''
+              if ! runtime=$(readlink -e ${profileServer}/runtime); then
+                echo "${name}: nothing at ${profileServer}/runtime; deploy the Minecraft profile." >&2
+                exit 1
               fi
-              sleep 5
-            done
-            echo "Warning: timed out waiting for RCON; gamerules may not be applied." >&2
-          '';
+              cp -f "$runtime/server.properties" ${stateDir}/server.properties
+              cp -f "$runtime/eula.txt" ${stateDir}/eula.txt
+              chmod u+w ${stateDir}/server.properties ${stateDir}/eula.txt
+              printf '%s\n' "$runtime" > ${runDir}/runtime
+              ${onDemandStamp}
+            '';
+
+          profileStartScript =
+            pkgs.writeShellScript "mc-start-${safeName}.sh" ''
+              exec "$(cat ${runDir}/runtime)/start"
+            '';
 
         in nameValuePair svcName {
           description = "${name} Minecraft Server";
@@ -348,9 +660,12 @@ in {
             User = cfg.user;
             Group = cfg.group;
             WorkingDirectory = stateDir;
-            ExecStartPre = "${preStartScript}";
-            ExecStart = "${startScript}";
-            ExecStartPost = "${postStartScript}";
+            # Polls until RCON is ready, then syncs gamerules, ops and the
+            # whitelist declared in config.
+            ExecStartPost = if cfg.profile.enable then
+              "${profileServer}/access/sync"
+            else
+              "${genSync name serverConf}";
             # On-demand servers are restarted by socket activation, not by systemd.
             Restart = if serverConf.on-demand then "no" else "always";
             RuntimeDirectory = svcName;
@@ -365,9 +680,17 @@ in {
             RestrictRealtime = true;
             RestrictNamespaces = true;
             ReadWritePaths = [ cfg.state-directory ];
-          };
+          } // (if cfg.profile.enable then {
+            ExecStartPre = "${profilePreStartScript}";
+            ExecStart = "${profileStartScript}";
+            # ExecStartPost waits up to five minutes for RCON, and a deploy
+            # restart waits on the whole start.
+            TimeoutStartSec = 600;
+          } else {
+            ExecStartPre = "${preStartScript}";
+            ExecStart = "${genStartScript name serverConf}";
+          });
         };
-
       # Proxy service: activated by the socket, waits for Minecraft to be
       # RCON-ready before accepting player connections, then forwards traffic.
       # Stops when Minecraft stops (bindsTo), which re-arms the socket for the
@@ -514,11 +837,35 @@ in {
 
       services = (mapAttrs' genMainService enabledServers)
         // (mapAttrs' genProxyService onDemandServers)
-        // (mapAttrs' genIdleCheckService onDemandServers);
+        // (mapAttrs' genIdleCheckService onDemandServers)
+        // optionalAttrs cfg.check.enable {
+          minecraft-check = {
+            description = "Check the Minecraft servers answer and are current";
+            after = [ "network-online.target" ];
+            wants = [ "network-online.target" ];
+            onFailure = cfg.check.on-failure;
+            serviceConfig = {
+              Type = "oneshot";
+              ExecStart = "${checkScript}";
+              DynamicUser = true;
+            };
+          };
+        };
 
       sockets = mapAttrs' genProxySocket onDemandServers;
 
-      timers = mapAttrs' genIdleCheckTimer onDemandServers;
+      timers = mapAttrs' genIdleCheckTimer onDemandServers
+        // optionalAttrs cfg.check.enable {
+          minecraft-check = {
+            description = "Daily Minecraft server check";
+            wantedBy = [ "timers.target" ];
+            timerConfig = {
+              OnCalendar = cfg.check.calendar;
+              Persistent = true;
+              RandomizedDelaySec = "15min";
+            };
+          };
+        };
     };
   };
 }

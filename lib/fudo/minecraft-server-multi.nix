@@ -157,9 +157,24 @@ let
       };
 
       rcon-password = mkOption {
-        type = str;
-        description =
-          "Password for the RCON remote console. Used to apply server-side gamerules (e.g. keepInventory). Change this from the default!";
+        type = nullOr str;
+        description = ''
+          Password for the RCON remote console, which the module uses to apply
+          gamerules, ops and the whitelist. A literal lands in the
+          world-readable store (and in the profile); prefer
+          `rcon-password-file`. Exactly one of the two must be set.
+        '';
+        default = null;
+      };
+
+      rcon-password-file = mkOption {
+        type = nullOr str;
+        description = ''
+          File holding the RCON password, read at runtime (an Aegis target,
+          for preference). It must be readable by the server user. Add the
+          unit that provides it to `secret-units`.
+        '';
+        default = null;
       };
 
       world-seed = mkOption {
@@ -217,13 +232,14 @@ let
         "query.port" = serverConf.query-port;
         enable-query = true;
         "rcon.port" = serverConf.rcon-port;
-        "rcon.password" = serverConf.rcon-password;
         enable-rcon = true;
         pvp = serverConf.allow-pvp;
         white-list = serverConf.white-list;
         # spawn-protection is a radius in blocks; 0 disables it entirely.
         spawn-protection = if serverConf.spawn-protection then 16 else 0;
-      } // seedAttr;
+      } // seedAttr // optionalAttrs (serverConf.rcon-password != null) {
+        "rcon.password" = serverConf.rcon-password;
+      };
     in pkgs.writeText "mc-${sanitizeName name}.properties" (toProps props);
 
 
@@ -237,10 +253,30 @@ let
   # How many 5-second attempts to give RCON to come up after a start.
   rconAttempts = 60;
 
+  # mcrcon reads the password from MCRCON_PASS, which keeps it off the
+  # command line (and, with a file, out of the store). Every script that
+  # calls rconCmd runs rconAuth first.
   rconCmd = serverConf:
     "${pkgs.mcrcon}/bin/mcrcon -c -H 127.0.0.1 -P ${
       toString serverConf.rcon-port
-    } -p ${escapeShellArg serverConf.rcon-password}";
+    }";
+
+  rconAuth = serverConf:
+    if serverConf.rcon-password-file != null then
+      ''MCRCON_PASS=$(${pkgs.coreutils}/bin/cat ${
+        escapeShellArg serverConf.rcon-password-file
+      }); export MCRCON_PASS''
+    else
+      "export MCRCON_PASS=${escapeShellArg serverConf.rcon-password}";
+
+  # server.properties is a store path, so a file-held password is spliced
+  # into the copy in the state directory at start.
+  appendRconPassword = serverConf: propsPath:
+    optionalString (serverConf.rcon-password-file != null) ''
+      printf '\nrcon.password=%s\n' "$(cat ${
+        escapeShellArg serverConf.rcon-password-file
+      })" >> ${propsPath}
+    '';
 
   genStartScript = name: serverConf:
     let
@@ -292,6 +328,8 @@ let
       export PATH=${
         makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.gnused ]
       }:$PATH
+
+      ${rconAuth serverConf}
 
       strict=0
       [ "''${1:-}" = "--strict" ] && strict=1
@@ -367,6 +405,7 @@ let
       sync = genSync name serverConf;
       rcon = rconCmd serverConf;
     in ''
+      ${rconAuth serverConf}
       want=${runtime}
       have=$(cat /run/minecraft-${safeName}/runtime 2>/dev/null || true)
       if systemctl is-active --quiet ${unit} && [ "$have" = "$want" ]; then
@@ -503,6 +542,17 @@ in {
       default = "minecraft";
     };
 
+    secret-units = mkOption {
+      type = listOf str;
+      description = ''
+        Units that provide secrets the servers read, such as the Aegis
+        decrypt unit behind `rcon-password-file`. Every server unit starts
+        after and requires them.
+      '';
+      default = [ ];
+      example = [ "aegis-secret-minecraft-rcon-password.service" ];
+    };
+
     servers = mkOption {
       type = attrsOf (submodule serverOpts);
       description = "Minecraft server instances to run.";
@@ -579,6 +629,13 @@ in {
   };
 
   config = mkIf cfg.enable {
+    assertions = mapAttrsToList (name: serverConf: {
+      assertion = (serverConf.rcon-password == null)
+        != (serverConf.rcon-password-file == null);
+      message =
+        "fudo.services.minecraft.server.servers.${name} needs exactly one of rcon-password or rcon-password-file.";
+    }) cfg.servers;
+
     fudo.services.minecraft.server.profile.package = profileBundle;
 
     users = {
@@ -624,7 +681,8 @@ in {
           preStartScript = pkgs.writeShellScript "mc-init-${safeName}.sh" ''
             cp -f ${propsFile} ${stateDir}/server.properties
             cp -f ${eulaFile} ${stateDir}/eula.txt
-            chmod u+w ${stateDir}/server.properties
+            chmod 0600 ${stateDir}/server.properties
+            ${appendRconPassword serverConf "${stateDir}/server.properties"}
             ${onDemandStamp}
           '';
 
@@ -638,7 +696,9 @@ in {
               fi
               cp -f "$runtime/server.properties" ${stateDir}/server.properties
               cp -f "$runtime/eula.txt" ${stateDir}/eula.txt
-              chmod u+w ${stateDir}/server.properties ${stateDir}/eula.txt
+              chmod u+w ${stateDir}/eula.txt
+              chmod 0600 ${stateDir}/server.properties
+              ${appendRconPassword serverConf "${stateDir}/server.properties"}
               printf '%s\n' "$runtime" > ${runDir}/runtime
               ${onDemandStamp}
             '';
@@ -654,8 +714,8 @@ in {
           # Start the idle-check timer alongside this service (on-demand only).
           wants =
             optionals serverConf.on-demand [ "${svcName}-idle-check.timer" ];
-          after = [ "network-online.target" ];
-          requires = [ "network-online.target" ];
+          after = [ "network-online.target" ] ++ cfg.secret-units;
+          requires = [ "network-online.target" ] ++ cfg.secret-units;
           serviceConfig = {
             User = cfg.user;
             Group = cfg.group;
@@ -703,11 +763,11 @@ in {
 
           waitForRconScript =
             pkgs.writeShellScript "mc-wait-rcon-${safeName}.sh" ''
+              ${rconAuth serverConf}
               for attempt in $(seq 1 120); do
                 if ${pkgs.mcrcon}/bin/mcrcon \
                     -H 127.0.0.1 \
                     -P ${toString serverConf.rcon-port} \
-                    -p ${escapeShellArg serverConf.rcon-password} \
                     "list" >/dev/null 2>&1
                 then
                   exit 0
@@ -766,6 +826,7 @@ in {
 
           idleCheckScript =
             pkgs.writeShellScript "mc-idle-check-${safeName}.sh" ''
+              ${rconAuth serverConf}
               LAST_PLAYER_FILE="${stateDir}/.last-player-time"
               IDLE_TIMEOUT=${idleTimeoutSecs}
 
@@ -776,7 +837,6 @@ in {
               PLAYER_LIST=$(${pkgs.mcrcon}/bin/mcrcon \
                 -H 127.0.0.1 \
                 -P ${toString serverConf.rcon-port} \
-                -p ${escapeShellArg serverConf.rcon-password} \
                 "list" 2>/dev/null) || exit 0
 
               PLAYER_COUNT=$(echo "$PLAYER_LIST" | awk '/There are/{print $3}')
@@ -796,7 +856,6 @@ in {
                   ${pkgs.mcrcon}/bin/mcrcon \
                     -H 127.0.0.1 \
                     -P ${toString serverConf.rcon-port} \
-                    -p ${escapeShellArg serverConf.rcon-password} \
                     "say Server shutting down due to inactivity. Goodbye!" 2>/dev/null || true
                   sleep 30
                   systemctl --no-block stop "${svcName}.service"

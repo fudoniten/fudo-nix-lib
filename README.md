@@ -201,9 +201,10 @@ Export system metrics for Prometheus.
 DNS proxy supporting DoH and DoT.
 
 **Options**: `fudo.secure-dns-proxy.*`
-- `enable`, `port`, `listen-ips`
+- `enable`, `listen-port`, `listen-ips`
 - `upstream-dns`: DoH/DoT endpoints
 - `bootstrap-dns`: Initial resolver
+- `allowed-networks`: if set, the only addresses the proxy may talk to
 
 **Use case**: Encrypted DNS for privacy.
 
@@ -242,18 +243,6 @@ LUKS-encrypted filesystem mounting with key management.
 **Options**: Configure via host type definition (`encrypted-filesystems`).
 
 **Use case**: Automatic decryption and mounting of encrypted storage.
-
-#### `system.nix` - Systemd Service Abstractions
-Helper for defining systemd services.
-
-**Options**: `fudo.system.services.<name>`
-- Simplified service definitions
-- Sandboxing presets
-- Common patterns
-
-**Use case**: Reduce boilerplate in service definitions.
-
-**Extraction candidate**: Systemd helpers (HIGH priority).
 
 #### `system-networking.nix` - Network Configuration
 Network setup based on host configuration.

@@ -23,6 +23,7 @@ forge covers every host.
 | `lib/fudo/minecraft-clj.nix` | No consumer. |
 | `lib/fudo/authentication.nix` (`fudo.authentication`, LDAP NSS) | No consumer. |
 | `lib/fudo/global.nix` | Empty module. |
+| `lib/fudo/system.nix` (`fudo.system.services`, `fudo.system.tmpOnTmpfs`, `fudo-init.target`) | Only `secure-dns-proxy.nix` used it; inlined there as a plain systemd unit. `tmpOnTmpfs` was never read, and nothing ordered against `fudo-init.target`. |
 | `lib/informis/` (`informis.chute`, `informis.cl-gemini`) | No consumer. `cl-gemini` is only a commented-out block on legatus; `chute` went with informis.land. |
 | `lib/lib/lisp.nix` (`pkgs.lib.lisp`) | Only `cl-gemini` used it. |
 | `lib/lib/text.nix` (`pkgs.lib.text`) | No callers. |
@@ -52,7 +53,6 @@ Earlier removals (mail stack, `vpn.nix`, `hosts/local-network.nix`,
 | `auth/kerberos/` (client and KDC) | `services/fudo-auth.nix`, `services/kdc-aegis.nix` | Next to the Aegis KDC (`aegis.nixosModules.kdc`) or into nixos-config `services/`. |
 | `adguard-dns-proxy.nix` | `services/local-network/recursor.nix`, sea/burg domain configs | nixos-config `services/local-network/`, its only user. |
 | `secure-dns-proxy.nix` | legatus | nixos-config, or merge with adguard into one DNS-proxy flake. |
-| `system.nix` (`fudo.system.services`) | Only `secure-dns-proxy.nix`. Also defines `fudo-init.target`. | Inline into `secure-dns-proxy.nix` and delete. |
 | `system-networking.nix` (`fudo.system.hostfile-entries`) | `services/local-network/gateway.nix`, `profiles/host/ssh.nix` | nixos-config. |
 | `prometheus.nix`, `node-exporter.nix` (`fudo.metrics.*`) | nixos-config `services/metrics.nix`, `profiles/common.nix` | nixos-config `services/metrics.nix`, which is already their only driver. |
 | `webmail.nix` + `include/rainloop.nix` | fudo.org (`webmail.fudo.org` on france) | Retire if webmail is no longer wanted; otherwise nixos-config or the mail-server flake. |
@@ -79,7 +79,7 @@ away with the Aegis migration.
 ## Suggested order for breaking the repo up
 
 1. Move each single-consumer service module into nixos-config `services/`
-   (adguard, secure-dns-proxy with `system.nix` inlined, prometheus and
+   (adguard, secure-dns-proxy, prometheus and
    node-exporter, wireless-networks, host-filesystems, deploy,
    system-networking). Each is a move plus an option rename, the same
    pattern as postgres.

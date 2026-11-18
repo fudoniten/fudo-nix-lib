@@ -12,7 +12,6 @@ with lib; {
     ./node-exporter.nix
     ./prometheus.nix
     ./secrets.nix
-    ./secure-dns-proxy.nix
     ./slynk.nix
     ./ssh.nix
     ./system-networking.nix

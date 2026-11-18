@@ -15,7 +15,6 @@ with lib; {
     ./secure-dns-proxy.nix
     ./slynk.nix
     ./ssh.nix
-    ./system.nix
     ./system-networking.nix
     ./webmail.nix
     ./wireless-networks.nix

@@ -4,8 +4,6 @@ with lib;
 let
   cfg = config.fudo.secure-dns-proxy;
 
-  fudo-lib = import ../fudo-lib.nix { lib = lib; };
-
 in {
   options.fudo.secure-dns-proxy = with types; {
     enable =
@@ -78,26 +76,54 @@ in {
       };
     };
 
-    fudo.system.services.secure-dns-proxy = {
+    systemd.services.secure-dns-proxy = {
       description = "DNS Proxy for secure DNS-over-HTTPS lookups.";
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
-      privateNetwork = false;
-      requiredCapabilities = mkIf upgrade-perms [ "CAP_NET_BIND_SERVICE" ];
-      restartWhen = "always";
-      addressFamilies = [ "AF_INET" "AF_INET6" ];
-      networkWhitelist = cfg.allowed-networks;
-      user = mkIf upgrade-perms cfg.user;
-      group = mkIf upgrade-perms cfg.group;
+      serviceConfig = let
+        upstreams = concatMapStringsSep " " (u: "-u ${u}") cfg.upstream-dns;
+        listens = concatMapStringsSep " " (l: "-l ${l}") cfg.listen-ips;
+      in {
+        ExecStart = "${pkgs.dnsproxy}/bin/dnsproxy -p ${
+            toString cfg.listen-port
+          } ${upstreams} ${listens} -b ${cfg.bootstrap-dns}";
+        Restart = "always";
+        LimitNOFILE = 49152;
+        UMask = "0077";
 
-      execStart = let
-        upstreams = map (upstream: "-u ${upstream}") cfg.upstream-dns;
-        upstream-line = concatStringsSep " " upstreams;
-        listen-line =
-          concatStringsSep " " (map (listen: "-l ${listen}") cfg.listen-ips);
-      in "${pkgs.dnsproxy}/bin/dnsproxy -p ${
-        toString cfg.listen-port
-      } ${upstream-line} ${listen-line} -b ${cfg.bootstrap-dns}";
+        PrivateDevices = true;
+        PrivateMounts = true;
+        PrivateTmp = true;
+        ProtectClock = true;
+        ProtectControlGroups = true;
+        ProtectHome = true;
+        ProtectHostname = true;
+        ProtectKernelLogs = true;
+        ProtectKernelModules = true;
+        ProtectKernelTunables = true;
+        ProtectSystem = "full";
+        InaccessiblePaths = [ "/home" "/root" ];
+        LockPersonality = true;
+        MemoryDenyWriteExecute = true;
+        RestrictNamespaces = true;
+        RestrictRealtime = true;
+        RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
+        SystemCallFilter = [
+          "~@clock @debug @module @mount @raw-io @reboot @swap @privileged @resources @cpu-emulation @obsolete"
+        ];
+      } // optionalAttrs (cfg.allowed-networks != null) {
+        IPAddressAllow = cfg.allowed-networks;
+        IPAddressDeny = "any";
+      } // (if upgrade-perms then {
+        # Privileged port: run as a fixed user that keeps CAP_NET_BIND_SERVICE.
+        User = cfg.user;
+        Group = cfg.group;
+        AmbientCapabilities = "CAP_NET_BIND_SERVICE";
+        SecureBits = "keep-caps";
+      } else {
+        DynamicUser = true;
+        PrivateUsers = true;
+      });
     };
   });
 }

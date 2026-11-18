@@ -197,17 +197,6 @@ Export system metrics for Prometheus.
 
 ### Networking Services
 
-#### `secure-dns-proxy.nix` - DNS-over-HTTPS/TLS Proxy
-DNS proxy supporting DoH and DoT.
-
-**Options**: `fudo.secure-dns-proxy.*`
-- `enable`, `listen-port`, `listen-ips`
-- `upstream-dns`: DoH/DoT endpoints
-- `bootstrap-dns`: Initial resolver
-- `allowed-networks`: if set, the only addresses the proxy may talk to
-
-**Use case**: Encrypted DNS for privacy.
-
 #### `adguard-dns-proxy.nix` - DNS Filtering Proxy
 DNS-based ad/tracker blocking.
 

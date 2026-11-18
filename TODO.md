@@ -23,7 +23,8 @@ forge covers every host.
 | `lib/fudo/minecraft-clj.nix` | No consumer. |
 | `lib/fudo/authentication.nix` (`fudo.authentication`, LDAP NSS) | No consumer. |
 | `lib/fudo/global.nix` | Empty module. |
-| `lib/fudo/system.nix` (`fudo.system.services`, `fudo.system.tmpOnTmpfs`, `fudo-init.target`) | Only `secure-dns-proxy.nix` used it; inlined there as a plain systemd unit. `tmpOnTmpfs` was never read, and nothing ordered against `fudo-init.target`. |
+| `lib/fudo/secure-dns-proxy.nix` (`fudo.secure-dns-proxy`) | Only legatus enabled it, on `127.0.0.1:53`, but legatus resolves through `1.1.1.1` directly and nothing queried the proxy. Dropped from legatus in nixos-config first. |
+| `lib/fudo/system.nix` (`fudo.system.services`, `fudo.system.tmpOnTmpfs`, `fudo-init.target`) | Only `secure-dns-proxy.nix` used it, which was inlined and then removed too (above). `tmpOnTmpfs` was never read, and nothing ordered against `fudo-init.target`. |
 | `lib/informis/` (`informis.chute`, `informis.cl-gemini`) | No consumer. `cl-gemini` is only a commented-out block on legatus; `chute` went with informis.land. |
 | `lib/lib/lisp.nix` (`pkgs.lib.lisp`) | Only `cl-gemini` used it. |
 | `lib/lib/text.nix` (`pkgs.lib.text`) | No callers. |
@@ -52,7 +53,6 @@ Earlier removals (mail stack, `vpn.nix`, `hosts/local-network.nix`,
 | `secrets.nix` (`fudo.secrets`) | ~22 files in nixos-config, plus nexus.nix | Goes away with the fudo-secrets → Aegis migration, not extracted. |
 | `auth/kerberos/` (client and KDC) | `services/fudo-auth.nix`, `services/kdc-aegis.nix` | Next to the Aegis KDC (`aegis.nixosModules.kdc`) or into nixos-config `services/`. |
 | `adguard-dns-proxy.nix` | `services/local-network/recursor.nix`, sea/burg domain configs | nixos-config `services/local-network/`, its only user. |
-| `secure-dns-proxy.nix` | legatus | nixos-config, or merge with adguard into one DNS-proxy flake. |
 | `system-networking.nix` (`fudo.system.hostfile-entries`) | `services/local-network/gateway.nix`, `profiles/host/ssh.nix` | nixos-config. |
 | `prometheus.nix`, `node-exporter.nix` (`fudo.metrics.*`) | nixos-config `services/metrics.nix`, `profiles/common.nix` | nixos-config `services/metrics.nix`, which is already their only driver. |
 | `webmail.nix` + `include/rainloop.nix` | fudo.org (`webmail.fudo.org` on france) | Retire if webmail is no longer wanted; otherwise nixos-config or the mail-server flake. |
@@ -79,7 +79,7 @@ away with the Aegis migration.
 ## Suggested order for breaking the repo up
 
 1. Move each single-consumer service module into nixos-config `services/`
-   (adguard, secure-dns-proxy, prometheus and
+   (adguard, prometheus and
    node-exporter, wireless-networks, host-filesystems, deploy,
    system-networking). Each is a move plus an option rename, the same
    pattern as postgres.
